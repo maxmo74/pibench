@@ -16,6 +16,17 @@ import tempfile
 import time
 from pathlib import Path
 
+from pibench_db import (
+    attach_model_to_run,
+    connect,
+    create_run,
+    finish_run,
+    insert_result,
+    upsert_model,
+    upsert_task,
+    utc_now,
+)
+
 ROOT = Path(__file__).resolve().parent
 OUTDIR = ROOT / "results"
 OUTDIR.mkdir(exist_ok=True)
@@ -226,15 +237,43 @@ def main() -> int:
     parser.add_argument("--keep-env-offline", action="store_true", help="Respect an existing PI_OFFLINE env var")
     parser.add_argument("--system-prompt", default="You are a precise benchmark participant. Follow the user's formatting requirements exactly.")
     parser.add_argument("--task", dest="tasks", action="append", choices=[t["name"] for t in TASKS], help="Task to run; repeat for multiple tasks. Defaults to all tasks.")
+    parser.add_argument("--db", default=str(ROOT / "results" / "pibench.sqlite"), help="SQLite database path; use 'none' to disable DB recording")
+    parser.add_argument("--notes", help="Optional notes for this benchmark run")
     args = parser.parse_args()
 
     selected_tasks = [t for t in TASKS if not args.tasks or t["name"] in set(args.tasks)]
     stamp = time.strftime("%Y%m%d-%H%M%S")
     rows = []
 
+    conn = None if args.db == "none" else connect(Path(args.db))
+    run_id = None
+    run_model_ids = {}
+    task_ids = {}
+    if conn is not None:
+        run_id = create_run(
+            conn,
+            "pi_agent",
+            sys.argv,
+            {
+                "models": args.models,
+                "tasks": [t["name"] for t in selected_tasks],
+                "timeout": args.timeout,
+                "offline": args.offline,
+                "keep_env_offline": args.keep_env_offline,
+                "system_prompt": args.system_prompt,
+            },
+            args.notes,
+        )
+        for task in selected_tasks:
+            task_ids[task["name"]] = upsert_task(conn, task["name"], task["prompt"], task["check"], category="pi_agent")
+        for model in args.models:
+            model_db_id = upsert_model(conn, model)
+            run_model_ids[model] = attach_model_to_run(conn, run_id, model_db_id)
+
     for model in args.models:
         print(f"\n=== {model} ===", flush=True)
         for task in selected_tasks:
+            task_started_at = utc_now()
             try:
                 result = run_pi(model, task["prompt"], args)
             except subprocess.TimeoutExpired as exc:
@@ -247,8 +286,12 @@ def main() -> int:
                     "returncode": -1,
                     "stdout": exc.stdout or "",
                     "stderr": exc.stderr or "",
+                    "started_at": task_started_at,
+                    "ended_at": utc_now(),
                 }
                 rows.append(row)
+                if conn is not None and run_id is not None:
+                    insert_result(conn, run_id, run_model_ids[model], task_ids[task["name"]], row)
                 print(f"{task['name']:<24} TIMEOUT", flush=True)
                 continue
 
@@ -270,8 +313,12 @@ def main() -> int:
                 "checks": checks,
                 "stdout": stdout,
                 "stderr": result["stderr"],
+                "started_at": task_started_at,
+                "ended_at": utc_now(),
             }
             rows.append(row)
+            if conn is not None and run_id is not None:
+                insert_result(conn, run_id, run_model_ids[model], task_ids[task["name"]], row)
             status = "PASS" if ok else "FAIL"
             print(f"{task['name']:<24} {status:<5} wall={result['wall_s']:7.2f}s approx_out={toks:5d} tok tps={row['approx_output_tps'] or 0:6.1f} {note}", flush=True)
 
@@ -297,6 +344,10 @@ def main() -> int:
         notes = "; ".join(f"{r['task']}={('pass' if r['ok'] else 'fail')}" for r in sub)
         lines.append(f"| `{model}` | {passed}/{len(sub)} | {avg_wall:.2f} | {avg_tps:.1f} | {notes} |")
     md_path.write_text("\n".join(lines) + "\n")
+
+    if conn is not None and run_id is not None:
+        finish_run(conn, run_id)
+        print(f"Recorded SQLite run_id={run_id} in {args.db}")
 
     print(f"\nWrote {json_path}")
     print(f"Wrote {md_path}")
