@@ -1,0 +1,35 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environments and credentials
+.venv/
+venv/
+.env
+.env.*
+.pi/
+.ssh/
+auth.json
+credentials.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Benchmark data is deliberately local-only. Public Git contains curated
+# aggregate tables, never raw model output, host metadata, or the SQLite DB.
+results/
+
+# Model weights and interrupted downloads
+*.gguf
+*.safetensors
+*.bin
+*.onnx
+*.part
+*.aria2
+
+# Runtime/editor noise
+*.log
+.DS_Store
+.idea/
+.vscode/
