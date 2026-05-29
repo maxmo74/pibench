@@ -173,6 +173,15 @@ TASK_DIFFICULTY = {
     for name, weight in TASK_WEIGHTS.items()
 }
 
+CHECK_TOTALS = {
+    "unified_diff_exec": 3,
+    "csv_infer_exec": 3,
+    "retry_schedule_exec": 3,
+    "semver_range_exec": 4,
+    "markdown_table_exec": 4,
+    "text_wrap_exec": 4,
+}
+
 
 def task_weight(name: str) -> float:
     return TASK_WEIGHTS.get(name, 1.0)
@@ -655,6 +664,10 @@ def main() -> int:
                     "note": f"timeout after {args.timeout}s",
                     "wall_s": args.timeout,
                     "returncode": -1,
+                    "score": 0,
+                    "total": CHECK_TOTALS.get(task["check"]),
+                    "task_weight": task_weight(task["name"]),
+                    "task_difficulty": TASK_DIFFICULTY.get(task["name"], "unknown"),
                     "stdout": exc.stdout or "",
                     "stderr": exc.stderr or "",
                     "started_at": task_started_at,

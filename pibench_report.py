@@ -51,6 +51,19 @@ def sanitize_notes(text: str) -> str:
     return re.sub(r"/tmp/tmp[^/]+/submission\.py", "<tmp>/submission.py", text)
 
 
+def model_label(model_arg: str) -> str:
+    labels = {
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off": "Qwen3.6 35B A3B APEX MTP Compact — thinking off",
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium": "Qwen3.6 35B A3B APEX MTP Compact — thinking on",
+        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off": "Qwen3.6 35B A3B Uncensored Genesis MTP APEX Compact — thinking off",
+        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:medium": "Qwen3.6 35B A3B Uncensored Genesis MTP APEX Compact — thinking on",
+        "openai-codex/gpt-5.4:medium": "OpenAI Codex GPT-5.4 — medium reasoning",
+        "openai-codex/gpt-5.5:medium": "OpenAI Codex GPT-5.5 — medium reasoning",
+        "openai-codex/gpt-5.5:high": "OpenAI Codex GPT-5.5 — high reasoning",
+    }
+    return labels.get(model_arg, model_arg)
+
+
 def fmt_num(value: object, digits: int = 2) -> str:
     if value is None:
         return "n/a"
@@ -76,8 +89,8 @@ def generate(conn: sqlite3.Connection) -> str:
         "",
         "## Overall by model",
         "",
-        "| model | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
-        "|---|---:|---:|---:|---:|---:|---:|"
+        "| model | exact Pi model argument | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
+        "|---|---|---:|---:|---:|---:|---:|---:|"
     ]
 
     for row in conn.execute(
@@ -105,15 +118,15 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| `{row['model_arg']}` | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
+            f"| {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
         )
 
     lines += [
         "",
         "## Latest runs",
         "",
-        "| run | started | notes | model | pass | scored points | weighted score | avg wall s |",
-        "|---:|---|---|---|---:|---:|---:|---:|"
+        "| run | started | notes | model | exact Pi model argument | pass | scored points | weighted score | avg wall s |",
+        "|---:|---|---|---|---|---:|---:|---:|---:|"
     ]
     for row in conn.execute(
         f"""
@@ -137,15 +150,15 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | `{row['model_arg']}` | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
+            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
         )
 
     lines += [
         "",
         "## Task matrix",
         "",
-        "| task | weight | model | pass | scored points | weighted score | avg wall s | common failure notes |",
-        "|---|---:|---|---:|---:|---:|---:|---|"
+        "| task | weight | model | exact Pi model argument | pass | scored points | weighted score | avg wall s | common failure notes |",
+        "|---|---:|---|---|---:|---:|---:|---:|---|"
     ]
     for row in conn.execute(
         f"""
@@ -169,7 +182,7 @@ def generate(conn: sqlite3.Connection) -> str:
         notes = sanitize_notes((row["notes"] or "").replace("\n", " "))[:160]
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | `{row['model_arg']}` | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
+            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
         )
 
     return "\n".join(lines) + "\n"
