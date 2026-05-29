@@ -72,6 +72,21 @@ TASKS = [
         "prompt": "Build a polished single-file web app. Return only complete HTML, no markdown. App: Todo manager. Requirements: responsive layout, CSS styling, add todo, delete todo, mark complete, filters All/Active/Completed, persist todos in localStorage, empty-state message, keyboard friendly form, no external dependencies.",
         "check": "todo_static",
     },
+    {
+        "name": "lru_cache_hard",
+        "prompt": "Return only Python code defining class LRUCache. Constructor LRUCache(capacity). Methods get(key) returns value or -1; put(key,value) inserts/updates. Evict least-recently-used item when over capacity. get and put must both update recency. Capacity may be zero. Do not use external dependencies. No markdown.",
+        "check": "lru_cache_exec",
+    },
+    {
+        "name": "json_path_set_hard",
+        "prompt": "Return only Python code defining function set_path(obj, path, value). path is a dotted/bracket path like 'a.b[0].c' or 'items[2]'. Mutate and return obj. Create missing dicts/lists as needed, extend lists with None, preserve existing containers, and raise ValueError on malformed paths. No markdown.",
+        "check": "json_path_set_exec",
+    },
+    {
+        "name": "rate_limiter_hard",
+        "prompt": "Return only Python code defining class SlidingWindowRateLimiter. Constructor SlidingWindowRateLimiter(limit, window_seconds). Method allow(user_id, timestamp) returns True if the request is allowed, False otherwise. Allow at most limit requests per user in any sliding window of window_seconds. Timestamps are numeric and nondecreasing per user is not guaranteed. Keep independent state per user. No markdown.",
+        "check": "rate_limiter_exec",
+    },
 ]
 
 
@@ -152,6 +167,68 @@ try:
     raise AssertionError('cycle not detected')
 except ValueError:
     pass
+print('ok')
+"""
+        ok, detail = run_python_submission(body, tests)
+        return ok, "exec check" if ok else detail, {}
+
+    if kind == "lru_cache_exec":
+        tests = """
+c = LRUCache(2)
+c.put('a', 1); c.put('b', 2)
+assert c.get('a') == 1
+c.put('c', 3)
+assert c.get('b') == -1 and c.get('a') == 1 and c.get('c') == 3
+c.put('a', 10)
+c.put('d', 4)
+assert c.get('c') == -1 and c.get('a') == 10 and c.get('d') == 4
+z = LRUCache(0)
+z.put('x', 1)
+assert z.get('x') == -1
+one = LRUCache(1)
+one.put('x', 1); one.put('x', 2)
+assert one.get('x') == 2
+print('ok')
+"""
+        ok, detail = run_python_submission(body, tests)
+        return ok, "exec check" if ok else detail, {}
+
+    if kind == "json_path_set_exec":
+        tests = r'''
+o = {}
+assert set_path(o, 'a.b[0].c', 7) is o
+assert o == {'a': {'b': [{'c': 7}]}}
+set_path(o, 'a.b[2]', 'x')
+assert o['a']['b'] == [{'c': 7}, None, 'x']
+o2 = {'items': [{'name': 'old'}]}
+set_path(o2, 'items[0].name', 'new')
+assert o2 == {'items': [{'name': 'new'}]}
+set_path(o2, 'items[1].tags[0]', 'pi')
+assert o2['items'][1]['tags'] == ['pi']
+for bad in ['', 'a..b', 'a[', 'a[-1]', '[0]']:
+    try:
+        set_path({}, bad, 1)
+        raise AssertionError('did not reject ' + repr(bad))
+    except ValueError:
+        pass
+print('ok')
+'''
+        ok, detail = run_python_submission(body, tests)
+        return ok, "exec check" if ok else detail, {}
+
+    if kind == "rate_limiter_exec":
+        tests = """
+rl = SlidingWindowRateLimiter(2, 10)
+assert rl.allow('u', 100.0) is True
+assert rl.allow('u', 101.0) is True
+assert rl.allow('u', 102.0) is False
+assert rl.allow('v', 102.0) is True
+assert rl.allow('u', 110.0) is True  # 100.0 has expired for [100,110]
+assert rl.allow('u', 109.0) is False # out-of-order timestamp still sees 101 and 110 in window
+rl2 = SlidingWindowRateLimiter(1, 5)
+assert rl2.allow('a', 0) is True
+assert rl2.allow('a', 4.999) is False
+assert rl2.allow('a', 5) is True
 print('ok')
 """
         ok, detail = run_python_submission(body, tests)
