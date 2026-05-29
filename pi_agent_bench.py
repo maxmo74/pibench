@@ -51,6 +51,7 @@ MODEL_PRESETS = {
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
+        "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
         "openai-codex/gpt-5.4:medium",
         "openai-codex/gpt-5.5:medium",
         "openai-codex/gpt-5.5:high",
@@ -59,6 +60,11 @@ MODEL_PRESETS = {
     "genesis-local": [
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:medium",
+        "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
+    ],
+    "genesis-mtp-comparison": [
+        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
+        "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
     ],
 }
 
@@ -684,6 +690,8 @@ def main() -> int:
                 ok, note, checks = check_result(task["check"], stdout)
             else:
                 ok, note, checks = False, "pi failed", {}
+            if CHECK_TOTALS.get(task["check"]) and not checks.get("total"):
+                checks = {**checks, "score": 0, "total": CHECK_TOTALS[task["check"]]}
             toks = approx_tokens(stdout)
             row = {
                 "model": model,

@@ -65,6 +65,7 @@ def model_label(model_arg: str) -> str:
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium": "Qwen3.6 35B A3B APEX MTP Compact — thinking on",
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off": "Qwen3.6 35B A3B Uncensored Genesis MTP APEX Compact — thinking off",
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:medium": "Qwen3.6 35B A3B Uncensored Genesis MTP APEX Compact — thinking on",
+        "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off": "Qwen3.6 35B A3B Uncensored Genesis APEX Compact — non-MTP runtime, thinking off",
         "openai-codex/gpt-5.4:medium": "OpenAI Codex GPT-5.4 — medium reasoning",
         "openai-codex/gpt-5.5:medium": "OpenAI Codex GPT-5.5 — medium reasoning",
         "openai-codex/gpt-5.5:high": "OpenAI Codex GPT-5.5 — high reasoning",

@@ -124,7 +124,7 @@ def infer_effective_thinking(model_arg: str, metadata: dict[str, Any]) -> str | 
     model_id = parsed.get("model_id") or metadata.get("model_id")
     if requested is None:
         return None
-    if provider == "local-llama":
+    if provider and provider.startswith("local-llama"):
         if requested == "off":
             return "qwen-chat-template:enable_thinking=false"
         # Current local Qwen config uses qwen-chat-template, where Pi/llama.cpp
