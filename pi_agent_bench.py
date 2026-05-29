@@ -36,6 +36,31 @@ DEFAULT_MODELS = [
     "openai-codex/gpt-5.5:medium",
 ]
 
+MODEL_PRESETS = {
+    "baseline": DEFAULT_MODELS,
+    "requested-cloud": [
+        "openai-codex/gpt-5.4:medium",
+        "openai-codex/gpt-5.5:medium",
+        "openai-codex/gpt-5.5:high",
+    ],
+    "qwen-thinking": [
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
+    ],
+    "article": [
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
+        "openai-codex/gpt-5.4:medium",
+        "openai-codex/gpt-5.5:medium",
+        "openai-codex/gpt-5.5:high",
+    ],
+    # Enable this after the GGUF is downloaded and registered in Pi's local-llama provider.
+    "genesis-local": [
+        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-V2-APEX-MTP-GGUF:off",
+        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-V2-APEX-MTP-GGUF:medium",
+    ],
+}
+
 TASKS = [
     {
         "name": "json_exact",
@@ -87,6 +112,21 @@ TASKS = [
         "prompt": "Return only Python code defining class SlidingWindowRateLimiter. Constructor SlidingWindowRateLimiter(limit, window_seconds). Method allow(user_id, timestamp) returns True if the request is allowed, False otherwise. Allow at most limit requests per user in any sliding window of window_seconds. Timestamps are numeric and nondecreasing per user is not guaranteed. Keep independent state per user. No markdown.",
         "check": "rate_limiter_exec",
     },
+    {
+        "name": "unified_diff_hard",
+        "prompt": "Return only Python code defining function apply_unified_diff(text, patch). text is a string. patch is a standard unified diff string with ---/+++ headers and @@ -a,b +c,d @@ hunks. Apply removals, additions, and context lines. Return the patched text. Raise ValueError if context/removal lines do not match. No markdown.",
+        "check": "unified_diff_exec",
+    },
+    {
+        "name": "csv_infer_hard",
+        "prompt": "Return only Python code defining function infer_csv_schema(csv_text). Parse CSV with headers using Python standard library. Return a dict mapping column name to one of: int, float, bool, date, string. Empty cells are ignored for inference. bool accepts true/false/yes/no/1/0 case-insensitively. date accepts YYYY-MM-DD. int must not classify floats. No markdown.",
+        "check": "csv_infer_exec",
+    },
+    {
+        "name": "retry_schedule_hard",
+        "prompt": "Return only Python code defining function retry_schedule(base_delay, factor, max_delay, attempts, jitter=None). Return a list of delays for retry attempts. Delay i is min(max_delay, base_delay * factor**i). attempts may be 0. If jitter is a number between 0 and 1, return (low, high) tuples where low=delay*(1-jitter), high=delay*(1+jitter), capped so high<=max_delay. Validate inputs and raise ValueError for invalid ones. No markdown.",
+        "check": "retry_schedule_exec",
+    },
 ]
 
 
@@ -110,6 +150,32 @@ def run_python_submission(code: str, tests: str, timeout: int = 8) -> tuple[bool
         path.write_text(code + "\n\n" + tests)
         proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
         return proc.returncode == 0, (proc.stdout + proc.stderr)[-1200:]
+
+
+def run_python_scored(code: str, tests: str, timeout: int = 8) -> tuple[bool, str, dict]:
+    harness = r'''
+import json, traceback
+passed = 0
+failed = []
+for name, fn in TESTS:
+    try:
+        fn()
+        passed += 1
+    except Exception:
+        failed.append({"name": name, "traceback": traceback.format_exc(limit=4)})
+print("PIBENCH_SCORE " + json.dumps({"score": passed, "total": len(TESTS), "failed": failed}, sort_keys=True))
+raise SystemExit(0 if passed == len(TESTS) else 1)
+'''
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "submission.py"
+        path.write_text(code + "\n\n" + tests + "\n\n" + harness)
+        proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
+        output = proc.stdout + proc.stderr
+        match = re.search(r"PIBENCH_SCORE (\{.*\})", output)
+        checks = json.loads(match.group(1)) if match else {"score": 0, "total": 0, "failed": [{"name": "harness", "traceback": output[-1200:]}]}
+        failed_names = [f["name"] for f in checks.get("failed", [])]
+        detail = f"score {checks.get('score', 0)}/{checks.get('total', 0)}" if not failed_names else f"score {checks.get('score', 0)}/{checks.get('total', 0)} failed: " + ", ".join(failed_names)
+        return proc.returncode == 0, detail, checks
 
 
 def check_result(kind: str, text: str) -> tuple[bool, str, dict]:
@@ -234,6 +300,71 @@ print('ok')
         ok, detail = run_python_submission(body, tests)
         return ok, "exec check" if ok else detail, {}
 
+    if kind == "unified_diff_exec":
+        tests = r'''
+def t_basic():
+    text = "a\nb\nc\n"
+    patch = "--- old\n+++ new\n@@ -1,3 +1,4 @@\n a\n-b\n+B\n c\n+d\n"
+    assert apply_unified_diff(text, patch) == "a\nB\nc\nd\n"
+
+def t_multiple_hunks():
+    text = "one\ntwo\nthree\nfour\nfive\n"
+    patch = "--- a\n+++ b\n@@ -1,2 +1,2 @@\n one\n-two\n+TWO\n@@ -4,2 +4,3 @@\n four\n five\n+six\n"
+    assert apply_unified_diff(text, patch) == "one\nTWO\nthree\nfour\nfive\nsix\n"
+
+def t_bad_context():
+    try:
+        apply_unified_diff("x\ny\n", "--- a\n+++ b\n@@ -1,2 +1,2 @@\n z\n-y\n+Y\n")
+        raise AssertionError("accepted wrong context")
+    except ValueError:
+        pass
+
+TESTS = [("basic", t_basic), ("multiple_hunks", t_multiple_hunks), ("bad_context", t_bad_context)]
+'''
+        return run_python_scored(body, tests)
+
+    if kind == "csv_infer_exec":
+        tests = r'''
+def t_mixed_schema():
+    csv_text = "id,price,active,joined,name\n1,3.50,true,2024-01-02,Ada\n2,,NO,2024-12-31,Bob\n3,7,1,,Carol\n"
+    assert infer_csv_schema(csv_text) == {"id": "int", "price": "float", "active": "bool", "joined": "date", "name": "string"}
+
+def t_int_not_float_and_empty():
+    csv_text = "a,b,c\n001,,hello\n-2,,world\n"
+    assert infer_csv_schema(csv_text) == {"a": "int", "b": "string", "c": "string"}
+
+def t_quoted_commas():
+    csv_text = 'name,ok,amount\n"Smith, Ann",yes,10\n"Jones",false,11.25\n'
+    assert infer_csv_schema(csv_text) == {"name": "string", "ok": "bool", "amount": "float"}
+
+TESTS = [("mixed_schema", t_mixed_schema), ("int_empty", t_int_not_float_and_empty), ("quoted_commas", t_quoted_commas)]
+'''
+        return run_python_scored(body, tests)
+
+    if kind == "retry_schedule_exec":
+        tests = r'''
+def t_plain():
+    assert retry_schedule(1, 2, 10, 5) == [1, 2, 4, 8, 10]
+    assert retry_schedule(0.5, 3, 4, 4) == [0.5, 1.5, 4, 4]
+    assert retry_schedule(1, 2, 10, 0) == []
+
+def t_jitter():
+    got = retry_schedule(10, 2, 25, 3, jitter=0.1)
+    assert got == [(9.0, 11.0), (18.0, 22.0), (22.5, 25)]
+
+def t_invalid():
+    bad_args = [(0,2,10,1), (1,0,10,1), (1,2,0,1), (1,2,10,-1), (1,2,10,1,-0.1), (1,2,10,1,1.1)]
+    for args in bad_args:
+        try:
+            retry_schedule(*args)
+            raise AssertionError("accepted " + repr(args))
+        except ValueError:
+            pass
+
+TESTS = [("plain", t_plain), ("jitter", t_jitter), ("invalid", t_invalid)]
+'''
+        return run_python_scored(body, tests)
+
     lowered = body.lower()
     if kind == "nginx_static":
         checks = {
@@ -308,7 +439,9 @@ def run_pi(model: str, prompt: str, args: argparse.Namespace) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark models through the Pi CLI")
-    parser.add_argument("models", nargs="*", default=DEFAULT_MODELS, help="Pi model IDs, e.g. openai-codex/gpt-5.5:medium")
+    parser.add_argument("models", nargs="*", help="Pi model IDs, e.g. openai-codex/gpt-5.5:medium")
+    parser.add_argument("--model-preset", choices=sorted(MODEL_PRESETS), help="Use a built-in model list instead of positional models")
+    parser.add_argument("--list-model-presets", action="store_true", help="Print built-in model presets and exit")
     parser.add_argument("--timeout", type=int, default=600, help="Per-task timeout in seconds")
     parser.add_argument("--offline", action="store_true", help="Set PI_OFFLINE=1 for local-only benchmarking")
     parser.add_argument("--keep-env-offline", action="store_true", help="Respect an existing PI_OFFLINE env var")
@@ -317,6 +450,17 @@ def main() -> int:
     parser.add_argument("--db", default=str(ROOT / "results" / "pibench.sqlite"), help="SQLite database path; use 'none' to disable DB recording")
     parser.add_argument("--notes", help="Optional notes for this benchmark run")
     args = parser.parse_args()
+
+    if args.list_model_presets:
+        for name, models in MODEL_PRESETS.items():
+            print(f"{name}:")
+            for model in models:
+                print(f"  {model}")
+        return 0
+
+    if args.models and args.model_preset:
+        parser.error("use either positional models or --model-preset, not both")
+    args.models = args.models or MODEL_PRESETS.get(args.model_preset or "baseline", DEFAULT_MODELS)
 
     selected_tasks = [t for t in TASKS if not args.tasks or t["name"] in set(args.tasks)]
     stamp = time.strftime("%Y%m%d-%H%M%S")
@@ -387,6 +531,8 @@ def main() -> int:
                 "approx_output_tokens": toks,
                 "approx_output_tps": toks / result["wall_s"] if result["wall_s"] > 0 else None,
                 "returncode": result["returncode"],
+                "score": checks.get("score"),
+                "total": checks.get("total"),
                 "checks": checks,
                 "stdout": stdout,
                 "stderr": result["stderr"],
@@ -397,7 +543,8 @@ def main() -> int:
             if conn is not None and run_id is not None:
                 insert_result(conn, run_id, run_model_ids[model], task_ids[task["name"]], row)
             status = "PASS" if ok else "FAIL"
-            print(f"{task['name']:<24} {status:<5} wall={result['wall_s']:7.2f}s approx_out={toks:5d} tok tps={row['approx_output_tps'] or 0:6.1f} {note}", flush=True)
+            score_text = f" score={row['score']}/{row['total']}" if row.get("total") else ""
+            print(f"{task['name']:<24} {status:<5} wall={result['wall_s']:7.2f}s approx_out={toks:5d} tok tps={row['approx_output_tps'] or 0:6.1f}{score_text} {note}", flush=True)
 
     json_path = OUTDIR / f"pi_agent_{stamp}.json"
     md_path = OUTDIR / f"pi_agent_{stamp}.md"
@@ -408,8 +555,8 @@ def main() -> int:
         "",
         f"Date: {time.strftime('%Y-%m-%d %H:%M:%S')}",
         "",
-        "| model | pass | avg wall s | approx output tok/s | notes |",
-        "|---|---:|---:|---:|---|",
+        "| model | pass | scored points | avg wall s | approx output tok/s | notes |",
+        "|---|---:|---:|---:|---:|---|"
     ]
     for model in args.models:
         sub = [r for r in rows if r["model"] == model]
@@ -418,8 +565,11 @@ def main() -> int:
         passed = sum(1 for r in sub if r["ok"])
         avg_wall = sum(r["wall_s"] for r in sub) / len(sub)
         avg_tps = sum((r.get("approx_output_tps") or 0) for r in sub) / len(sub)
+        score_total = sum(r.get("score") or 0 for r in sub)
+        points_total = sum(r.get("total") or 0 for r in sub)
+        score_label = f"{score_total}/{points_total}" if points_total else "n/a"
         notes = "; ".join(f"{r['task']}={('pass' if r['ok'] else 'fail')}" for r in sub)
-        lines.append(f"| `{model}` | {passed}/{len(sub)} | {avg_wall:.2f} | {avg_tps:.1f} | {notes} |")
+        lines.append(f"| `{model}` | {passed}/{len(sub)} | {score_label} | {avg_wall:.2f} | {avg_tps:.1f} | {notes} |")
     md_path.write_text("\n".join(lines) + "\n")
 
     if conn is not None and run_id is not None:
