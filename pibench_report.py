@@ -13,6 +13,14 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_DB = ROOT / "results" / "pibench.sqlite"
 DEFAULT_OUT = ROOT / "results" / "INTEGRATED_REPORT.md"
 
+NORMALIZED_HARD_5 = [
+    "csv_infer_hard",
+    "retry_schedule_hard",
+    "semver_range_hard",
+    "markdown_table_hard",
+    "text_wrap_hard",
+]
+
 TASK_WEIGHTS = {
     "json_exact": 0.5,
     "dedupe_function": 1.0,
@@ -79,6 +87,78 @@ def connect(path: Path) -> sqlite3.Connection:
     return conn
 
 
+def latest_normalized_rows(conn: sqlite3.Connection, tasks: list[str]) -> list[sqlite3.Row]:
+    placeholders = ",".join("?" for _ in tasks)
+    return conn.execute(
+        f"""
+        WITH latest AS (
+            SELECT m.model_arg, t.name AS task, MAX(res.id) AS result_id
+            FROM results res
+            JOIN run_models rm ON rm.id = res.run_model_id
+            JOIN models m ON m.id = rm.model_id
+            JOIN tasks t ON t.id = res.task_id
+            WHERE t.name IN ({placeholders})
+            GROUP BY m.model_arg, t.name
+        )
+        SELECT latest.model_arg, latest.task, res.ok, res.score, res.total,
+               res.wall_s, res.approx_output_tps
+        FROM latest
+        JOIN results res ON res.id = latest.result_id
+        ORDER BY latest.model_arg, latest.task
+        """,
+        tasks,
+    ).fetchall()
+
+
+def append_normalized_section(lines: list[str], conn: sqlite3.Connection) -> None:
+    rows = latest_normalized_rows(conn, NORMALIZED_HARD_5)
+    by_model: dict[str, list[sqlite3.Row]] = {}
+    for row in rows:
+        by_model.setdefault(row["model_arg"], []).append(row)
+
+    summary = []
+    for model_arg, model_rows in by_model.items():
+        covered = {r["task"] for r in model_rows}
+        if not all(task in covered for task in NORMALIZED_HARD_5):
+            continue
+        passed = sum(1 for r in model_rows if r["ok"])
+        score = sum(r["score"] or 0 for r in model_rows)
+        points = sum(r["total"] or 0 for r in model_rows)
+        weighted_score = 0.0
+        weighted_total = 0.0
+        for r in model_rows:
+            weight = TASK_WEIGHTS.get(r["task"], 1.0)
+            weighted_total += weight
+            if r["total"]:
+                weighted_score += ((r["score"] or 0) / r["total"]) * weight
+            else:
+                weighted_score += (1.0 if r["ok"] else 0.0) * weight
+        avg_wall = sum(r["wall_s"] for r in model_rows) / len(model_rows)
+        avg_tps = sum((r["approx_output_tps"] or 0) for r in model_rows) / len(model_rows)
+        summary.append((weighted_score / weighted_total, weighted_score, weighted_total, model_arg, passed, len(model_rows), score, points, avg_wall, avg_tps))
+
+    summary.sort(key=lambda x: (-x[0], x[8]))
+    lines += [
+        "## Normalized hard-5 comparison",
+        "",
+        "This is the current apples-to-apples table. It uses the latest result for each model on the same five tasks: "
+        + ", ".join(f"`{task}`" for task in NORMALIZED_HARD_5)
+        + ".",
+        "",
+        "| rank | model | exact Pi model argument | pass | raw points | weighted score | avg wall s | approx output tok/s |",
+        "|---:|---|---|---:|---:|---:|---:|---:|",
+    ]
+    for i, (_, weighted_score, weighted_total, model_arg, passed, total, score, points, avg_wall, avg_tps) in enumerate(summary, 1):
+        lines.append(
+            f"| {i} | {model_label(model_arg)} | `{model_arg}` | {passed}/{total} | {score:.0f}/{points:.0f} | {fmt_num(weighted_score, 1)}/{fmt_num(weighted_total, 1)} | {fmt_num(avg_wall)} | {fmt_num(avg_tps, 1)} |"
+        )
+    lines += [
+        "",
+        "Note: local Qwen `:medium` means Qwen chat-template thinking is enabled; it is not directly equivalent to OpenAI `reasoning.effort=medium`.",
+        "",
+    ]
+
+
 def generate(conn: sqlite3.Connection) -> str:
     lines: list[str] = [
         "# PiBench integrated report",
@@ -87,6 +167,9 @@ def generate(conn: sqlite3.Connection) -> str:
         "",
         "This report is generated from `results/pibench.sqlite` and combines benchmark runs recorded by `pi_agent_bench.py`.",
         "",
+    ]
+    append_normalized_section(lines, conn)
+    lines += [
         "## Overall by model",
         "",
         "| model | exact Pi model argument | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
