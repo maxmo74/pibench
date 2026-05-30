@@ -29,7 +29,9 @@ def json_dumps(value: Any) -> str:
 
 def run_cmd(cmd: list[str], timeout: int = 10) -> str | None:
     try:
-        return subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL, timeout=timeout).strip()
+        proc = subprocess.run(cmd, text=True, capture_output=True, timeout=timeout)
+        out = (proc.stdout + proc.stderr).strip()
+        return out or None
     except Exception:
         return None
 

@@ -124,9 +124,12 @@ def latest_normalized_rows(conn: sqlite3.Connection, tasks: list[str]) -> list[s
             GROUP BY m.model_arg, t.name
         )
         SELECT latest.model_arg, latest.task, res.ok, res.score, res.total,
-               res.wall_s, res.approx_output_tps
+               res.wall_s, res.approx_output_tps,
+               m.context_window_label, m.max_output_label
         FROM latest
         JOIN results res ON res.id = latest.result_id
+        JOIN run_models rm ON rm.id = res.run_model_id
+        JOIN models m ON m.id = rm.model_id
         ORDER BY latest.model_arg, latest.task
         """,
         tasks,
@@ -158,9 +161,11 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title:
                 weighted_score += (1.0 if r["ok"] else 0.0) * weight
         avg_wall = sum(r["wall_s"] for r in model_rows) / len(model_rows)
         avg_tps = sum((r["approx_output_tps"] or 0) for r in model_rows) / len(model_rows)
-        summary.append((weighted_score / weighted_total, weighted_score, weighted_total, model_arg, passed, len(model_rows), score, points, avg_wall, avg_tps))
+        context = model_rows[0]["context_window_label"] or "n/a"
+        max_out = model_rows[0]["max_output_label"] or "n/a"
+        summary.append((weighted_score / weighted_total, weighted_score, weighted_total, model_arg, context, max_out, passed, len(model_rows), score, points, avg_wall, avg_tps))
 
-    summary.sort(key=lambda x: (-x[0], x[8]))
+    summary.sort(key=lambda x: (-x[0], x[10]))
     lines += [
         f"## {title}",
         "",
@@ -168,12 +173,12 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title:
         + ", ".join(f"`{task}`" for task in tasks)
         + "."
         "",
-        "| rank | model | exact Pi model argument | pass | raw points | weighted score | avg wall s | approx output tok/s |",
-        "|---:|---|---|---:|---:|---:|---:|---:|",
+        "| rank | model | exact Pi model argument | context | max out | pass | raw points | weighted score | avg wall s | approx output tok/s |",
+        "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
-    for i, (_, weighted_score, weighted_total, model_arg, passed, total, score, points, avg_wall, avg_tps) in enumerate(summary, 1):
+    for i, (_, weighted_score, weighted_total, model_arg, context, max_out, passed, total, score, points, avg_wall, avg_tps) in enumerate(summary, 1):
         lines.append(
-            f"| {i} | {model_label(model_arg)} | `{model_arg}` | {passed}/{total} | {score:.0f}/{points:.0f} | {fmt_num(weighted_score, 1)}/{fmt_num(weighted_total, 1)} | {fmt_num(avg_wall)} | {fmt_num(avg_tps, 1)} |"
+            f"| {i} | {model_label(model_arg)} | `{model_arg}` | {context} | {max_out} | {passed}/{total} | {score:.0f}/{points:.0f} | {fmt_num(weighted_score, 1)}/{fmt_num(weighted_total, 1)} | {fmt_num(avg_wall)} | {fmt_num(avg_tps, 1)} |"
         )
     lines += [
         "",
@@ -208,8 +213,8 @@ def generate(conn: sqlite3.Connection) -> str:
     lines += [
         "## Historical aggregate by model",
         "",
-        "| model | exact Pi model argument | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
-        "|---|---|---:|---:|---:|---:|---:|---:|"
+        "| model | exact Pi model argument | context | max out | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
     ]
 
     for row in conn.execute(
@@ -223,7 +228,9 @@ def generate(conn: sqlite3.Connection) -> str:
                {weighted_score_expr()} AS weighted_score,
                {weighted_total_expr()} AS weighted_total,
                AVG(res.wall_s) AS avg_wall_s,
-               AVG(res.approx_output_tps) AS avg_tps
+               AVG(res.approx_output_tps) AS avg_tps,
+               m.context_window_label,
+               m.max_output_label
         FROM results res
         JOIN runs r ON r.id = res.run_id
         JOIN run_models rm ON rm.id = res.run_model_id
@@ -237,15 +244,15 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
+            f"| {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['context_window_label'] or 'n/a'} | {row['max_output_label'] or 'n/a'} | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
         )
 
     lines += [
         "",
         "## Latest runs",
         "",
-        "| run | started | notes | model | exact Pi model argument | pass | scored points | weighted score | avg wall s |",
-        "|---:|---|---|---|---|---:|---:|---:|---:|"
+        "| run | started | notes | model | exact Pi model argument | context | pass | scored points | weighted score | avg wall s |",
+        "|---:|---|---|---|---|---:|---:|---:|---:|---:|"
     ]
     for row in conn.execute(
         f"""
@@ -255,7 +262,8 @@ def generate(conn: sqlite3.Connection) -> str:
                SUM(COALESCE(res.total, 0)) AS points,
                {weighted_score_expr()} AS weighted_score,
                {weighted_total_expr()} AS weighted_total,
-               AVG(res.wall_s) AS avg_wall_s
+               AVG(res.wall_s) AS avg_wall_s,
+               m.context_window_label
         FROM results res
         JOIN runs r ON r.id = res.run_id
         JOIN run_models rm ON rm.id = res.run_model_id
@@ -269,15 +277,15 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
+            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
         )
 
     lines += [
         "",
         "## Task matrix",
         "",
-        "| task | weight | model | exact Pi model argument | pass | scored points | weighted score | avg wall s | common failure notes |",
-        "|---|---:|---|---|---:|---:|---:|---:|---|"
+        "| task | weight | model | exact Pi model argument | context | pass | scored points | weighted score | avg wall s | common failure notes |",
+        "|---|---:|---|---|---:|---:|---:|---:|---:|---|"
     ]
     for row in conn.execute(
         f"""
@@ -288,7 +296,8 @@ def generate(conn: sqlite3.Connection) -> str:
                {weighted_score_expr()} AS weighted_score,
                {weighted_total_expr()} AS weighted_total,
                AVG(res.wall_s) AS avg_wall_s,
-               GROUP_CONCAT(CASE WHEN res.ok = 0 THEN res.note ELSE NULL END, '; ') AS notes
+               GROUP_CONCAT(CASE WHEN res.ok = 0 THEN res.note ELSE NULL END, '; ') AS notes,
+               m.context_window_label
         FROM results res
         JOIN tasks t ON t.id = res.task_id
         JOIN run_models rm ON rm.id = res.run_model_id
@@ -301,7 +310,7 @@ def generate(conn: sqlite3.Connection) -> str:
         notes = sanitize_notes((row["notes"] or "").replace("\n", " "))[:160]
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
+            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
         )
 
     return "\n".join(lines) + "\n"
