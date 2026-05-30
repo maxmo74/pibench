@@ -70,6 +70,7 @@ MODEL_PRESETS = {
         "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
     ],
     "qwen35-quant-comparison": [
+        "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M:off",
         "local-llama-q4-64k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx64k:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Quality:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",

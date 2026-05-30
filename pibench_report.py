@@ -80,6 +80,7 @@ def sanitize_notes(text: str) -> str:
 
 def model_label(model_arg: str) -> str:
     labels = {
+        "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M:off": "Qwen3.6 35B A3B MTP UD Q3_K_M — thinking off",
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — full-context attempt, thinking off",
         "local-llama-q4-32k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx32k:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — 32K ctx MTP runtime, thinking off",
         "local-llama-q4-64k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx64k:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — 64K ctx MTP runtime, thinking off",
