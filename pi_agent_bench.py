@@ -49,6 +49,7 @@ MODEL_PRESETS = {
     ],
     "article": [
         "local-llama-q4-32k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx32k:off",
+        "local-llama-gemma-nomtp/gemma-4-26B-A4B-it-UD-Q4_K_XL-nomtp:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Quality:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
