@@ -21,6 +21,17 @@ NORMALIZED_HARD_5 = [
     "text_wrap_hard",
 ]
 
+NORMALIZED_NONCODING_8 = [
+    "systemd_service_hard",
+    "nginx_tls_proxy_hard",
+    "log_triage_incident",
+    "readme_quickstart_rewrite",
+    "changelog_from_commits",
+    "github_issue_triage",
+    "architecture_decision_record",
+    "design_review_find_flaws",
+]
+
 NORMALIZED_FULL_16 = [
     "json_exact",
     "dedupe_function",
@@ -40,6 +51,8 @@ NORMALIZED_FULL_16 = [
     "text_wrap_hard",
 ]
 
+NORMALIZED_EXPANDED_24 = NORMALIZED_FULL_16 + NORMALIZED_NONCODING_8
+
 TASK_WEIGHTS = {
     "json_exact": 0.5,
     "dedupe_function": 1.0,
@@ -57,6 +70,14 @@ TASK_WEIGHTS = {
     "semver_range_hard": 4.0,
     "markdown_table_hard": 3.5,
     "text_wrap_hard": 3.0,
+    "systemd_service_hard": 3.0,
+    "nginx_tls_proxy_hard": 3.0,
+    "log_triage_incident": 2.5,
+    "readme_quickstart_rewrite": 2.0,
+    "changelog_from_commits": 2.0,
+    "github_issue_triage": 2.5,
+    "architecture_decision_record": 3.5,
+    "design_review_find_flaws": 3.5,
 }
 
 
@@ -206,6 +227,20 @@ def generate(conn: sqlite3.Connection) -> str:
         "Normalized full-16 comparison",
         NORMALIZED_FULL_16,
         "This is the main apples-to-apples leaderboard for the full current PiBench suite.",
+    )
+    append_normalized_section(
+        lines,
+        conn,
+        "Normalized expanded-24 comparison",
+        NORMALIZED_EXPANDED_24,
+        "This is the expanded apples-to-apples leaderboard including coding, sysadmin, documentation, project-management, and architecture tasks.",
+    )
+    append_normalized_section(
+        lines,
+        conn,
+        "Normalized non-coding-8 comparison",
+        NORMALIZED_NONCODING_8,
+        "This is the focused apples-to-apples table for the new non-coding agent tasks: sysadmin, documentation, project management, and architecture/design review.",
     )
     append_normalized_section(
         lines,

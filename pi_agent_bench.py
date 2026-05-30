@@ -159,6 +159,55 @@ TASKS = [
         "prompt": "Return only Python code defining function wrap_text(text, width, indent=0). Wrap paragraphs to at most width characters, preserving blank lines between paragraphs. Do not break words longer than width. Apply indent spaces to every output line, and account for indent in width. Raise ValueError for invalid width or indent. No markdown.",
         "check": "text_wrap_exec",
     },
+
+    {
+        "name": "systemd_service_hard",
+        "prompt": "Return only a production-ready systemd service unit file, no markdown. Scenario: deploy a Python FastAPI app named inventory-api from /opt/inventory-api using virtualenv /opt/inventory-api/.venv, module inventory.main:app on 127.0.0.1:9000. Requirements: run as non-root user inventory, restart on failure, load EnvironmentFile /etc/inventory-api.env, set WorkingDirectory, use ExecStart, install for multi-user.target, include practical hardening without breaking network access.",
+        "check": "systemd_service_static",
+    },
+    {
+        "name": "nginx_tls_proxy_hard",
+        "prompt": "Return only nginx configuration, no markdown. Scenario: example.com should redirect HTTP to HTTPS and proxy HTTPS traffic to http://127.0.0.1:9000. Requirements: listen 80 and 443 ssl http2, server_name example.com, WebSocket support, X-Forwarded-* and Host headers, TLS protocols/ciphers, HSTS, gzip for static responses, /assets/ cache headers, deny dotfiles, and safe client body size.",
+        "check": "nginx_tls_proxy_static",
+    },
+    {
+        "name": "log_triage_incident",
+        "prompt": """Return only a concise incident triage report with sections: Summary, Evidence, Immediate Mitigation, Prevention. Logs:
+2026-05-30T10:01:12Z api-1 inventory-api[2211]: accepted connection from 10.0.2.41
+2026-05-30T10:01:19Z api-1 inventory-api[2211]: ERROR sqlite3.OperationalError: database is locked
+2026-05-30T10:01:22Z api-1 inventory-api[2211]: request timeout POST /orders
+2026-05-30T10:01:24Z api-1 kernel: Out of memory: Killed process 2211 (python) total-vm:2841020kB, anon-rss:1782040kB
+2026-05-30T10:01:24Z api-1 systemd[1]: inventory-api.service: Main process exited, code=killed, status=9/KILL
+2026-05-30T10:01:29Z api-1 systemd[1]: inventory-api.service: Scheduled restart job, restart counter is at 5
+2026-05-30T10:01:29Z api-1 nginx[997]: connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.7, request: POST /orders, upstream: http://127.0.0.1:9000/orders
+Identify the primary root cause and do not invent services not shown.""",
+        "check": "log_triage_static",
+    },
+    {
+        "name": "readme_quickstart_rewrite",
+        "prompt": "Return only a polished README Quickstart section in Markdown, no surrounding commentary. Project notes: name=PiBench; purpose=benchmark local and cloud LLMs through Pi CLI and llama.cpp; Python 3.11+; install with git clone then python -m venv .venv and pip install -r requirements.txt; run local benchmark with ./pi_agent_bench.py --model-preset baseline; generate report with ./pibench_report.py; SQLite database lives at results/pibench.sqlite and is gitignored; JSON/Markdown results are written to results/; config requires Pi models to be registered first. Include prerequisites, installation, running a benchmark, generating reports, outputs, and troubleshooting.",
+        "check": "readme_quickstart_static",
+    },
+    {
+        "name": "changelog_from_commits",
+        "prompt": "Return only Keep a Changelog style release notes for version 0.3.0, no markdown fences. Commit messages: feat: add SQLite benchmark database; feat: add weighted normalized reporting; fix: count timeout rows as zero scored tasks; docs: add model preset guide; chore: reorder imports; feat: add Gemma non-MTP runtime comparison; fix: sanitize temporary traceback paths; perf: add Q4_K_M 64K context benchmark; breaking: rename project from pi-local-model-bench to PiBench. Group into Added, Changed, Fixed, and Breaking Changes. Omit noise.",
+        "check": "changelog_static",
+    },
+    {
+        "name": "github_issue_triage",
+        "prompt": "Return only valid JSON. Triage these issues into an array under key issues. Each item must contain id, type, priority, and action. Types allowed: bug, feature, question, duplicate, invalid. Priorities allowed: P0, P1, P2, P3. Issues: #101 app crashes on startup after latest release, traceback shows missing config key; #102 please add dark mode; #103 how do I run with local models only?; #104 same as #101, startup crash missing config key; #105 benchmark result is wrong but no logs or reproduction; #106 security: report files include absolute local temp paths; #107 generated report should show context window; #108 production service down for all users after deploy. Mark #104 as duplicate of #101 in action.",
+        "check": "github_issue_triage_static",
+    },
+    {
+        "name": "architecture_decision_record",
+        "prompt": "Return only an Architecture Decision Record in Markdown. Scenario: PiBench needs to store repeatable benchmark results, model metadata, task scores, raw stdout/stderr, and generate reports. Constraints: single-user local tool, no external service dependency, database file must remain gitignored, easy export to JSON/Markdown, should support joins for normalized reports. Alternatives to compare: SQLite, Postgres, flat JSON files. Choose the best option and explain consequences. Include Status, Context, Decision, Alternatives, Consequences.",
+        "check": "adr_static",
+    },
+    {
+        "name": "design_review_find_flaws",
+        "prompt": "Return only a concise design review with sections: Critical Issues, Recommended Changes, Observability. Proposed design: A public web dashboard accepts benchmark uploads anonymously, stores raw stdout/stderr in S3, writes metadata directly from the browser to Postgres using an admin API key embedded in JavaScript, uses one VM with local disk for the database, has no rate limiting because uploads are small, and compares model scores without storing model context size or runtime configuration. Identify concrete flaws and fixes.",
+        "check": "design_review_static",
+    },
 ]
 
 
@@ -182,6 +231,15 @@ TASK_WEIGHTS = {
     "semver_range_hard": 4.0,
     "markdown_table_hard": 3.5,
     "text_wrap_hard": 3.0,
+    # Non-coding agent work: ops, documentation, planning, architecture.
+    "systemd_service_hard": 3.0,
+    "nginx_tls_proxy_hard": 3.0,
+    "log_triage_incident": 2.5,
+    "readme_quickstart_rewrite": 2.0,
+    "changelog_from_commits": 2.0,
+    "github_issue_triage": 2.5,
+    "architecture_decision_record": 3.5,
+    "design_review_find_flaws": 3.5,
 }
 
 TASK_DIFFICULTY = {
@@ -196,6 +254,14 @@ CHECK_TOTALS = {
     "semver_range_exec": 4,
     "markdown_table_exec": 4,
     "text_wrap_exec": 4,
+    "systemd_service_static": 8,
+    "nginx_tls_proxy_static": 9,
+    "log_triage_static": 7,
+    "readme_quickstart_static": 7,
+    "changelog_static": 6,
+    "github_issue_triage_static": 8,
+    "adr_static": 7,
+    "design_review_static": 8,
 }
 
 
@@ -211,10 +277,22 @@ def approx_tokens(text: str) -> int:
 
 def clean_fenced(text: str) -> str:
     text = text.strip()
-    match = re.search(r"```(?:python|html|nginx|conf)?\s*(.*?)```", text, flags=re.S | re.I)
+    match = re.search(r"```(?:python|html|nginx|conf|json|markdown|md)?\s*(.*?)```", text, flags=re.S | re.I)
     if match:
         return match.group(1).strip()
     return re.sub(r"^```(?:\w+)?\s*", "", text, flags=re.I).strip()
+
+
+def scored_static(checks: dict[str, bool]) -> tuple[bool, str, dict]:
+    score = sum(1 for ok in checks.values() if ok)
+    total = len(checks)
+    failed = [name for name, ok in checks.items() if not ok]
+    detail = f"score {score}/{total}" if not failed else f"score {score}/{total} failed: " + ", ".join(failed)
+    return score == total, detail, {"score": score, "total": total, "failed": failed, **checks}
+
+
+def has_any(text: str, terms: list[str]) -> bool:
+    return any(term in text for term in terms)
 
 
 def sanitize_tracebacks(text: str) -> str:
@@ -533,6 +611,20 @@ TESTS = [("basic", t_basic), ("paragraphs_indent", t_paragraphs_indent), ("long_
 '''
         return run_python_scored(body, tests)
 
+    static_kinds = {
+        "nginx_static",
+        "todo_static",
+        "systemd_service_static",
+        "nginx_tls_proxy_static",
+        "log_triage_static",
+        "readme_quickstart_static",
+        "changelog_static",
+        "github_issue_triage_static",
+        "adr_static",
+        "design_review_static",
+    }
+    if kind in static_kinds:
+        body = text.strip()
     lowered = body.lower()
     if kind == "nginx_static":
         checks = {
@@ -567,6 +659,107 @@ TESTS = [("basic", t_basic), ("paragraphs_indent", t_paragraphs_indent), ("long_
         ok = all(checks.values())
         missing = [k for k, v in checks.items() if not v]
         return ok, "static check" if ok else "missing: " + ", ".join(missing), checks
+
+    if kind == "systemd_service_static":
+        checks = {
+            "unit_sections": all(x in lowered for x in ["[unit]", "[service]", "[install]"]),
+            "non_root_user": "user=inventory" in lowered and "user=root" not in lowered,
+            "working_directory": "workingdirectory=/opt/inventory-api" in lowered.replace(" ", ""),
+            "execstart_uvicorn": "execstart=" in lowered and "uvicorn" in lowered and "inventory.main:app" in lowered,
+            "restart": "restart=on-failure" in lowered.replace(" ", ""),
+            "environment_file": "environmentfile=/etc/inventory-api.env" in lowered.replace(" ", ""),
+            "install_target": "wantedby=multi-user.target" in lowered.replace(" ", ""),
+            "hardening": sum(1 for x in ["nonewprivileges", "privatetmp", "protectsystem", "protecthome", "readwritepaths"] if x in lowered.replace(" ", "")) >= 3,
+        }
+        return scored_static(checks)
+
+    if kind == "nginx_tls_proxy_static":
+        checks = {
+            "http_redirect": "listen 80" in lowered and "return 301" in lowered and "https://" in lowered,
+            "https_listener": "listen 443" in lowered and "ssl" in lowered and "http2" in lowered,
+            "server_name": "server_name example.com" in lowered,
+            "proxy_pass": "proxy_pass http://127.0.0.1:9000" in lowered,
+            "proxy_headers": all(x in lowered for x in ["host", "x-real-ip", "x-forwarded-for", "x-forwarded-proto"]),
+            "websocket": "upgrade" in lowered and "connection" in lowered,
+            "tls_hsts": "ssl_protocols" in lowered and "strict-transport-security" in lowered,
+            "assets_gzip_cache": "gzip" in lowered and "/assets/" in lowered and ("cache-control" in lowered or "expires" in lowered),
+            "dotfiles_body_size": ("deny all" in lowered and ("/\\." in lowered or "dot" in lowered or "hidden" in lowered)) and "client_max_body_size" in lowered,
+        }
+        return scored_static(checks)
+
+    if kind == "log_triage_static":
+        checks = {
+            "sections": all(x in lowered for x in ["summary", "evidence", "immediate", "prevention"]),
+            "oom_root_cause": has_any(lowered, ["out of memory", "oom", "memory"]),
+            "killed_python": "killed" in lowered and ("python" in lowered or "inventory-api" in lowered),
+            "secondary_db_locked": "database is locked" in lowered or "sqlite" in lowered,
+            "upstream_refused": "connection refused" in lowered or "upstream" in lowered,
+            "mitigation": has_any(lowered, ["restart", "rollback", "scale", "memory limit", "reduce memory", "add memory"]),
+            "prevention": has_any(lowered, ["monitor", "alert", "postgres", "connection pool", "memory profiling", "resource limits"]),
+        }
+        return scored_static(checks)
+
+    if kind == "readme_quickstart_static":
+        checks = {
+            "title": "quickstart" in lowered,
+            "prerequisites": "prerequisites" in lowered and "python 3.11" in lowered,
+            "install": "git clone" in lowered and "venv" in lowered and "pip install" in lowered,
+            "run_benchmark": "pi_agent_bench.py" in lowered and "--model-preset baseline" in lowered,
+            "generate_report": "pibench_report.py" in lowered,
+            "outputs": "results/" in lowered and "pibench.sqlite" in lowered and "gitignored" in lowered,
+            "troubleshooting": "troubleshooting" in lowered and "model" in lowered,
+        }
+        return scored_static(checks)
+
+    if kind == "changelog_static":
+        checks = {
+            "version": "0.3.0" in lowered,
+            "added": "added" in lowered and "sqlite" in lowered and "weighted" in lowered,
+            "changed": "changed" in lowered and "pibench" in lowered,
+            "fixed": "fixed" in lowered and "timeout" in lowered and "traceback" in lowered,
+            "breaking": "breaking" in lowered and "rename" in lowered,
+            "omit_chore": "reorder imports" not in lowered,
+        }
+        return scored_static(checks)
+
+    if kind == "github_issue_triage_static":
+        compact = lowered.replace(" ", "")
+        checks = {
+            "json_object": body.strip().startswith("{") and "issues" in lowered,
+            "all_ids": all(f"101" in lowered and f"{i}" in lowered for i in range(102, 109)),
+            "p0_outage": "108" in lowered and "p0" in lowered,
+            "duplicate": "104" in lowered and "duplicate" in lowered and "101" in lowered,
+            "question": "103" in lowered and "question" in lowered,
+            "invalid_missing_repro": "105" in lowered and "invalid" in lowered,
+            "security_bug": "106" in lowered and ("bug" in lowered or "p1" in lowered or "security" in lowered),
+            "feature_requests": all(x in lowered for x in ["102", "107", "feature"]),
+        }
+        return scored_static(checks)
+
+    if kind == "adr_static":
+        checks = {
+            "sections": all(x in lowered for x in ["status", "context", "decision", "alternatives", "consequences"]),
+            "chooses_sqlite": "sqlite" in lowered and has_any(lowered, ["choose", "chosen", "decision"]),
+            "compares_postgres": "postgres" in lowered,
+            "compares_json": "json" in lowered,
+            "constraints": "single-user" in lowered and "no external" in lowered,
+            "gitignored_export": "gitignored" in lowered and "export" in lowered,
+            "tradeoffs": has_any(lowered, ["tradeoff", "trade-off", "limitation", "consequence"]),
+        }
+        return scored_static(checks)
+
+    if kind == "design_review_static":
+        checks = {
+            "sections": all(x in lowered for x in ["critical", "recommended", "observability"]),
+            "auth": has_any(lowered, ["anonymous", "authentication", "auth"]),
+            "secret_exposure": "admin api key" in lowered or ("api key" in lowered and "javascript" in lowered),
+            "raw_output_privacy": "stdout" in lowered and has_any(lowered, ["secret", "privacy", "redact", "sensitive"]),
+            "rate_limiting": "rate limit" in lowered or "rate limiting" in lowered,
+            "single_point_failure": "single" in lowered and has_any(lowered, ["failure", "vm", "disk"]),
+            "runtime_metadata": "context" in lowered and has_any(lowered, ["runtime", "configuration", "metadata"]),
+            "concrete_fixes": has_any(lowered, ["presigned", "least privilege", "server-side", "queue", "backup", "replica", "monitor"]),
+        }
+        return scored_static(checks)
 
     return False, "unknown check", {}
 
