@@ -101,6 +101,8 @@ def sanitize_notes(text: str) -> str:
 
 def model_label(model_arg: str) -> str:
     labels = {
+        "claude-bridge/claude-opus-4-8:medium": "Claude Bridge Opus 4.8 — medium reasoning",
+        "claude-bridge/claude-sonnet-4-6:medium": "Claude Bridge Sonnet 4.6 — medium reasoning",
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M:off": "Qwen3.6 35B A3B MTP UD Q3_K_M — thinking off",
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — full-context attempt, thinking off",
         "local-llama-q4-32k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx32k:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — 32K ctx MTP runtime, thinking off",

@@ -777,12 +777,13 @@ def run_pi(model: str, prompt: str, args: argparse.Namespace) -> dict:
         "--no-session",
         "--no-tools",
         "--no-context-files",
-        "--no-extensions",
         "--no-skills",
         "--no-prompt-templates",
         "--no-themes",
         "-p", prompt,
     ]
+    if not args.allow_extensions:
+        cmd.insert(7, "--no-extensions")
     if args.system_prompt:
         cmd[1:1] = ["--system-prompt", args.system_prompt]
 
@@ -806,6 +807,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=600, help="Per-task timeout in seconds")
     parser.add_argument("--offline", action="store_true", help="Set PI_OFFLINE=1 for local-only benchmarking")
     parser.add_argument("--keep-env-offline", action="store_true", help="Respect an existing PI_OFFLINE env var")
+    parser.add_argument("--allow-extensions", action="store_true", help="Do not pass --no-extensions; required for extension-provided providers such as claude-bridge")
     parser.add_argument("--system-prompt", default="You are a precise benchmark participant. Follow the user's formatting requirements exactly.")
     parser.add_argument("--task", dest="tasks", action="append", choices=[t["name"] for t in TASKS], help="Task to run; repeat for multiple tasks. Defaults to all tasks.")
     parser.add_argument("--db", default=str(ROOT / "results" / "pibench.sqlite"), help="SQLite database path; use 'none' to disable DB recording")
@@ -842,6 +844,7 @@ def main() -> int:
                 "timeout": args.timeout,
                 "offline": args.offline,
                 "keep_env_offline": args.keep_env_offline,
+                "allow_extensions": args.allow_extensions,
                 "system_prompt": args.system_prompt,
             },
             args.notes,
