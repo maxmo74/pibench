@@ -21,6 +21,25 @@ NORMALIZED_HARD_5 = [
     "text_wrap_hard",
 ]
 
+NORMALIZED_FULL_16 = [
+    "json_exact",
+    "dedupe_function",
+    "parse_ints_function",
+    "interval_merge_edgecases",
+    "toposort_cycle",
+    "nginx_reverse_proxy",
+    "webui_todo_static",
+    "lru_cache_hard",
+    "json_path_set_hard",
+    "rate_limiter_hard",
+    "unified_diff_hard",
+    "csv_infer_hard",
+    "retry_schedule_hard",
+    "semver_range_hard",
+    "markdown_table_hard",
+    "text_wrap_hard",
+]
+
 TASK_WEIGHTS = {
     "json_exact": 0.5,
     "dedupe_function": 1.0,
@@ -111,8 +130,8 @@ def latest_normalized_rows(conn: sqlite3.Connection, tasks: list[str]) -> list[s
     ).fetchall()
 
 
-def append_normalized_section(lines: list[str], conn: sqlite3.Connection) -> None:
-    rows = latest_normalized_rows(conn, NORMALIZED_HARD_5)
+def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title: str, tasks: list[str], description: str) -> None:
+    rows = latest_normalized_rows(conn, tasks)
     by_model: dict[str, list[sqlite3.Row]] = {}
     for row in rows:
         by_model.setdefault(row["model_arg"], []).append(row)
@@ -120,7 +139,7 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection) -> Non
     summary = []
     for model_arg, model_rows in by_model.items():
         covered = {r["task"] for r in model_rows}
-        if not all(task in covered for task in NORMALIZED_HARD_5):
+        if not all(task in covered for task in tasks):
             continue
         passed = sum(1 for r in model_rows if r["ok"])
         score = sum(r["score"] or 0 for r in model_rows)
@@ -140,11 +159,11 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection) -> Non
 
     summary.sort(key=lambda x: (-x[0], x[8]))
     lines += [
-        "## Normalized hard-5 comparison",
+        f"## {title}",
         "",
-        "This is the current apples-to-apples table. It uses the latest result for each model on the same five tasks: "
-        + ", ".join(f"`{task}`" for task in NORMALIZED_HARD_5)
-        + ".",
+        description + " It uses the latest result for each model on the same tasks: "
+        + ", ".join(f"`{task}`" for task in tasks)
+        + "."
         "",
         "| rank | model | exact Pi model argument | pass | raw points | weighted score | avg wall s | approx output tok/s |",
         "|---:|---|---|---:|---:|---:|---:|---:|",
@@ -169,9 +188,22 @@ def generate(conn: sqlite3.Connection) -> str:
         "This report is generated from `results/pibench.sqlite` and combines benchmark runs recorded by `pi_agent_bench.py`.",
         "",
     ]
-    append_normalized_section(lines, conn)
+    append_normalized_section(
+        lines,
+        conn,
+        "Normalized full-16 comparison",
+        NORMALIZED_FULL_16,
+        "This is the main apples-to-apples leaderboard for the full current PiBench suite.",
+    )
+    append_normalized_section(
+        lines,
+        conn,
+        "Normalized hard-5 comparison",
+        NORMALIZED_HARD_5,
+        "This is the focused apples-to-apples table for the hardest shared subset.",
+    )
     lines += [
-        "## Overall by model",
+        "## Historical aggregate by model",
         "",
         "| model | exact Pi model argument | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
         "|---|---|---:|---:|---:|---:|---:|---:|"
