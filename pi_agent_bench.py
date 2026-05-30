@@ -48,6 +48,8 @@ MODEL_PRESETS = {
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
     ],
     "article": [
+        "local-llama-q4-32k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx32k:off",
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Quality:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
@@ -65,6 +67,12 @@ MODEL_PRESETS = {
     "genesis-mtp-comparison": [
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
         "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
+    ],
+    "qwen35-quant-comparison": [
+        "local-llama-q4-32k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx32k:off",
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Quality:off",
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
+        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
     ],
 }
 

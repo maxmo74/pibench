@@ -80,6 +80,9 @@ def sanitize_notes(text: str) -> str:
 
 def model_label(model_arg: str) -> str:
     labels = {
+        "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — full-context attempt, thinking off",
+        "local-llama-q4-32k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx32k:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — 32K ctx MTP runtime, thinking off",
+        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Quality:off": "Qwen3.6 35B A3B APEX MTP Quality — thinking off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off": "Qwen3.6 35B A3B APEX MTP Compact — thinking off",
         "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium": "Qwen3.6 35B A3B APEX MTP Compact — thinking on",
         "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off": "Qwen3.6 35B A3B Uncensored Genesis MTP APEX Compact — thinking off",
