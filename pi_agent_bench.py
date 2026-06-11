@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 from pathlib import Path
 
 from pibench_db import (
@@ -22,6 +23,8 @@ from pibench_db import (
     create_run,
     finish_run,
     insert_result,
+    read_models_config,
+    split_model_arg,
     upsert_model,
     upsert_task,
     utc_now,
@@ -299,11 +302,25 @@ def sanitize_tracebacks(text: str) -> str:
     return re.sub(r"/tmp/tmp[^/]+/submission\.py", "<tmp>/submission.py", text)
 
 
+def timeout_output(exc: subprocess.TimeoutExpired) -> str:
+    parts = []
+    for value in (exc.stdout, exc.stderr):
+        if isinstance(value, bytes):
+            parts.append(value.decode(errors="replace"))
+        elif isinstance(value, str):
+            parts.append(value)
+    return "".join(parts)
+
+
 def run_python_submission(code: str, tests: str, timeout: int = 8) -> tuple[bool, str]:
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "submission.py"
         path.write_text(code + "\n\n" + tests)
-        proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
+        try:
+            proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            output = timeout_output(exc)
+            return False, sanitize_tracebacks(f"TIMEOUT after {timeout}s\n{output}"[-1200:])
         return proc.returncode == 0, sanitize_tracebacks((proc.stdout + proc.stderr)[-1200:])
 
 
@@ -324,13 +341,19 @@ raise SystemExit(0 if passed == len(TESTS) else 1)
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "submission.py"
         path.write_text(code + "\n\n" + tests + "\n\n" + harness)
-        proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
-        output = sanitize_tracebacks(proc.stdout + proc.stderr)
+        try:
+            proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
+            output = sanitize_tracebacks(proc.stdout + proc.stderr)
+            returncode = proc.returncode
+        except subprocess.TimeoutExpired as exc:
+            output = sanitize_tracebacks(timeout_output(exc))
+            checks = {"score": 0, "total": 0, "failed": [{"name": "timeout", "traceback": f"TIMEOUT after {timeout}s\n{output[-1200:]}"}]}
+            return False, "score 0/0 failed: timeout", checks
         match = re.search(r"PIBENCH_SCORE (\{.*\})", output)
         checks = json.loads(match.group(1)) if match else {"score": 0, "total": 0, "failed": [{"name": "harness", "traceback": output[-1200:]}]}
         failed_names = [f["name"] for f in checks.get("failed", [])]
         detail = f"score {checks.get('score', 0)}/{checks.get('total', 0)}" if not failed_names else f"score {checks.get('score', 0)}/{checks.get('total', 0)} failed: " + ", ".join(failed_names)
-        return proc.returncode == 0, detail, checks
+        return returncode == 0, detail, checks
 
 
 def check_result(kind: str, text: str) -> tuple[bool, str, dict]:
@@ -764,6 +787,35 @@ TESTS = [("basic", t_basic), ("paragraphs_indent", t_paragraphs_indent), ("long_
     return False, "unknown check", {}
 
 
+def assert_local_server_model_matches(model_arg: str) -> None:
+    """Prevent accidental benchmark/provider mismatch for standalone llama-server tests."""
+    if os.environ.get("PIBENCH_SKIP_SERVER_MODEL_CHECK") == "1":
+        return
+    parsed = split_model_arg(model_arg)
+    provider = parsed.get("provider")
+    model_id = parsed.get("model_id")
+    if not provider or not provider.startswith("local-llama") or not model_id:
+        return
+    cfg = read_models_config(provider, model_id)
+    provider_cfg = cfg.get("provider_config", {})
+    base_url = provider_cfg.get("baseUrl") if isinstance(provider_cfg, dict) else None
+    if not base_url:
+        return
+    url = base_url.rstrip("/") + "/models"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            payload = json.loads(response.read().decode())
+    except Exception as exc:
+        raise RuntimeError(f"Could not query local model server {url} for `{model_arg}`: {exc}") from exc
+    served = {str(item.get("id")) for item in payload.get("data", []) if isinstance(item, dict)}
+    if model_id not in served:
+        served_list = ", ".join(sorted(served)[:8]) or "none"
+        raise RuntimeError(
+            f"Local server mismatch for `{model_arg}`: {url} is not serving `{model_id}`. "
+            f"Served model ids include: {served_list}. Set PIBENCH_SKIP_SERVER_MODEL_CHECK=1 to bypass."
+        )
+
+
 def run_pi(model: str, prompt: str, args: argparse.Namespace) -> dict:
     env = os.environ.copy()
     if args.offline:
@@ -826,6 +878,8 @@ def main() -> int:
     args.models = args.models or MODEL_PRESETS.get(args.model_preset or "baseline", DEFAULT_MODELS)
 
     selected_tasks = [t for t in TASKS if not args.tasks or t["name"] in set(args.tasks)]
+    for model in args.models:
+        assert_local_server_model_matches(model)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     rows = []
 
