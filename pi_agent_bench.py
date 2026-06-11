@@ -860,7 +860,7 @@ def main() -> int:
             )
         for model in args.models:
             model_db_id = upsert_model(conn, model)
-            run_model_ids[model] = attach_model_to_run(conn, run_id, model_db_id)
+            run_model_ids[model] = attach_model_to_run(conn, run_id, model_db_id, model)
 
     for model in args.models:
         print(f"\n=== {model} ===", flush=True)

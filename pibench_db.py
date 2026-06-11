@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import socket
 import sqlite3
 import subprocess
@@ -16,7 +17,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DB = ROOT / "results" / "pibench.sqlite"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def utc_now() -> str:
@@ -139,6 +140,86 @@ def infer_effective_thinking(model_arg: str, metadata: dict[str, Any]) -> str | 
     return requested
 
 
+def read_models_config(provider: str | None, model_id: str | None) -> dict[str, Any]:
+    if not provider or not model_id:
+        return {}
+    for path in [Path.home() / ".pi/agent/models.json"]:
+        try:
+            data = json.loads(path.read_text())
+        except Exception:
+            continue
+        provider_cfg = data.get("providers", {}).get(provider)
+        if not provider_cfg:
+            continue
+        for model_cfg in provider_cfg.get("models", []):
+            if model_cfg.get("id") == model_id:
+                return {"provider_config": provider_cfg, "model_config": model_cfg, "config_path": str(path)}
+    return {}
+
+
+def infer_llama_server_path(provider: str | None, provider_cfg: dict[str, Any], model_cfg: dict[str, Any]) -> str | None:
+    if override := os.environ.get("PIBENCH_LLAMA_SERVER_PATH"):
+        return override
+    if not provider or not provider.startswith("local-llama"):
+        return None
+    metadata = model_cfg.get("metadata", {}) if isinstance(model_cfg, dict) else {}
+    build_hint = str(metadata.get("llamaCppBuild") or metadata.get("runtime") or provider)
+    if "llama.cpp-latest" in build_hint or "latest llama.cpp" in build_hint or provider.startswith("local-llama-latest"):
+        return "/opt/llama.cpp-latest/build/bin/llama-server"
+    return "/opt/llama.cpp/build/bin/llama-server"
+
+
+def parse_llama_version_output(output: str | None) -> dict[str, str | None]:
+    if not output:
+        return {"version": None, "commit": None, "build": None}
+    first = output.splitlines()[0] if output.splitlines() else output
+    match = re.search(r"version:\s*([0-9]+)\s*\(([0-9a-fA-F]+)\)", output)
+    if match:
+        version, commit = match.groups()
+        return {"version": version, "commit": commit, "build": f"llama.cpp b{version} ({commit})"}
+    return {"version": None, "commit": None, "build": first.strip() or None}
+
+
+def git_commit_date_for_server(path: str | None, commit: str | None) -> str | None:
+    if not path or not commit:
+        return None
+    server = Path(path)
+    # /opt/llama.cpp[-latest]/build/bin/llama-server -> repo root
+    try:
+        repo = server.parents[2]
+    except Exception:
+        return None
+    return run_cmd(["git", "-C", str(repo), "show", "-s", "--format=%cI", commit], timeout=10)
+
+
+def collect_runtime_metadata(model_arg: str) -> dict[str, Any]:
+    parsed = split_model_arg(model_arg)
+    provider = parsed.get("provider")
+    model_id = parsed.get("model_id")
+    cfg = read_models_config(provider, model_id)
+    provider_cfg = cfg.get("provider_config", {})
+    model_cfg = cfg.get("model_config", {})
+    metadata = model_cfg.get("metadata", {}) if isinstance(model_cfg, dict) else {}
+    server_path = infer_llama_server_path(provider, provider_cfg, model_cfg)
+    version_info = parse_llama_version_output(run_cmd([server_path, "--version"], timeout=10) if server_path else None)
+    commit_date = git_commit_date_for_server(server_path, version_info.get("commit"))
+    runtime_label = metadata.get("runtime") or ("llama.cpp" if server_path else None)
+    result: dict[str, Any] = {
+        "provider": provider,
+        "model_id": model_id,
+        "base_url": provider_cfg.get("baseUrl") if isinstance(provider_cfg, dict) else None,
+        "runtime_label": runtime_label,
+        "llama_server_path": server_path,
+        "llama_cpp_version": version_info.get("version"),
+        "llama_cpp_commit": version_info.get("commit"),
+        "llama_cpp_build": version_info.get("build"),
+        "llama_cpp_commit_date": commit_date,
+        "model_metadata": metadata,
+        "config_path": cfg.get("config_path"),
+    }
+    return {k: v for k, v in result.items() if v is not None}
+
+
 def connect(path: Path | str = DEFAULT_DB) -> sqlite3.Connection:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,6 +228,15 @@ def connect(path: Path | str = DEFAULT_DB) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     init_db(conn)
     return conn
+
+
+def table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    return {str(row[1]) for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
+    if column not in table_columns(conn, table):
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 
 
 def init_db(conn: sqlite3.Connection) -> None:
@@ -191,6 +281,13 @@ def init_db(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
             model_id INTEGER NOT NULL REFERENCES models(id),
+            runtime_label TEXT,
+            llama_cpp_version TEXT,
+            llama_cpp_build TEXT,
+            llama_cpp_commit TEXT,
+            llama_cpp_commit_date TEXT,
+            llama_server_path TEXT,
+            runtime_json TEXT,
             UNIQUE(run_id, model_id)
         );
 
@@ -230,6 +327,16 @@ def init_db(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_runs_started ON runs(started_at);
         """
     )
+    for column, decl in [
+        ("runtime_label", "TEXT"),
+        ("llama_cpp_version", "TEXT"),
+        ("llama_cpp_build", "TEXT"),
+        ("llama_cpp_commit", "TEXT"),
+        ("llama_cpp_commit_date", "TEXT"),
+        ("llama_server_path", "TEXT"),
+        ("runtime_json", "TEXT"),
+    ]:
+        add_column_if_missing(conn, "run_models", column, decl)
     conn.execute(
         "INSERT OR IGNORE INTO schema_info(version, applied_at) VALUES (?, ?)",
         (SCHEMA_VERSION, utc_now()),
@@ -325,10 +432,48 @@ def upsert_model(conn: sqlite3.Connection, model_arg: str) -> int:
     return int(row["id"])
 
 
-def attach_model_to_run(conn: sqlite3.Connection, run_id: int, model_db_id: int) -> int:
+def attach_model_to_run(conn: sqlite3.Connection, run_id: int, model_db_id: int, model_arg: str | None = None) -> int:
+    runtime = collect_runtime_metadata(model_arg) if model_arg else {}
     conn.execute(
-        "INSERT OR IGNORE INTO run_models(run_id, model_id) VALUES (?, ?)",
-        (run_id, model_db_id),
+        """
+        INSERT OR IGNORE INTO run_models(run_id, model_id, runtime_label, llama_cpp_version, llama_cpp_build, llama_cpp_commit, llama_cpp_commit_date, llama_server_path, runtime_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            run_id,
+            model_db_id,
+            runtime.get("runtime_label"),
+            runtime.get("llama_cpp_version"),
+            runtime.get("llama_cpp_build"),
+            runtime.get("llama_cpp_commit"),
+            runtime.get("llama_cpp_commit_date"),
+            runtime.get("llama_server_path"),
+            json_dumps(runtime),
+        ),
+    )
+    conn.execute(
+        """
+        UPDATE run_models
+        SET runtime_label = COALESCE(?, runtime_label),
+            llama_cpp_version = COALESCE(?, llama_cpp_version),
+            llama_cpp_build = COALESCE(?, llama_cpp_build),
+            llama_cpp_commit = COALESCE(?, llama_cpp_commit),
+            llama_cpp_commit_date = COALESCE(?, llama_cpp_commit_date),
+            llama_server_path = COALESCE(?, llama_server_path),
+            runtime_json = COALESCE(?, runtime_json)
+        WHERE run_id = ? AND model_id = ?
+        """,
+        (
+            runtime.get("runtime_label"),
+            runtime.get("llama_cpp_version"),
+            runtime.get("llama_cpp_build"),
+            runtime.get("llama_cpp_commit"),
+            runtime.get("llama_cpp_commit_date"),
+            runtime.get("llama_server_path"),
+            json_dumps(runtime) if runtime else None,
+            run_id,
+            model_db_id,
+        ),
     )
     row = conn.execute("SELECT id FROM run_models WHERE run_id = ? AND model_id = ?", (run_id, model_db_id)).fetchone()
     assert row is not None

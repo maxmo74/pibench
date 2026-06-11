@@ -9,6 +9,8 @@ import sqlite3
 import time
 from pathlib import Path
 
+from pibench_db import init_db
+
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DB = ROOT / "results" / "pibench.sqlite"
 DEFAULT_OUT = ROOT / "results" / "INTEGRATED_REPORT.md"
@@ -117,6 +119,8 @@ def model_label(model_arg: str) -> str:
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M:medium": "Qwen3.6 35B A3B MTP UD Q3_K_M — thinking on",
         "local-llama-q3-262k/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M-ctx262k:medium": "Qwen3.6 35B A3B MTP UD Q3_K_M — 262K ctx MTP runtime, thinking on",
         "local-llama-latest-q3-131k/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M-ctx131k-latest:medium": "Qwen3.6 35B A3B MTP UD Q3_K_M — latest llama.cpp 131K ctx, thinking on",
+        "local-llama-diag-stable-q3-131k/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M-ctx131k-diag-stable:medium": "Qwen3.6 35B A3B MTP UD Q3_K_M — diagnostic stable llama.cpp 131K ctx, thinking on",
+        "local-llama-diag-latest-q3-131k/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M-ctx131k-diag-latest:medium": "Qwen3.6 35B A3B MTP UD Q3_K_M — diagnostic latest llama.cpp 131K ctx, thinking on",
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — full-context attempt, thinking off",
         "local-llama-q4-32k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx32k:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — 32K ctx MTP runtime, thinking off",
         "local-llama-q4-64k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx64k:off": "Qwen3.6 35B A3B MTP UD Q4_K_M — 64K ctx MTP runtime, thinking off",
@@ -161,7 +165,12 @@ def fmt_num(value: object, digits: int = 2) -> str:
 def connect(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    init_db(conn)
     return conn
+
+
+def runtime_build_label(value: object) -> str:
+    return str(value) if value else "n/a"
 
 
 def latest_normalized_rows(conn: sqlite3.Connection, tasks: list[str]) -> list[sqlite3.Row]:
@@ -169,22 +178,23 @@ def latest_normalized_rows(conn: sqlite3.Connection, tasks: list[str]) -> list[s
     return conn.execute(
         f"""
         WITH latest AS (
-            SELECT m.model_arg, t.name AS task, MAX(res.id) AS result_id
+            SELECT m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
+                   t.name AS task, MAX(res.id) AS result_id
             FROM results res
             JOIN run_models rm ON rm.id = res.run_model_id
             JOIN models m ON m.id = rm.model_id
             JOIN tasks t ON t.id = res.task_id
             WHERE t.name IN ({placeholders})
-            GROUP BY m.model_arg, t.name
+            GROUP BY m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a'), t.name
         )
-        SELECT latest.model_arg, latest.task, res.ok, res.score, res.total,
+        SELECT latest.model_arg, latest.llama_cpp_build, latest.task, res.ok, res.score, res.total,
                res.wall_s, res.approx_output_tps,
                m.context_window_label, m.max_output_label
         FROM latest
         JOIN results res ON res.id = latest.result_id
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
-        ORDER BY latest.model_arg, latest.task
+        ORDER BY latest.model_arg, latest.llama_cpp_build, latest.task
         """,
         tasks,
     ).fetchall()
@@ -192,12 +202,12 @@ def latest_normalized_rows(conn: sqlite3.Connection, tasks: list[str]) -> list[s
 
 def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title: str, tasks: list[str], description: str) -> None:
     rows = latest_normalized_rows(conn, tasks)
-    by_model: dict[str, list[sqlite3.Row]] = {}
+    by_model: dict[tuple[str, str], list[sqlite3.Row]] = {}
     for row in rows:
-        by_model.setdefault(row["model_arg"], []).append(row)
+        by_model.setdefault((row["model_arg"], row["llama_cpp_build"] or "n/a"), []).append(row)
 
     summary = []
-    for model_arg, model_rows in by_model.items():
+    for (model_arg, runtime_build), model_rows in by_model.items():
         covered = {r["task"] for r in model_rows}
         if not all(task in covered for task in tasks):
             continue
@@ -217,9 +227,9 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title:
         avg_tps = sum((r["approx_output_tps"] or 0) for r in model_rows) / len(model_rows)
         context = model_rows[0]["context_window_label"] or "n/a"
         max_out = model_rows[0]["max_output_label"] or "n/a"
-        summary.append((weighted_score / weighted_total, weighted_score, weighted_total, model_arg, context, max_out, passed, len(model_rows), score, points, avg_wall, avg_tps))
+        summary.append((weighted_score / weighted_total, weighted_score, weighted_total, model_arg, runtime_build, context, max_out, passed, len(model_rows), score, points, avg_wall, avg_tps))
 
-    summary.sort(key=lambda x: (-x[0], x[10]))
+    summary.sort(key=lambda x: (-x[0], x[11]))
     lines += [
         f"## {title}",
         "",
@@ -227,12 +237,12 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title:
         + ", ".join(f"`{task}`" for task in tasks)
         + "."
         "",
-        "| rank | model | exact Pi model argument | context | max out | pass | raw points | weighted score | avg wall s | approx output tok/s |",
-        "|---:|---|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| rank | model | exact Pi model argument | llama.cpp build | context | max out | pass | raw points | weighted score | avg wall s | approx output tok/s |",
+        "|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
-    for i, (_, weighted_score, weighted_total, model_arg, context, max_out, passed, total, score, points, avg_wall, avg_tps) in enumerate(summary, 1):
+    for i, (_, weighted_score, weighted_total, model_arg, runtime_build, context, max_out, passed, total, score, points, avg_wall, avg_tps) in enumerate(summary, 1):
         lines.append(
-            f"| {i} | {model_label(model_arg)} | `{model_arg}` | {context} | {max_out} | {passed}/{total} | {score:.0f}/{points:.0f} | {fmt_num(weighted_score, 1)}/{fmt_num(weighted_total, 1)} | {fmt_num(avg_wall)} | {fmt_num(avg_tps, 1)} |"
+            f"| {i} | {model_label(model_arg)} | `{model_arg}` | {runtime_build_label(runtime_build)} | {context} | {max_out} | {passed}/{total} | {score:.0f}/{points:.0f} | {fmt_num(weighted_score, 1)}/{fmt_num(weighted_total, 1)} | {fmt_num(avg_wall)} | {fmt_num(avg_tps, 1)} |"
         )
     lines += [
         "",
@@ -281,13 +291,13 @@ def generate(conn: sqlite3.Connection) -> str:
     lines += [
         "## Historical aggregate by model",
         "",
-        "| model | exact Pi model argument | context | max out | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
+        "| model | exact Pi model argument | llama.cpp build | context | max out | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
     ]
 
     for row in conn.execute(
         f"""
-        SELECT m.model_arg,
+        SELECT m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
                COUNT(DISTINCT r.id) AS runs,
                SUM(res.ok) AS passed,
                COUNT(*) AS total,
@@ -304,7 +314,7 @@ def generate(conn: sqlite3.Connection) -> str:
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
         JOIN tasks t ON t.id = res.task_id
-        GROUP BY m.model_arg
+        GROUP BY m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
         ORDER BY weighted_score * 1.0 / weighted_total DESC,
                  AVG(res.wall_s) ASC
         """
@@ -312,19 +322,20 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['context_window_label'] or 'n/a'} | {row['max_output_label'] or 'n/a'} | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
+            f"| {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['llama_cpp_build'])} | {row['context_window_label'] or 'n/a'} | {row['max_output_label'] or 'n/a'} | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
         )
 
     lines += [
         "",
         "## Latest runs",
         "",
-        "| run | started | notes | model | exact Pi model argument | context | pass | scored points | weighted score | avg wall s |",
-        "|---:|---|---|---|---|---:|---:|---:|---:|---:|"
+        "| run | started | notes | model | exact Pi model argument | llama.cpp build | context | pass | scored points | weighted score | avg wall s |",
+        "|---:|---|---|---|---|---|---:|---:|---:|---:|---:|"
     ]
     for row in conn.execute(
         f"""
         SELECT r.id AS run_id, r.started_at, COALESCE(r.notes, '') AS notes, m.model_arg,
+               COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
                SUM(res.ok) AS passed, COUNT(*) AS total,
                SUM(COALESCE(res.score, 0)) AS score,
                SUM(COALESCE(res.total, 0)) AS points,
@@ -337,7 +348,7 @@ def generate(conn: sqlite3.Connection) -> str:
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
         JOIN tasks t ON t.id = res.task_id
-        GROUP BY r.id, m.model_arg
+        GROUP BY r.id, m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
         ORDER BY r.id DESC, m.model_arg
         LIMIT 40
         """
@@ -345,19 +356,20 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
+            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['llama_cpp_build'])} | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
         )
 
     lines += [
         "",
         "## Task matrix",
         "",
-        "| task | weight | model | exact Pi model argument | context | pass | scored points | weighted score | avg wall s | common failure notes |",
-        "|---|---:|---|---|---:|---:|---:|---:|---:|---|"
+        "| task | weight | model | exact Pi model argument | llama.cpp build | context | pass | scored points | weighted score | avg wall s | common failure notes |",
+        "|---|---:|---|---|---|---:|---:|---:|---:|---:|---|"
     ]
     for row in conn.execute(
         f"""
         SELECT t.name AS task, {weight_case('t')} AS weight, m.model_arg,
+               COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
                SUM(res.ok) AS passed, COUNT(*) AS total,
                SUM(COALESCE(res.score, 0)) AS score,
                SUM(COALESCE(res.total, 0)) AS points,
@@ -370,15 +382,15 @@ def generate(conn: sqlite3.Connection) -> str:
         JOIN tasks t ON t.id = res.task_id
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
-        GROUP BY t.name, m.model_arg
-        ORDER BY t.name, m.model_arg
+        GROUP BY t.name, m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
+        ORDER BY t.name, m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
         """
     ):
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         notes = sanitize_notes((row["notes"] or "").replace("\n", " "))[:160]
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
+            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['llama_cpp_build'])} | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
         )
 
     return "\n".join(lines) + "\n"
