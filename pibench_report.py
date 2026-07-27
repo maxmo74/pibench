@@ -209,23 +209,25 @@ def latest_normalized_rows(conn: sqlite3.Connection, tasks: list[str]) -> list[s
     return conn.execute(
         f"""
         WITH latest AS (
-            SELECT m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
+            SELECT m.model_arg,
+                   COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a') AS runtime_build,
                    t.name AS task, MAX(res.id) AS result_id
             FROM results res
             JOIN run_models rm ON rm.id = res.run_model_id
             JOIN models m ON m.id = rm.model_id
             JOIN tasks t ON t.id = res.task_id
             WHERE t.name IN ({placeholders})
-            GROUP BY m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a'), t.name
+            GROUP BY m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a'), t.name
         )
-        SELECT latest.model_arg, latest.llama_cpp_build, latest.task, res.ok, res.score, res.total,
+        SELECT latest.model_arg, latest.runtime_build, latest.task, res.ok, res.score, res.total,
                res.wall_s, res.approx_output_tps,
-               m.context_window_label, m.max_output_label
+               COALESCE(CAST(rm.context_size AS TEXT), m.context_window_label) AS context_window_label,
+               m.max_output_label
         FROM latest
         JOIN results res ON res.id = latest.result_id
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
-        ORDER BY latest.model_arg, latest.llama_cpp_build, latest.task
+        ORDER BY latest.model_arg, latest.runtime_build, latest.task
         """,
         tasks,
     ).fetchall()
@@ -235,7 +237,7 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title:
     rows = latest_normalized_rows(conn, tasks)
     by_model: dict[tuple[str, str], list[sqlite3.Row]] = {}
     for row in rows:
-        by_model.setdefault((row["model_arg"], row["llama_cpp_build"] or "n/a"), []).append(row)
+        by_model.setdefault((row["model_arg"], row["runtime_build"] or "n/a"), []).append(row)
 
     summary = []
     for (model_arg, runtime_build), model_rows in by_model.items():
@@ -268,7 +270,7 @@ def append_normalized_section(lines: list[str], conn: sqlite3.Connection, title:
         + ", ".join(f"`{task}`" for task in tasks)
         + "."
         "",
-        "| rank | model | exact Pi model argument | llama.cpp build | context | max out | pass | raw points | weighted score | avg wall s | approx output tok/s |",
+        "| rank | model | exact Pi model argument | runtime build | context | max out | pass | raw points | weighted score | avg wall s | approx output tok/s |",
         "|---:|---|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for i, (_, weighted_score, weighted_total, model_arg, runtime_build, context, max_out, passed, total, score, points, avg_wall, avg_tps) in enumerate(summary, 1):
@@ -322,13 +324,14 @@ def generate(conn: sqlite3.Connection) -> str:
     lines += [
         "## Historical aggregate by model",
         "",
-        "| model | exact Pi model argument | llama.cpp build | context | max out | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
+        "| model | exact Pi model argument | runtime build | context | max out | runs | pass | scored points | weighted score | avg wall s | approx output tok/s |",
         "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
     ]
 
     for row in conn.execute(
         f"""
-        SELECT m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
+        SELECT m.model_arg,
+               COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a') AS runtime_build,
                COUNT(DISTINCT r.id) AS runs,
                SUM(res.ok) AS passed,
                COUNT(*) AS total,
@@ -338,14 +341,14 @@ def generate(conn: sqlite3.Connection) -> str:
                {weighted_total_expr()} AS weighted_total,
                AVG(res.wall_s) AS avg_wall_s,
                AVG(res.approx_output_tps) AS avg_tps,
-               m.context_window_label,
+               COALESCE(CAST(rm.context_size AS TEXT), m.context_window_label) AS context_window_label,
                m.max_output_label
         FROM results res
         JOIN runs r ON r.id = res.run_id
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
         JOIN tasks t ON t.id = res.task_id
-        GROUP BY m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
+        GROUP BY m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
         ORDER BY weighted_score * 1.0 / weighted_total DESC,
                  AVG(res.wall_s) ASC
         """
@@ -353,33 +356,33 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['llama_cpp_build'])} | {row['context_window_label'] or 'n/a'} | {row['max_output_label'] or 'n/a'} | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
+            f"| {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['runtime_build'])} | {row['context_window_label'] or 'n/a'} | {row['max_output_label'] or 'n/a'} | {row['runs']} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {fmt_num(row['avg_tps'], 1)} |"
         )
 
     lines += [
         "",
         "## Latest runs",
         "",
-        "| run | started | notes | model | exact Pi model argument | llama.cpp build | context | pass | scored points | weighted score | avg wall s |",
+        "| run | started | notes | model | exact Pi model argument | runtime build | context | pass | scored points | weighted score | avg wall s |",
         "|---:|---|---|---|---|---|---:|---:|---:|---:|---:|"
     ]
     for row in conn.execute(
         f"""
         SELECT r.id AS run_id, r.started_at, COALESCE(r.notes, '') AS notes, m.model_arg,
-               COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
+               COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a') AS runtime_build,
                SUM(res.ok) AS passed, COUNT(*) AS total,
                SUM(COALESCE(res.score, 0)) AS score,
                SUM(COALESCE(res.total, 0)) AS points,
                {weighted_score_expr()} AS weighted_score,
                {weighted_total_expr()} AS weighted_total,
                AVG(res.wall_s) AS avg_wall_s,
-               m.context_window_label
+               COALESCE(CAST(rm.context_size AS TEXT), m.context_window_label) AS context_window_label
         FROM results res
         JOIN runs r ON r.id = res.run_id
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
         JOIN tasks t ON t.id = res.task_id
-        GROUP BY r.id, m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
+        GROUP BY r.id, m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
         ORDER BY r.id DESC, m.model_arg
         LIMIT 40
         """
@@ -387,20 +390,20 @@ def generate(conn: sqlite3.Connection) -> str:
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['llama_cpp_build'])} | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
+            f"| {row['run_id']} | {row['started_at']} | {row['notes']} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['runtime_build'])} | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} |"
         )
 
     lines += [
         "",
         "## Task matrix",
         "",
-        "| task | weight | model | exact Pi model argument | llama.cpp build | context | pass | scored points | weighted score | avg wall s | common failure notes |",
+        "| task | weight | model | exact Pi model argument | runtime build | context | pass | scored points | weighted score | avg wall s | common failure notes |",
         "|---|---:|---|---|---|---:|---:|---:|---:|---:|---|"
     ]
     for row in conn.execute(
         f"""
         SELECT t.name AS task, {weight_case('t')} AS weight, m.model_arg,
-               COALESCE(rm.llama_cpp_build, 'n/a') AS llama_cpp_build,
+               COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a') AS runtime_build,
                SUM(res.ok) AS passed, COUNT(*) AS total,
                SUM(COALESCE(res.score, 0)) AS score,
                SUM(COALESCE(res.total, 0)) AS points,
@@ -408,20 +411,20 @@ def generate(conn: sqlite3.Connection) -> str:
                {weighted_total_expr()} AS weighted_total,
                AVG(res.wall_s) AS avg_wall_s,
                GROUP_CONCAT(CASE WHEN res.ok = 0 THEN res.note ELSE NULL END, '; ') AS notes,
-               m.context_window_label
+               COALESCE(CAST(rm.context_size AS TEXT), m.context_window_label) AS context_window_label
         FROM results res
         JOIN tasks t ON t.id = res.task_id
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
-        GROUP BY t.name, m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
-        ORDER BY t.name, m.model_arg, COALESCE(rm.llama_cpp_build, 'n/a')
+        GROUP BY t.name, m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
+        ORDER BY t.name, m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
         """
     ):
         points = f"{row['score']:.0f}/{row['points']:.0f}" if row["points"] else "n/a"
         notes = sanitize_notes((row["notes"] or "").replace("\n", " "))[:160]
         weighted = f"{fmt_num(row['weighted_score'], 1)}/{fmt_num(row['weighted_total'], 1)}"
         lines.append(
-            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['llama_cpp_build'])} | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
+            f"| `{row['task']}` | {fmt_num(row['weight'], 1)} | {model_label(row['model_arg'])} | `{row['model_arg']}` | {runtime_build_label(row['runtime_build'])} | {row['context_window_label'] or 'n/a'} | {row['passed']}/{row['total']} | {points} | {weighted} | {fmt_num(row['avg_wall_s'])} | {notes} |"
         )
 
     return "\n".join(lines) + "\n"

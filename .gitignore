@@ -11,6 +11,7 @@ venv/
 .ssh/
 auth.json
 credentials.json
+*.pibench-profile.json
 *.pem
 *.key
 *.p12

@@ -54,9 +54,32 @@ If the sandbox cannot start, executable checks fail closed. The unsafe environme
 
 ## Recorded metadata
 
-The local SQLite database records the exact Pi model argument, requested thinking mode, task result, score, timing, stdout/stderr, command, host information, and discoverable llama.cpp version and commit. The database and raw outputs remain under the gitignored `results/` directory.
+The schema separates metadata that applies to the whole run from metadata for each tested model:
 
-For comparable contributed runs, record the model file or service, quantization, hardware, backend build, context, KV cache, reasoning mode, sampling, and speculative-decoding settings.
+- **Provenance:** optional contributor handle and source URL.
+- **Host:** OS, CPU, memory, detected accelerators, compute mode (`cpu`, `gpu`, `hybrid`, `remote`, `cloud`, or `other`), and the devices actually used.
+- **Runtime:** backend name, version, commit, build, compiler, and backend-specific JSON.
+- **Model artifact:** format, quantization or precision, stable filename/service identifier, and optional SHA-256.
+- **Inference:** context size, KV-cache representation, and arbitrary backend-specific settings.
+- **Result:** exact Pi model argument, requested/effective thinking mode, task score, timing, stdout/stderr, and command.
+
+For loopback llama.cpp routers, PiBench also discovers the backing `llama-server`, records its build number, Git commit and date, compiler/target from `--version`, selected CMake options, model filename, launch arguments, context, KV types, sampling, GPU offload, flash attention, parallelism, and speculation settings when available. The dedicated `llama_cpp_*` database columns are retained alongside generic runtime columns.
+
+Metadata that cannot be discovered can be supplied on the command line or through `--metadata-file`. A profile is a JSON object with optional `provenance`, `host`, `runtime`, `model`, and `inference` objects. For example:
+
+```json
+{
+  "provenance": {"contributor": "@example", "source_url": "https://example.org/run"},
+  "host": {"compute_mode": "hybrid", "accelerators_used": ["GPU 0", "GPU 1"]},
+  "runtime": {"name": "vLLM", "version": "0.19.0", "commit": "abcdef0"},
+  "model": {"format": "safetensors", "quantization": "FP8"},
+  "inference": {"context_size": 131072, "tensor_parallel": 2, "temperature": 0.2}
+}
+```
+
+Command-line values override their corresponding profile values. Run one model per contributed profile when different models use different runtimes or inference settings. Do not place credentials or private paths in a profile.
+
+The database, metadata profiles, and raw outputs remain local under gitignored paths. Public contributions contain only reviewed aggregate results.
 
 ## Reading results
 

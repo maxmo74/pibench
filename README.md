@@ -56,6 +56,18 @@ For a fully local provider:
 
 Pass several model IDs to compare them in one run. Use `--allow-extensions` when the provider is supplied by a Pi extension, and `--task TASK_NAME` for a shorter test.
 
+PiBench records CPU, memory, detected accelerators, Pi version, and model configuration automatically. For a CPU-only run or a backend that cannot be discovered through Pi, add explicit metadata:
+
+```bash
+./pi_agent_bench.py 'ollama/model:off' \
+  --compute-mode cpu \
+  --backend Ollama --backend-version 0.12.3 \
+  --model-format GGUF --quantization Q5_K_M \
+  --context-size 32768 --kv-cache f16
+```
+
+Repeat `--accelerator` for the devices actually used in a multi-GPU run. `--metadata-file` accepts a reusable JSON profile, and `--inference-option KEY=VALUE` records backend-specific settings. See `--help` and [METHODOLOGY.md](METHODOLOGY.md#recorded-metadata).
+
 Results are written locally to `results/`, including `results/pibench.sqlite`. Generate a Markdown summary with:
 
 ```bash
@@ -107,12 +119,12 @@ Most final local comparisons used a 131,072-token context, one parallel slot, qu
 Runs from other hardware and providers are welcome. To make a result useful, include:
 
 - model and provider, including quantization
-- hardware, OS, and backend version or commit
+- compute mode (CPU, GPU, hybrid, remote, or cloud), hardware, OS, and backend version or commit
 - context size, KV-cache type, reasoning mode, temperature, and speculation settings
 - exact PiBench command
 - weighted score and timing summary from a complete 24-task run
 
-Open a pull request that adds a concise row or section to `RESULTS.md`. Contributions are accepted under AGPL-3.0-or-later. Do not commit `results/`, raw transcripts, model weights, credentials, or machine-specific paths. Some historical experiment commits have no file diff because generated result files are intentionally excluded from Git.
+Use `--contributor` and `--source-url` to preserve provenance in your local database. Open a pull request that adds a concise row or section to `RESULTS.md`. Contributions are accepted under AGPL-3.0-or-later. Do not commit `results/`, metadata profiles, raw transcripts, model weights, credentials, or machine-specific paths. Some historical experiment commits have no file diff because generated result files are intentionally excluded from Git.
 
 ## Safety and limitations
 

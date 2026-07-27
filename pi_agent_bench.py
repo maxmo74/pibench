@@ -819,6 +819,80 @@ def run_pi(model: str, prompt: str, args: argparse.Namespace) -> dict:
     }
 
 
+def parse_metadata_value(value: str):
+    try:
+        return json.loads(value)
+    except json.JSONDecodeError:
+        return value
+
+
+def load_run_metadata(args: argparse.Namespace, parser: argparse.ArgumentParser) -> dict:
+    profile: dict = {}
+    if args.metadata_file:
+        try:
+            loaded = json.loads(Path(args.metadata_file).read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            parser.error(f"could not read --metadata-file: {exc}")
+        if not isinstance(loaded, dict):
+            parser.error("--metadata-file must contain one JSON object")
+        profile = loaded
+
+    for section in ("provenance", "host", "runtime", "model", "inference"):
+        value = profile.setdefault(section, {})
+        if not isinstance(value, dict):
+            parser.error(f"metadata section {section!r} must be a JSON object")
+
+    provenance = profile["provenance"]
+    host = profile["host"]
+    runtime = profile["runtime"]
+    model = profile["model"]
+    inference = profile["inference"]
+
+    for value, destination, key in [
+        (args.contributor, provenance, "contributor"),
+        (args.source_url, provenance, "source_url"),
+        (args.compute_mode, host, "compute_mode"),
+        (args.backend, runtime, "name"),
+        (args.backend_version, runtime, "version"),
+        (args.backend_commit, runtime, "commit"),
+        (args.backend_build, runtime, "build"),
+        (args.backend_compiler, runtime, "compiler"),
+        (args.model_format, model, "format"),
+        (args.quantization, model, "quantization"),
+        (args.model_artifact, model, "artifact"),
+        (args.model_sha256, model, "sha256"),
+        (args.context_size, inference, "context_size"),
+        (args.kv_cache, inference, "kv_cache"),
+    ]:
+        if value is not None:
+            destination[key] = value
+
+    if args.accelerators is not None:
+        host["accelerators_used"] = args.accelerators
+    elif host.get("compute_mode") == "cpu":
+        host.setdefault("accelerators_used", [])
+
+    for item in args.inference_option or []:
+        key, separator, value = item.partition("=")
+        if not separator or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]*", key):
+            parser.error("--inference-option must be KEY=VALUE with a simple key")
+        inference[key] = parse_metadata_value(value)
+
+    if inference.get("context_size") is not None:
+        try:
+            inference["context_size"] = int(inference["context_size"])
+            if inference["context_size"] <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            parser.error("--context-size/profile inference.context_size must be a positive integer")
+    sha256 = model.get("sha256")
+    if sha256 is not None and not re.fullmatch(r"[0-9a-fA-F]{64}", str(sha256)):
+        parser.error("--model-sha256/profile model.sha256 must be 64 hexadecimal characters")
+    if sha256 is not None:
+        model["sha256"] = str(sha256).lower()
+    return {key: value for key, value in profile.items() if value not in ({}, [], None)}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark models through the Pi CLI")
     parser.add_argument("models", nargs="*", help="Pi model IDs, e.g. openai-codex/gpt-5.5:medium")
@@ -832,7 +906,26 @@ def main() -> int:
     parser.add_argument("--task", dest="tasks", action="append", choices=[t["name"] for t in TASKS], help="Task to run; repeat for multiple tasks. Defaults to all tasks.")
     parser.add_argument("--db", default=str(ROOT / "results" / "pibench.sqlite"), help="SQLite database path; use 'none' to disable DB recording")
     parser.add_argument("--notes", help="Optional notes for this benchmark run")
+    metadata_group = parser.add_argument_group("reproducibility and contribution metadata")
+    metadata_group.add_argument("--metadata-file", help="JSON profile with provenance, host, runtime, model, and inference sections")
+    metadata_group.add_argument("--contributor", help="Contributor name or handle")
+    metadata_group.add_argument("--source-url", help="Public source URL for a contributed run")
+    metadata_group.add_argument("--compute-mode", choices=["cpu", "gpu", "hybrid", "remote", "cloud", "other"], help="Where model inference executes")
+    metadata_group.add_argument("--accelerator", dest="accelerators", action="append", help="Accelerator actually used; repeat for multiple GPUs")
+    metadata_group.add_argument("--backend", help="Inference backend, e.g. llama.cpp, Ollama, vLLM, MLX, or a cloud API")
+    metadata_group.add_argument("--backend-version")
+    metadata_group.add_argument("--backend-commit")
+    metadata_group.add_argument("--backend-build")
+    metadata_group.add_argument("--backend-compiler")
+    metadata_group.add_argument("--model-format", help="Model artifact format, e.g. GGUF, safetensors, MLX, or API")
+    metadata_group.add_argument("--quantization", help="Quantization or precision, e.g. Q5_K_M, FP8, or BF16")
+    metadata_group.add_argument("--model-artifact", help="Artifact filename or stable service identifier; avoid private paths")
+    metadata_group.add_argument("--model-sha256", help="Optional 64-character SHA-256 of the model artifact")
+    metadata_group.add_argument("--context-size", type=int, help="Configured context size in tokens")
+    metadata_group.add_argument("--kv-cache", help="KV-cache representation, e.g. k=q4_0,v=q4_0")
+    metadata_group.add_argument("--inference-option", action="append", help="Additional KEY=VALUE setting; repeat as needed")
     args = parser.parse_args()
+    run_metadata = load_run_metadata(args, parser)
 
     if args.list_model_presets:
         for name, models in MODEL_PRESETS.items():
@@ -873,6 +966,7 @@ def main() -> int:
                 "system_prompt": args.system_prompt,
             },
             args.notes,
+            run_metadata,
         )
         for task in selected_tasks:
             task_ids[task["name"]] = upsert_task(
@@ -885,7 +979,7 @@ def main() -> int:
             )
         for model in args.models:
             model_db_id = upsert_model(conn, model)
-            run_model_ids[model] = attach_model_to_run(conn, run_id, model_db_id, model)
+            run_model_ids[model] = attach_model_to_run(conn, run_id, model_db_id, model, run_metadata)
 
     for model in args.models:
         print(f"\n=== {model} ===", flush=True)
