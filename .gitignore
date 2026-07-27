@@ -17,8 +17,8 @@ credentials.json
 *.p12
 *.pfx
 
-# Benchmark data is deliberately local-only. Public Git contains curated
-# aggregate tables, never raw model output, host metadata, or the SQLite DB.
+# Raw benchmark data is deliberately local-only. Public Git may contain the
+# allowlisted RESULTS.csv export, never raw output, private metadata, or SQLite.
 results/
 
 # Model weights and interrupted downloads

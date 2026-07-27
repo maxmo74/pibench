@@ -74,6 +74,14 @@ Results are written locally to `results/`, including `results/pibench.sqlite`. G
 ./pibench_report.py
 ```
 
+The tracked [RESULTS.csv](RESULTS.csv) contains the complete sanitized task-level result history. Regenerate it from the local database with:
+
+```bash
+./pibench_report.py --csv-out RESULTS.csv
+```
+
+The exporter uses a strict field allowlist: scores, timings, model/runtime identifiers, and reproducibility metadata are included; prompts, output, errors, notes, command lines, private paths, and arbitrary JSON are excluded. Incomplete infrastructure runs are explicitly marked.
+
 An OpenAI-compatible endpoint can also be tested directly without Pi:
 
 ```bash

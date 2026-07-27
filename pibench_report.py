@@ -4,9 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import json
+import math
 import re
 import sqlite3
 import time
+import urllib.parse
 from pathlib import Path
 
 from pibench_db import init_db
@@ -55,6 +59,97 @@ NORMALIZED_FULL_16 = [
 
 NORMALIZED_EXPANDED_24 = NORMALIZED_FULL_16 + NORMALIZED_NONCODING_8
 
+CSV_SCHEMA_VERSION = 1
+CSV_INFERENCE_FIELDS = [
+    "gpu_layers",
+    "parallel",
+    "flash_attention",
+    "temperature",
+    "top_p",
+    "top_k",
+    "min_p",
+    "seed",
+    "batch_size",
+    "ubatch_size",
+    "threads",
+    "fit",
+    "fit_context_min",
+    "split_mode",
+    "tensor_split",
+    "reasoning",
+    "reasoning_format",
+    "reasoning_budget",
+    "speculation_method",
+    "speculative_tokens",
+]
+CSV_FIELDS = [
+    "csv_schema_version",
+    "result_id",
+    "run_id",
+    "run_model_id",
+    "run_started_at",
+    "run_ended_at",
+    "run_status",
+    "benchmark_name",
+    "benchmark_version",
+    "pibench_commit",
+    "pi_version",
+    "suite",
+    "run_task_count",
+    "run_passed",
+    "run_weighted_score",
+    "run_weighted_total",
+    "contributor",
+    "source_url",
+    "compute_mode",
+    "accelerators_used",
+    "host_platform",
+    "cpu_model",
+    "logical_cpus",
+    "memory_gib",
+    "accelerators_detected",
+    "cuda_toolkit_version",
+    "provider",
+    "model_id",
+    "model_arg",
+    "thinking_requested",
+    "thinking_effective",
+    "context_window",
+    "max_output",
+    "runtime_label",
+    "runtime_version",
+    "runtime_commit",
+    "runtime_build",
+    "runtime_compiler",
+    "llama_cpp_version",
+    "llama_cpp_build",
+    "llama_cpp_commit",
+    "llama_cpp_commit_date",
+    "model_format",
+    "quantization",
+    "model_artifact",
+    "model_sha256",
+    "context_size",
+    "kv_cache",
+    *CSV_INFERENCE_FIELDS,
+    "task",
+    "task_category",
+    "check_kind",
+    "task_weight",
+    "passed",
+    "score",
+    "total",
+    "weighted_score",
+    "wall_s",
+    "approx_output_tokens",
+    "approx_output_tps",
+]
+CSV_FORBIDDEN = re.compile(
+    r"(?i)(/(?:home|root|tmp)/|[A-Z]:\\Users\\|BEGIN [A-Z ]*PRIVATE KEY|"
+    r"(?:api[_-]?key|authorization|bearer)\s*[:=]|"
+    r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})"
+)
+
 TASK_WEIGHTS = {
     "json_exact": 0.5,
     "dedupe_function": 1.0,
@@ -99,6 +194,269 @@ def weighted_total_expr() -> str:
 
 def sanitize_notes(text: str) -> str:
     return re.sub(r"/tmp/tmp[^/]+/submission\.py", "<tmp>/submission.py", text)
+
+
+def parse_json_dict(value: object) -> dict:
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def parse_json_list(value: object) -> list:
+    if not value:
+        return []
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def public_url(value: object) -> str:
+    """Strip credentials, queries, and fragments from a public provenance URL."""
+    if not value:
+        return ""
+    try:
+        parsed = urllib.parse.urlsplit(str(value))
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+            return ""
+        host = parsed.hostname
+        if ":" in host:
+            host = f"[{host}]"
+        netloc = f"{host}:{parsed.port}" if parsed.port is not None else host
+        return urllib.parse.urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
+    except (TypeError, ValueError):
+        return ""
+
+
+def public_text(value: object) -> str:
+    """Normalize an allowlisted CSV value and reject private or active content."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        text = "true" if value else "false"
+    elif isinstance(value, (dict, list)):
+        text = json.dumps(value, sort_keys=True, separators=(",", ":"))
+    else:
+        text = " ".join(str(value).split())
+    if CSV_FORBIDDEN.search(text):
+        raise ValueError(f"unsafe value refused by public CSV exporter: {text[:80]!r}")
+    # Prevent spreadsheet applications from interpreting contributor-controlled
+    # strings as formulas. Numeric fields are formatted before reaching here.
+    if text.startswith(("=", "+", "-", "@")):
+        text = "'" + text
+    return text
+
+
+def public_git_commit(value: object) -> str:
+    text = str(value or "").strip()
+    return text if re.fullmatch(r"[0-9a-fA-F]{7,40}", text) else ""
+
+
+def public_iso_timestamp(value: object) -> str:
+    text = str(value or "").strip()
+    return public_text(text) if re.fullmatch(r"\d{4}-\d{2}-\d{2}T[^\s]+", text) else ""
+
+
+def csv_number(value: object, digits: int = 6) -> str:
+    if value is None:
+        return ""
+    number = float(value)
+    if not math.isfinite(number):
+        return ""
+    return f"{number:.{digits}f}".rstrip("0").rstrip(".")
+
+
+def suite_name(task_names: set[str]) -> str:
+    known = [
+        ("expanded-24", NORMALIZED_EXPANDED_24),
+        ("full-16", NORMALIZED_FULL_16),
+        ("non-coding-8", NORMALIZED_NONCODING_8),
+        ("hard-5", NORMALIZED_HARD_5),
+    ]
+    for name, tasks in known:
+        if task_names == set(tasks):
+            return name
+    return f"custom-{len(task_names)}"
+
+
+def detected_accelerators(host: dict) -> list[str]:
+    values = []
+    for item in host.get("accelerators_detected", []):
+        if not isinstance(item, dict) or not item.get("name"):
+            continue
+        details = [str(item["name"])]
+        if item.get("memory_mib"):
+            details.append(f"{item['memory_mib']} MiB")
+        if item.get("driver_version"):
+            details.append(f"driver {item['driver_version']}")
+        values.append("; ".join(details))
+    if not values:
+        values.extend(str(value) for value in host.get("nvidia_gpus", []) if value)
+    return values
+
+
+def export_public_csv(conn: sqlite3.Connection, out: Path) -> int:
+    """Write an allowlisted task-level export without prompts or raw model output."""
+    rows = conn.execute(
+        """
+        SELECT res.id AS result_id, res.run_id, res.run_model_id,
+               r.id AS metadata_run_id, r.started_at, r.ended_at,
+               res.started_at AS result_started_at,
+               res.ended_at AS result_ended_at,
+               r.notes, r.benchmark_name, r.benchmark_version,
+               r.pibench_commit, r.pi_version, r.contributor, r.source_url,
+               r.compute_mode, r.accelerators_json, r.host_json,
+               m.provider, m.model_id, m.model_arg, m.thinking_requested,
+               m.thinking_effective, m.context_window_label,
+               m.max_output_label,
+               rm.runtime_label, rm.runtime_version, rm.runtime_commit,
+               rm.runtime_build, rm.runtime_compiler,
+               rm.llama_cpp_version, rm.llama_cpp_build,
+               rm.llama_cpp_commit, rm.llama_cpp_commit_date,
+               rm.model_format, rm.quantization, rm.model_artifact,
+               rm.model_sha256, rm.context_size, rm.kv_cache,
+               rm.inference_json,
+               t.name AS task, t.category AS task_category,
+               t.check_kind,
+               res.ok, res.score, res.total, res.wall_s,
+               res.approx_output_tokens, res.approx_output_tps
+        FROM results res
+        LEFT JOIN runs r ON r.id = res.run_id
+        JOIN run_models rm ON rm.id = res.run_model_id
+        JOIN models m ON m.id = rm.model_id
+        JOIN tasks t ON t.id = res.task_id
+        ORDER BY res.run_id, res.run_model_id, res.id
+        """
+    ).fetchall()
+
+    grouped: dict[tuple[int, int], list[sqlite3.Row]] = {}
+    for row in rows:
+        grouped.setdefault((int(row["run_id"]), int(row["run_model_id"])), []).append(row)
+
+    summaries = {}
+    for key, group in grouped.items():
+        names = {str(row["task"]) for row in group}
+        weighted_score = 0.0
+        weighted_total = 0.0
+        for row in group:
+            weight = TASK_WEIGHTS.get(str(row["task"]), 1.0)
+            weighted_total += weight
+            if row["total"] is not None and float(row["total"]) > 0:
+                weighted_score += (float(row["score"] or 0) / float(row["total"])) * weight
+            else:
+                weighted_score += (1.0 if row["ok"] else 0.0) * weight
+        notes = str(group[0]["notes"] or "").lower()
+        if group[0]["metadata_run_id"] is None:
+            status = "orphaned-metadata"
+        elif notes.startswith("incomplete infrastructure"):
+            status = "incomplete-infrastructure"
+        elif not group[0]["ended_at"]:
+            status = "incomplete"
+        else:
+            status = "completed"
+        summaries[key] = {
+            "started_at": group[0]["started_at"] or min((row["result_started_at"] for row in group if row["result_started_at"]), default=None),
+            "ended_at": group[0]["ended_at"] or max((row["result_ended_at"] for row in group if row["result_ended_at"]), default=None),
+            "suite": suite_name(names),
+            "task_count": len(group),
+            "passed": sum(1 for row in group if row["ok"]),
+            "weighted_score": weighted_score,
+            "weighted_total": weighted_total,
+            "status": status,
+        }
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    temporary = out.with_name(out.name + ".tmp")
+    with temporary.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=CSV_FIELDS, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            summary = summaries[(int(row["run_id"]), int(row["run_model_id"]))]
+            host = parse_json_dict(row["host_json"])
+            inference = parse_json_dict(row["inference_json"])
+            used = parse_json_list(row["accelerators_json"])
+            memory_gib = None
+            if host.get("mem_total_kb") is not None:
+                try:
+                    memory_gib = float(host["mem_total_kb"]) / 1024 / 1024
+                except (TypeError, ValueError):
+                    pass
+            weight = TASK_WEIGHTS.get(str(row["task"]), 1.0)
+            if row["total"] is not None and float(row["total"]) > 0:
+                credit = float(row["score"] or 0) / float(row["total"])
+            else:
+                credit = 1.0 if row["ok"] else 0.0
+            record = {
+                "csv_schema_version": str(CSV_SCHEMA_VERSION),
+                "result_id": str(row["result_id"]),
+                "run_id": str(row["run_id"]),
+                "run_model_id": str(row["run_model_id"]),
+                "run_started_at": public_text(summary["started_at"]),
+                "run_ended_at": public_text(summary["ended_at"]),
+                "run_status": summary["status"],
+                "benchmark_name": public_text(row["benchmark_name"] or row["task_category"]),
+                "benchmark_version": public_text(row["benchmark_version"]),
+                "pibench_commit": public_git_commit(row["pibench_commit"]),
+                "pi_version": public_text(row["pi_version"]),
+                "suite": summary["suite"],
+                "run_task_count": str(summary["task_count"]),
+                "run_passed": str(summary["passed"]),
+                "run_weighted_score": csv_number(summary["weighted_score"]),
+                "run_weighted_total": csv_number(summary["weighted_total"]),
+                "contributor": public_text(row["contributor"]),
+                "source_url": public_text(public_url(row["source_url"])),
+                "compute_mode": public_text(row["compute_mode"]),
+                "accelerators_used": public_text(used),
+                "host_platform": public_text(host.get("platform")),
+                "cpu_model": public_text(host.get("cpu_model")),
+                "logical_cpus": public_text(host.get("logical_cpus") or host.get("cpu_count")),
+                "memory_gib": csv_number(memory_gib, 3),
+                "accelerators_detected": public_text(detected_accelerators(host)),
+                "cuda_toolkit_version": public_text(host.get("cuda_toolkit_version")),
+                "provider": public_text(row["provider"]),
+                "model_id": public_text(row["model_id"]),
+                "model_arg": public_text(row["model_arg"]),
+                "thinking_requested": public_text(row["thinking_requested"]),
+                "thinking_effective": public_text(row["thinking_effective"]),
+                "context_window": public_text(row["context_size"] or row["context_window_label"]),
+                "max_output": public_text(row["max_output_label"]),
+                "runtime_label": public_text(row["runtime_label"]),
+                "runtime_version": public_text(row["runtime_version"]),
+                "runtime_commit": public_git_commit(row["runtime_commit"]),
+                "runtime_build": public_text(row["runtime_build"]),
+                "runtime_compiler": public_text(row["runtime_compiler"]),
+                "llama_cpp_version": public_text(row["llama_cpp_version"]),
+                "llama_cpp_build": public_text(row["llama_cpp_build"]),
+                "llama_cpp_commit": public_git_commit(row["llama_cpp_commit"]),
+                "llama_cpp_commit_date": public_iso_timestamp(row["llama_cpp_commit_date"]),
+                "model_format": public_text(row["model_format"]),
+                "quantization": public_text(row["quantization"]),
+                "model_artifact": public_text(row["model_artifact"]),
+                "model_sha256": public_text(row["model_sha256"]),
+                "context_size": public_text(row["context_size"]),
+                "kv_cache": public_text(row["kv_cache"]),
+                "task": public_text(row["task"]),
+                "task_category": public_text(row["task_category"]),
+                "check_kind": public_text(row["check_kind"]),
+                "task_weight": csv_number(weight),
+                "passed": "1" if row["ok"] else "0",
+                "score": csv_number(row["score"]),
+                "total": csv_number(row["total"]),
+                "weighted_score": csv_number(credit * weight),
+                "wall_s": csv_number(row["wall_s"]),
+                "approx_output_tokens": public_text(row["approx_output_tokens"]),
+                "approx_output_tps": csv_number(row["approx_output_tps"]),
+            }
+            for field in CSV_INFERENCE_FIELDS:
+                record[field] = public_text(inference.get(field))
+            writer.writerow(record)
+    temporary.replace(out)
+    return len(rows)
 
 
 def model_label(model_arg: str) -> str:
@@ -431,9 +789,10 @@ def generate(conn: sqlite3.Connection) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate integrated PiBench Markdown report")
+    parser = argparse.ArgumentParser(description="Generate integrated PiBench reports")
     parser.add_argument("--db", default=str(DEFAULT_DB))
-    parser.add_argument("--out", default=str(DEFAULT_OUT))
+    parser.add_argument("--out", default=str(DEFAULT_OUT), help="Markdown report path")
+    parser.add_argument("--csv-out", help="optional sanitized task-level CSV path")
     args = parser.parse_args()
 
     conn = connect(Path(args.db))
@@ -442,6 +801,10 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(md)
     print(f"Wrote {out}")
+    if args.csv_out:
+        csv_out = Path(args.csv_out)
+        count = export_public_csv(conn, csv_out)
+        print(f"Wrote {csv_out} ({count} task results)")
     return 0
 
 

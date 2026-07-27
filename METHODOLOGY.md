@@ -79,7 +79,13 @@ Metadata that cannot be discovered can be supplied on the command line or throug
 
 Command-line values override their corresponding profile values. Run one model per contributed profile when different models use different runtimes or inference settings. Do not place credentials or private paths in a profile.
 
-The database, metadata profiles, and raw outputs remain local under gitignored paths. Public contributions contain only reviewed aggregate results.
+The database, metadata profiles, and raw outputs remain local under gitignored paths. The tracked `RESULTS.csv` is a deterministic allowlisted export of every recorded task result. It includes outcomes, partial-credit scores, weights, timings, model/runtime identifiers, selected hardware and inference metadata, and an explicit run-status field. It excludes prompts, output, stderr, checks, notes, commands, arbitrary JSON, credentials, and private paths. The SQLite database is never published. `orphaned-metadata` means task rows survived an old parent-run cleanup; those rows remain visible for completeness but are not used in curated rankings.
+
+Regenerate the public export after adding reviewed runs:
+
+```bash
+./pibench_report.py --csv-out RESULTS.csv
+```
 
 ## Reading results
 
