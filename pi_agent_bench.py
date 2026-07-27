@@ -317,11 +317,11 @@ raise SystemExit(0 if passed == len(TESTS) else 1)
         output = sanitize_tracebacks(timeout_output(exc))
         checks = {"score": 0, "total": 0, "failed": [{"name": "timeout", "traceback": f"TIMEOUT after {timeout}s\n{output[-1200:]}"}]}
         return False, "score 0/0 failed: timeout", checks
-        match = re.search(r"PIBENCH_SCORE (\{.*\})", output)
-        checks = json.loads(match.group(1)) if match else {"score": 0, "total": 0, "failed": [{"name": "harness", "traceback": output[-1200:]}]}
-        failed_names = [f["name"] for f in checks.get("failed", [])]
-        detail = f"score {checks.get('score', 0)}/{checks.get('total', 0)}" if not failed_names else f"score {checks.get('score', 0)}/{checks.get('total', 0)} failed: " + ", ".join(failed_names)
-        return returncode == 0, detail, checks
+    match = re.search(r"PIBENCH_SCORE (\{.*\})", output)
+    checks = json.loads(match.group(1)) if match else {"score": 0, "total": 0, "failed": [{"name": "harness", "traceback": output[-1200:]}]}
+    failed_names = [f["name"] for f in checks.get("failed", [])]
+    detail = f"score {checks.get('score', 0)}/{checks.get('total', 0)}" if not failed_names else f"score {checks.get('score', 0)}/{checks.get('total', 0)} failed: " + ", ".join(failed_names)
+    return returncode == 0, detail, checks
 
 
 def check_result(kind: str, text: str) -> tuple[bool, str, dict]:
