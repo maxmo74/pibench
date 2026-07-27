@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Small OpenAI-compatible endpoint benchmark for DS4/Qwen comparisons.
+"""Benchmark an OpenAI-compatible chat endpoint without invoking the Pi CLI.
 
-Uses PiBench deterministic checks where possible, plus one long-document task.
-This avoids Pi CLI overhead and can hit ds4-server or llama-server directly.
+The benchmark reuses current PiBench checks and preserves native server timing
+fields when the endpoint provides them.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import time
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -31,8 +32,8 @@ DEFAULT_TASKS = [
     "log_triage_incident",
     "design_review_find_flaws",
     "architecture_decision_record",
-    "long_promessi_qa",
 ]
+ENDPOINT_TASKS = [task["name"] for task in PIBENCH_TASKS] + ["long_promessi_qa"]
 
 
 def long_promessi_task(text_path: Path) -> dict:
@@ -73,6 +74,16 @@ def check_extra(kind: str, stdout: str):
     return check_result(kind, stdout)
 
 
+def sanitized_endpoint(base_url: str) -> str:
+    """Retain a reproducible endpoint address without credentials or query data."""
+    parsed = urllib.parse.urlsplit(base_url)
+    host = parsed.hostname or ""
+    if ":" in host:
+        host = f"[{host}]"
+    netloc = f"{host}:{parsed.port}" if parsed.port is not None else host
+    return urllib.parse.urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
+
+
 def call_chat(base_url: str, model: str, prompt: str, max_tokens: int, timeout: int, no_think_template: bool) -> dict:
     url = base_url.rstrip("/") + "/chat/completions"
     payload = {
@@ -98,11 +109,11 @@ def call_chat(base_url: str, model: str, prompt: str, max_tokens: int, timeout: 
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--base-url", default="http://127.0.0.1:8090/v1")
-    ap.add_argument("--model", default="deepseek-chat")
-    ap.add_argument("--label", default="model")
-    ap.add_argument("--task", action="append", choices=DEFAULT_TASKS, help="repeat; defaults to representative 8")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--base-url", default="http://127.0.0.1:8080/v1")
+    ap.add_argument("--model", required=True, help="exact model ID accepted by the endpoint")
+    ap.add_argument("--label", default="", help="result label; defaults to the model ID")
+    ap.add_argument("--task", action="append", choices=ENDPOINT_TASKS, help="task to run; repeat as needed; defaults to a representative seven-task subset")
     ap.add_argument("--timeout", type=int, default=900)
     ap.add_argument("--max-tokens", type=int, default=2048)
     ap.add_argument("--no-think-template", action="store_true", help="send chat_template_kwargs.enable_thinking=false for Qwen-style llama-server")
@@ -110,7 +121,8 @@ def main() -> int:
     ap.add_argument("--out", default="")
     args = ap.parse_args()
 
-    tasks = args.task or [name for name in DEFAULT_TASKS if name != "long_promessi_qa"]
+    tasks = args.task or DEFAULT_TASKS
+    label = args.label or args.model
     long_text_path = Path(args.long_text).expanduser().resolve() if args.long_text else None
     if "long_promessi_qa" in tasks and (long_text_path is None or not long_text_path.is_file()):
         ap.error("long_promessi_qa requires an existing --long-text PATH or PIBENCH_LONG_TEXT")
@@ -121,13 +133,16 @@ def main() -> int:
     rows = []
     for name in tasks:
         task = get_task(name, long_text_path)
-        print(f"=== {args.label} :: {name} ===", flush=True)
+        print(f"=== {label} :: {name} ===", flush=True)
         try:
             result = call_chat(args.base_url, args.model, task["prompt"], args.max_tokens, args.timeout, args.no_think_template)
             ok, note, checks = check_extra(task["check"], result["stdout"])
             toks = approx_tokens(result["stdout"])
+            timings = result["raw"].get("timings")
+            if not isinstance(timings, dict):
+                timings = {}
             row = {
-                "label": args.label,
+                "label": label,
                 "model": args.model,
                 "task": name,
                 "ok": bool(ok),
@@ -136,16 +151,21 @@ def main() -> int:
                 "wall_s": result["wall_s"],
                 "approx_output_tokens": toks,
                 "approx_output_tps": toks / result["wall_s"] if result["wall_s"] > 0 else None,
+                "server_prompt_tps": timings.get("prompt_per_second"),
+                "server_output_tps": timings.get("predicted_per_second"),
+                "server_timings": timings or None,
                 "stdout": result["stdout"],
                 "usage": result["raw"].get("usage"),
             }
         except Exception as e:
-            row = {"label": args.label, "model": args.model, "task": name, "ok": False, "note": f"error: {e}", "wall_s": args.timeout, "stdout": ""}
+            row = {"label": label, "model": args.model, "task": name, "ok": False, "note": f"error: {e}", "wall_s": args.timeout, "stdout": ""}
         rows.append(row)
         score = row.get("checks", {}).get("score")
         total = row.get("checks", {}).get("total")
         score_txt = f" score={score}/{total}" if total is not None else ""
-        print(f"{'PASS' if row['ok'] else 'FAIL'} wall={row['wall_s']:.2f}s tps={(row.get('approx_output_tps') or 0):.1f}{score_txt} {row['note']}", flush=True)
+        native_tps = row.get("server_output_tps")
+        native_txt = f" server_tps={native_tps:.1f}" if isinstance(native_tps, (int, float)) else ""
+        print(f"{'PASS' if row['ok'] else 'FAIL'} wall={row['wall_s']:.2f}s effective_tps={(row.get('approx_output_tps') or 0):.1f}{native_txt}{score_txt} {row['note']}", flush=True)
         print((row.get("stdout") or "").replace("\n", " ")[:180], flush=True)
 
     passed = sum(1 for r in rows if r["ok"])
@@ -153,7 +173,18 @@ def main() -> int:
     total = sum((r.get("checks", {}).get("total") or 1) for r in rows)
     avg_wall = sum(r["wall_s"] for r in rows) / len(rows)
     avg_tps = sum((r.get("approx_output_tps") or 0) for r in rows) / len(rows)
-    summary = {"label": args.label, "pass": f"{passed}/{len(rows)}", "score": score, "total": total, "avg_wall_s": avg_wall, "avg_output_tps": avg_tps}
+    server_speeds = [r["server_output_tps"] for r in rows if isinstance(r.get("server_output_tps"), (int, float))]
+    summary = {
+        "label": label,
+        "model": args.model,
+        "base_url": sanitized_endpoint(args.base_url),
+        "pass": f"{passed}/{len(rows)}",
+        "score": score,
+        "total": total,
+        "avg_wall_s": avg_wall,
+        "avg_effective_output_tps": avg_tps,
+        "avg_server_output_tps": sum(server_speeds) / len(server_speeds) if server_speeds else None,
+    }
     print("=== SUMMARY ===")
     print(json.dumps(summary, indent=2))
 
@@ -161,7 +192,7 @@ def main() -> int:
         out = Path(args.out)
     else:
         stamp = time.strftime("%Y%m%d-%H%M%S")
-        safe_label = re.sub(r"[^A-Za-z0-9._-]+", "-", args.label).strip(".-") or "model"
+        safe_label = re.sub(r"[^A-Za-z0-9._-]+", "-", label).strip(".-") or "model"
         out = ROOT / "results" / f"endpoint_bench_{safe_label}_{stamp}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"summary": summary, "input_metadata": input_metadata, "rows": rows}, indent=2))

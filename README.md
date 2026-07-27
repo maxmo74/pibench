@@ -74,14 +74,15 @@ Results are written locally to `results/`, including `results/pibench.sqlite`. G
 ./pibench_report.py
 ```
 
-The direct OpenAI-compatible endpoint scripts can also be run without Pi:
+An OpenAI-compatible endpoint can also be tested directly without Pi:
 
 ```bash
-LLAMA_BASE=http://127.0.0.1:8080/v1 ./direct_llama_bench.py your-model
-LLAMA_BASE=http://127.0.0.1:8080/v1 ./hard_direct_bench.py your-model
-LLAMA_BASE=http://127.0.0.1:8080/v1 ./sysadmin_direct_bench.py your-model
-LLAMA_BASE=http://127.0.0.1:8080/v1 ./webui_direct_bench.py your-model
+./openai_endpoint_bench.py \
+  --base-url http://127.0.0.1:8080/v1 \
+  --model your-model
 ```
+
+This diagnostic reuses current PiBench checks and records both effective output speed and native server timing fields when available. Pass `--task TASK_NAME` repeatedly to select specific tasks.
 
 ## Reference results
 
