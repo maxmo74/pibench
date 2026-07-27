@@ -12,11 +12,11 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 import urllib.request
 from pathlib import Path
 
+from pibench_sandbox import SandboxUnavailable, run_python_source
 from pibench_db import (
     attach_model_to_run,
     connect,
@@ -34,50 +34,18 @@ ROOT = Path(__file__).resolve().parent
 OUTDIR = ROOT / "results"
 OUTDIR.mkdir(exist_ok=True)
 
-DEFAULT_MODELS = [
-    "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
-    "openai-codex/gpt-5.5:medium",
-]
-
 MODEL_PRESETS = {
-    "baseline": DEFAULT_MODELS,
-    "requested-cloud": [
+    # These aliases are examples from the reference workstation. Users must
+    # register equivalent Pi model IDs before selecting this preset.
+    "reference-local": [
+        "local-llama/Thor:medium",
+        "local-llama/Spiderman:off",
+        "local-llama/Road Runner:off",
+    ],
+    "reference-cloud": [
         "openai-codex/gpt-5.4:medium",
-        "openai-codex/gpt-5.5:medium",
         "openai-codex/gpt-5.5:high",
-    ],
-    "qwen-thinking": [
-        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
-        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
-    ],
-    "article": [
-        "local-llama-q4-64k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx64k:off",
-        "local-llama-gemma-nomtp/gemma-4-26B-A4B-it-UD-Q4_K_XL-nomtp:off",
-        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Quality:off",
-        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
-        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:medium",
-        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
-        "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
-        "openai-codex/gpt-5.4:medium",
-        "openai-codex/gpt-5.5:medium",
-        "openai-codex/gpt-5.5:high",
-    ],
-    # Enable this after the GGUF is downloaded and registered in Pi's local-llama provider.
-    "genesis-local": [
-        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
-        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:medium",
-        "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
-    ],
-    "genesis-mtp-comparison": [
-        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
-        "local-llama-nomtp/Qwen3.6-35B-A3B-Uncensored-Genesis-APEX-Compact:off",
-    ],
-    "qwen35-quant-comparison": [
-        "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M:off",
-        "local-llama-q4-64k/Qwen3.6-35B-A3B-MTP-UD-Q4_K_M-ctx64k:off",
-        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Quality:off",
-        "local-llama/Qwen3.6-35B-A3B-APEX-MTP-Compact:off",
-        "local-llama/Qwen3.6-35B-A3B-Uncensored-Genesis-MTP-APEX-Compact:off",
+        "openai-codex/gpt-5.6-sol:high",
     ],
 }
 
@@ -299,7 +267,8 @@ def has_any(text: str, terms: list[str]) -> bool:
 
 
 def sanitize_tracebacks(text: str) -> str:
-    return re.sub(r"/tmp/tmp[^/]+/submission\.py", "<tmp>/submission.py", text)
+    text = re.sub(r"/tmp/(?:tmp|pibench-sandbox-)[^/]+/submission\.py", "<sandbox>/submission.py", text)
+    return text.replace("/work/submission.py", "<sandbox>/submission.py")
 
 
 def timeout_output(exc: subprocess.TimeoutExpired) -> str:
@@ -313,15 +282,14 @@ def timeout_output(exc: subprocess.TimeoutExpired) -> str:
 
 
 def run_python_submission(code: str, tests: str, timeout: int = 8) -> tuple[bool, str]:
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "submission.py"
-        path.write_text(code + "\n\n" + tests)
-        try:
-            proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
-        except subprocess.TimeoutExpired as exc:
-            output = timeout_output(exc)
-            return False, sanitize_tracebacks(f"TIMEOUT after {timeout}s\n{output}"[-1200:])
-        return proc.returncode == 0, sanitize_tracebacks((proc.stdout + proc.stderr)[-1200:])
+    try:
+        proc = run_python_source(code + "\n\n" + tests, timeout=timeout)
+    except SandboxUnavailable as exc:
+        return False, f"SANDBOX UNAVAILABLE: {exc}"
+    except subprocess.TimeoutExpired as exc:
+        output = timeout_output(exc)
+        return False, sanitize_tracebacks(f"TIMEOUT after {timeout}s\n{output}"[-1200:])
+    return proc.returncode == 0, sanitize_tracebacks((proc.stdout + proc.stderr)[-1200:])
 
 
 def run_python_scored(code: str, tests: str, timeout: int = 8) -> tuple[bool, str, dict]:
@@ -338,17 +306,17 @@ for name, fn in TESTS:
 print("PIBENCH_SCORE " + json.dumps({"score": passed, "total": len(TESTS), "failed": failed}, sort_keys=True))
 raise SystemExit(0 if passed == len(TESTS) else 1)
 '''
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "submission.py"
-        path.write_text(code + "\n\n" + tests + "\n\n" + harness)
-        try:
-            proc = subprocess.run(["python3", str(path)], text=True, capture_output=True, timeout=timeout)
-            output = sanitize_tracebacks(proc.stdout + proc.stderr)
-            returncode = proc.returncode
-        except subprocess.TimeoutExpired as exc:
-            output = sanitize_tracebacks(timeout_output(exc))
-            checks = {"score": 0, "total": 0, "failed": [{"name": "timeout", "traceback": f"TIMEOUT after {timeout}s\n{output[-1200:]}"}]}
-            return False, "score 0/0 failed: timeout", checks
+    try:
+        proc = run_python_source(code + "\n\n" + tests + "\n\n" + harness, timeout=timeout)
+        output = sanitize_tracebacks(proc.stdout + proc.stderr)
+        returncode = proc.returncode
+    except SandboxUnavailable as exc:
+        checks = {"score": 0, "total": 0, "failed": [{"name": "sandbox", "traceback": f"SANDBOX UNAVAILABLE: {exc}"}]}
+        return False, "score 0/0 failed: sandbox unavailable", checks
+    except subprocess.TimeoutExpired as exc:
+        output = sanitize_tracebacks(timeout_output(exc))
+        checks = {"score": 0, "total": 0, "failed": [{"name": "timeout", "traceback": f"TIMEOUT after {timeout}s\n{output[-1200:]}"}]}
+        return False, "score 0/0 failed: timeout", checks
         match = re.search(r"PIBENCH_SCORE (\{.*\})", output)
         checks = json.loads(match.group(1)) if match else {"score": 0, "total": 0, "failed": [{"name": "harness", "traceback": output[-1200:]}]}
         failed_names = [f["name"] for f in checks.get("failed", [])]
@@ -775,7 +743,7 @@ TESTS = [("basic", t_basic), ("paragraphs_indent", t_paragraphs_indent), ("long_
         checks = {
             "sections": all(x in lowered for x in ["critical", "recommended", "observability"]),
             "auth": has_any(lowered, ["anonymous", "authentication", "auth"]),
-            "secret_exposure": "admin api key" in lowered or ("api key" in lowered and "javascript" in lowered),
+            "credential_exposure": "admin api key" in lowered or ("api key" in lowered and "javascript" in lowered),
             "raw_output_privacy": "stdout" in lowered and has_any(lowered, ["secret", "privacy", "redact", "sensitive"]),
             "rate_limiting": "rate limit" in lowered or "rate limiting" in lowered,
             "single_point_failure": "single" in lowered and has_any(lowered, ["failure", "vm", "disk"]),
@@ -875,7 +843,10 @@ def main() -> int:
 
     if args.models and args.model_preset:
         parser.error("use either positional models or --model-preset, not both")
-    args.models = args.models or MODEL_PRESETS.get(args.model_preset or "baseline", DEFAULT_MODELS)
+    if args.model_preset:
+        args.models = MODEL_PRESETS[args.model_preset]
+    elif not args.models:
+        parser.error("provide at least one Pi model argument or --model-preset")
 
     selected_tasks = [t for t in TASKS if not args.tasks or t["name"] in set(args.tasks)]
     for model in args.models:

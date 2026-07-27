@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import json, os, re, subprocess, tempfile, textwrap, time, urllib.request
+import json, os, re, subprocess, sys, tempfile, textwrap, time, urllib.request
 from pathlib import Path
+
+from pibench_sandbox import SandboxUnavailable, run_python_source
 
 BASE=os.environ.get('LLAMA_BASE','http://127.0.0.1:8080/v1')
 ROOT=Path(__file__).resolve().parent
@@ -50,23 +52,29 @@ def bash_check(script, required):
     return checks
 
 def py_func_check(code, tests):
-    with tempfile.TemporaryDirectory() as d:
-        p=Path(d)/'x.py'; p.write_text(code+'\n\n'+tests)
-        r=subprocess.run(['python3',str(p)],capture_output=True,text=True,timeout=8)
+    try:
+        r=run_python_source(code+'\n\n'+tests,timeout=8)
         return {'python_exec': r.returncode==0, 'output': (r.stdout+r.stderr)[-1200:]}
+    except SandboxUnavailable as exc:
+        return {'python_exec': False, 'output': f'sandbox unavailable: {exc}'}
+    except subprocess.TimeoutExpired:
+        return {'python_exec': False, 'output': 'sandboxed exec timeout after 8s'}
 
 def py_cli_jsonl_check(code):
-    with tempfile.TemporaryDirectory() as d:
-        p=Path(d)/'tool.py'; p.write_text(code)
-        inp='{"path":"/a","latency_ms":50}\nnot-json\n{"path":"/b","latency_ms":200}\n{"path":"/c","latency_ms":"slow"}\n'
-        r=subprocess.run(['python3',str(p),'--min-latency','100'],input=inp,text=True,capture_output=True,timeout=8)
+    inp='{"path":"/a","latency_ms":50}\nnot-json\n{"path":"/b","latency_ms":200}\n{"path":"/c","latency_ms":"slow"}\n'
+    try:
+        r=run_python_source(code,args=['--min-latency','100'],input_text=inp,timeout=8)
+    except SandboxUnavailable as exc:
+        return {'python_cli_exec': False, 'output': f'sandbox unavailable: {exc}'}
+    except subprocess.TimeoutExpired:
+        return {'python_cli_exec': False, 'output': 'sandboxed exec timeout after 8s'}
+    ok=False
+    try:
+        outs=[json.loads(x) for x in r.stdout.splitlines() if x.strip()]
+        ok=(r.returncode==0 and outs==[{"path":"/b","latency_ms":200}] and ('warning' in r.stderr.lower() or 'invalid' in r.stderr.lower()))
+    except Exception:
         ok=False
-        try:
-            outs=[json.loads(x) for x in r.stdout.splitlines() if x.strip()]
-            ok=(r.returncode==0 and outs==[{"path":"/b","latency_ms":200}] and ('warning' in r.stderr.lower() or 'invalid' in r.stderr.lower()))
-        except Exception:
-            ok=False
-        return {'python_cli_exec': ok, 'output': (r.stdout+r.stderr)[-1200:]}
+    return {'python_cli_exec': ok, 'output': (r.stdout+r.stderr)[-1200:]}
 
 def static_check(text, checks):
     l=text.lower(); out={}
@@ -118,9 +126,9 @@ TASKS=[
 ]
 
 def main():
-    stamp=time.strftime('%Y%m%d-%H%M%S'); rows=[]
+    stamp=time.strftime('%Y%m%d-%H%M%S'); rows=[]; models=sys.argv[1:] or MODELS
     avail={m['id'] for m in api('/models').get('data',[])}
-    for model in MODELS:
+    for model in models:
         if model not in avail: continue
         print('\n===',model,'===',flush=True)
         call(model,'Reply READY',8)
@@ -145,7 +153,7 @@ def main():
     out=OUTDIR/f'sysadmin_direct_{stamp}.json'; out.write_text(json.dumps(rows,indent=2))
     md=OUTDIR/f'sysadmin_direct_{stamp}.md'
     lines=['# Sysadmin/tooling direct benchmark','',f'Date: {time.strftime("%Y-%m-%d %H:%M:%S")}','', '| model | total score | pass tasks | avg gen tok/s |','|---|---:|---:|---:|']
-    for model in MODELS:
+    for model in models:
         sub=[r for r in rows if r['model']==model]
         if sub: lines.append(f"| `{model}` | {sum(r['score'] for r in sub)}/{sum(r['total'] for r in sub)} | {sum(1 for r in sub if r['ok'])}/{len(sub)} | {sum((r.get('gen_tps') or 0) for r in sub)/len(sub):.1f} |")
     md.write_text('\n'.join(lines)+'\n')

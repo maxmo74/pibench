@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, re, time, urllib.request
+import json, os, re, sys, time, urllib.request
 from pathlib import Path
 
 BASE=os.environ.get('LLAMA_BASE','http://127.0.0.1:8080/v1')
@@ -68,9 +68,9 @@ def has(h, check):
     return check.lower() in l
 
 def main():
-    stamp=time.strftime('%Y%m%d-%H%M%S'); rows=[]
+    stamp=time.strftime('%Y%m%d-%H%M%S'); rows=[]; models=sys.argv[1:] or MODELS
     available={m['id'] for m in api('/models').get('data',[])}
-    for model in MODELS:
+    for model in models:
         if model not in available: continue
         print('\n===',model,'===',flush=True)
         api('/chat/completions',{'model':model,'messages':[{'role':'user','content':'Reply READY'}],'max_tokens':8,'chat_template_kwargs':{'enable_thinking':False,'preserve_thinking':True}})
@@ -89,7 +89,7 @@ def main():
     out=OUTDIR/f'webui_direct_{stamp}.json'; out.write_text(json.dumps(rows,indent=2))
     md=OUTDIR/f'webui_direct_{stamp}.md'
     lines=['# Web UI direct benchmark','',f'Date: {time.strftime("%Y-%m-%d %H:%M:%S")}','', '| model | total score | pass apps | avg gen tok/s |','|---|---:|---:|---:|']
-    for model in MODELS:
+    for model in models:
         sub=[r for r in rows if r['model']==model]
         if sub:
             lines.append(f"| `{model}` | {sum(r['score'] for r in sub)}/{sum(r['total'] for r in sub)} | {sum(1 for r in sub if r['pass'])}/{len(sub)} | {sum((r.get('gen_tps') or 0) for r in sub)/len(sub):.1f} |")

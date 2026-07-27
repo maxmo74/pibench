@@ -122,6 +122,7 @@ def model_label(model_arg: str) -> str:
         "local-llama-test/SIQ-1-35B-Q4_K_M:off": "SIQ-1-35B Q4_K_M — thinking off",
         "local-llama-test/KAT-Coder-V2.5-Dev-Q4_K_M:medium": "KAT-Coder-V2.5-Dev Q4_K_M — thinking enabled",
         "local-llama-test/KAT-Coder-V2.5-Dev-Q4_K_M:off": "KAT-Coder-V2.5-Dev Q4_K_M — thinking off",
+        "local-llama/Road Runner:off": "Road Runner — Qwen3.6 35B Q4, MTP n3, thinking off",
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q2_K_XL:off": "Qwen3.6 35B A3B MTP UD Q2_K_XL — thinking off",
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M:off": "Qwen3.6 35B A3B MTP UD Q3_K_M — thinking off",
         "local-llama/Qwen3.6-35B-A3B-MTP-UD-Q3_K_M:medium": "Qwen3.6 35B A3B MTP UD Q3_K_M — thinking on",

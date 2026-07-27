@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-import json, os, re, subprocess, tempfile, textwrap, time, urllib.request
+import json, os, re, subprocess, sys, time, urllib.request
 from pathlib import Path
+
+from pibench_sandbox import SandboxUnavailable, run_python_source
 
 BASE=os.environ.get('LLAMA_BASE','http://127.0.0.1:8080/v1')
 OUTDIR=Path(__file__).resolve().parent/'results'; OUTDIR.mkdir(exist_ok=True)
@@ -32,10 +34,13 @@ def call(model,prompt,max_tokens=900):
     t=time.time(); j=api('/chat/completions',payload); return time.time()-t,j
 
 def py_exec_check(code, tests, timeout=5):
-    with tempfile.TemporaryDirectory() as d:
-        p=Path(d)/'submission.py'; p.write_text(code+'\n\n'+tests)
-        r=subprocess.run(['python3',str(p)],capture_output=True,text=True,timeout=timeout)
+    try:
+        r=run_python_source(code+'\n\n'+tests,timeout=timeout)
         return r.returncode==0, (r.stdout+r.stderr)[-1000:]
+    except SandboxUnavailable as exc:
+        return False, f'sandbox unavailable: {exc}'
+    except subprocess.TimeoutExpired:
+        return False, f'sandboxed exec timeout after {timeout}s'
 
 TASKS=[
   {
@@ -65,8 +70,8 @@ TASKS=[
 ]
 
 def main():
-    stamp=time.strftime('%Y%m%d-%H%M%S'); rows=[]
-    for model in MODELS:
+    stamp=time.strftime('%Y%m%d-%H%M%S'); rows=[]; models=sys.argv[1:] or MODELS
+    for model in models:
         avail={m['id'] for m in api('/models').get('data',[])}
         if model not in avail: continue
         print('\n===',model,'===',flush=True)
@@ -84,7 +89,7 @@ def main():
     out=OUTDIR/f'hard_direct_{stamp}.json'; out.write_text(json.dumps(rows,indent=2))
     md=OUTDIR/f'hard_direct_{stamp}.md'
     lines=['# Hard direct benchmark','',f'Date: {time.strftime("%Y-%m-%d %H:%M:%S")}','', '| model | pass | avg gen tok/s |','|---|---:|---:|']
-    for m in MODELS:
+    for m in models:
         sub=[r for r in rows if r['model']==m];
         if sub: lines.append(f"| `{m}` | {sum(r['ok'] for r in sub)}/{len(sub)} | {sum((r.get('gen_tps') or 0) for r in sub)/len(sub):.1f} |")
     md.write_text('\n'.join(lines)+'\n')

@@ -11,6 +11,8 @@ import socket
 import sqlite3
 import subprocess
 import time
+import urllib.parse
+import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any
@@ -109,13 +111,15 @@ def parse_pi_list_models(model_id: str) -> dict[str, Any]:
     parts = lines[1].split()
     if len(parts) < 6:
         return {"raw": out}
+    # Model IDs may contain spaces. The provider is the first field and the
+    # four capability fields are always at the right edge of the table.
     return {
         "provider": parts[0],
-        "model_id": parts[1],
-        "context": parts[2],
-        "max_out": parts[3],
-        "thinking": parts[4],
-        "images": parts[5],
+        "model_id": " ".join(parts[1:-4]),
+        "context": parts[-4],
+        "max_out": parts[-3],
+        "thinking": parts[-2],
+        "images": parts[-1],
         "raw": out,
     }
 
@@ -157,16 +161,48 @@ def read_models_config(provider: str | None, model_id: str | None) -> dict[str, 
     return {}
 
 
-def infer_llama_server_path(provider: str | None, provider_cfg: dict[str, Any], model_cfg: dict[str, Any]) -> str | None:
+def router_llama_server_path(base_url: str | None, model_id: str | None) -> str | None:
+    """Discover the backing llama-server binary from a loopback router."""
+    if not base_url or not model_id:
+        return None
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        return None
+    try:
+        with urllib.request.urlopen(base_url.rstrip("/") + "/models", timeout=5) as response:
+            data = json.load(response).get("data", [])
+    except Exception:
+        return None
+    for item in data:
+        aliases = item.get("aliases") or []
+        if item.get("id") != model_id and model_id not in aliases:
+            continue
+        args = (item.get("status") or {}).get("args") or []
+        if not args:
+            continue
+        candidate = Path(str(args[0]))
+        if candidate.name == "llama-server" and candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def infer_llama_server_path(
+    provider: str | None,
+    provider_cfg: dict[str, Any],
+    model_cfg: dict[str, Any],
+    model_id: str | None,
+) -> str | None:
     if override := os.environ.get("PIBENCH_LLAMA_SERVER_PATH"):
         return override
     if not provider or not provider.startswith("local-llama"):
         return None
     metadata = model_cfg.get("metadata", {}) if isinstance(model_cfg, dict) else {}
-    build_hint = str(metadata.get("llamaCppBuild") or metadata.get("runtime") or provider)
-    if "llama.cpp-latest" in build_hint or "latest llama.cpp" in build_hint or provider.startswith("local-llama-latest"):
-        return "/opt/llama.cpp-latest/build/bin/llama-server"
-    return "/opt/llama.cpp/build/bin/llama-server"
+    for key in ("llamaServerPath", "llama_server_path", "serverPath"):
+        if value := metadata.get(key):
+            candidate = Path(str(value))
+            if candidate.name == "llama-server" and candidate.is_file():
+                return str(candidate)
+    return router_llama_server_path(provider_cfg.get("baseUrl"), model_id)
 
 
 def parse_llama_version_output(output: str | None) -> dict[str, str | None]:
@@ -184,7 +220,7 @@ def git_commit_date_for_server(path: str | None, commit: str | None) -> str | No
     if not path or not commit:
         return None
     server = Path(path)
-    # /opt/llama.cpp[-latest]/build/bin/llama-server -> repo root
+    # <checkout>/build/bin/llama-server -> repository root
     try:
         repo = server.parents[2]
     except Exception:
@@ -200,7 +236,7 @@ def collect_runtime_metadata(model_arg: str) -> dict[str, Any]:
     provider_cfg = cfg.get("provider_config", {})
     model_cfg = cfg.get("model_config", {})
     metadata = model_cfg.get("metadata", {}) if isinstance(model_cfg, dict) else {}
-    server_path = infer_llama_server_path(provider, provider_cfg, model_cfg)
+    server_path = infer_llama_server_path(provider, provider_cfg, model_cfg, model_id)
     version_info = parse_llama_version_output(run_cmd([server_path, "--version"], timeout=10) if server_path else None)
     commit_date = git_commit_date_for_server(server_path, version_info.get("commit"))
     runtime_label = metadata.get("runtime") or ("llama.cpp" if server_path else None)

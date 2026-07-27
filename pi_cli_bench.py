@@ -27,7 +27,12 @@ PROMPTS = [
 def run(model, name, prompt):
     env = os.environ.copy()
     env["PI_OFFLINE"] = "1"
-    cmd = ["pi", "--model", model, "-p", prompt]
+    cmd = [
+        "pi", "--model", model,
+        "--no-session", "--no-tools", "--no-context-files",
+        "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes",
+        "-p", prompt,
+    ]
     t0 = time.time()
     p = subprocess.run(cmd, text=True, capture_output=True, env=env, timeout=300)
     wall = time.time() - t0

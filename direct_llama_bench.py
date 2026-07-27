@@ -10,6 +10,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from pibench_sandbox import SandboxUnavailable, run_python_source
+
 BASE = os.environ.get("LLAMA_BASE", "http://127.0.0.1:8080/v1")
 OUTDIR = Path(__file__).resolve().parent / "results"
 OUTDIR.mkdir(exist_ok=True)
@@ -102,18 +104,26 @@ def check(kind, text):
         return "wednesday" in text.lower(), "contains Wednesday"
     if kind in {"dedupe_exec", "parse_ints_exec"}:
         code = clean_code(text)
+        if kind == "dedupe_exec":
+            tests = """
+assert dedupe_keep_order([1, 2, 1, 3, 2, 4]) == [1, 2, 3, 4]
+assert dedupe_keep_order([\"a\", \"a\", \"b\"]) == [\"a\", \"b\"]
+"""
+        else:
+            tests = """
+assert parse_ints(\"a-2 b 10 +7 x0\") == [-2, 10, 7, 0]
+assert parse_ints(\"none\") == []
+"""
         try:
-            ns = {}
-            exec(code, ns)
-            if kind == "dedupe_exec":
-                f = ns["dedupe_keep_order"]
-                ok = f([1, 2, 1, 3, 2, 4]) == [1, 2, 3, 4] and f(["a", "a", "b"]) == ["a", "b"]
-            else:
-                f = ns["parse_ints"]
-                ok = f("a-2 b 10 +7 x0") == [-2, 10, 7, 0] and f("none") == []
-            return ok, "exec check"
-        except Exception as e:
-            return False, f"exec error: {type(e).__name__}: {e}"
+            proc = run_python_source(code + "\n\n" + tests, timeout=8)
+            note = (proc.stdout + proc.stderr)[-500:].strip()
+            return proc.returncode == 0, "sandboxed exec check" if proc.returncode == 0 else f"sandboxed exec failed: {note}"
+        except SandboxUnavailable as exc:
+            return False, f"sandbox unavailable: {exc}"
+        except subprocess.TimeoutExpired:
+            return False, "sandboxed exec timeout"
+        except Exception as exc:
+            return False, f"sandbox error: {type(exc).__name__}: {exc}"
     return False, "unknown check"
 
 
