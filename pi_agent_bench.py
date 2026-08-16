@@ -7,9 +7,11 @@ intended for comparing local and cloud models configured in Pi.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -33,6 +35,11 @@ from pibench_db import (
 ROOT = Path(__file__).resolve().parent
 OUTDIR = ROOT / "results"
 OUTDIR.mkdir(exist_ok=True)
+
+BENCHMARK_PROTOCOL_VERSION = 4
+CANONICAL_PROMPT_PROFILE = "pi-agent-v4-fixed-cwd"
+CANONICAL_PI_CWD = Path("/tmp/pibench-pi-agent-cwd-v1")
+DEFAULT_SYSTEM_PROMPT = "You are a precise benchmark participant. Follow the user's formatting requirements exactly."
 
 MODEL_PRESETS = {
     # These aliases are examples from the reference workstation. Users must
@@ -784,6 +791,62 @@ def assert_local_server_model_matches(model_arg: str) -> None:
         )
 
 
+def prepare_prompt_profile(system_prompt: str) -> dict[str, str]:
+    """Build and attest the effective Pi system prompt used by protocol v4."""
+    if CANONICAL_PI_CWD.is_symlink():
+        raise RuntimeError(f"Refusing symlinked canonical Pi cwd: {CANONICAL_PI_CWD}")
+    CANONICAL_PI_CWD.mkdir(mode=0o700, parents=False, exist_ok=True)
+    if not CANONICAL_PI_CWD.is_dir():
+        raise RuntimeError(f"Canonical Pi cwd is not a directory: {CANONICAL_PI_CWD}")
+
+    pi_executable = shutil.which("pi")
+    if not pi_executable:
+        raise RuntimeError("Could not find the Pi executable on PATH")
+    prompt_module = Path(pi_executable).resolve().parent / "core" / "system-prompt.js"
+    if not prompt_module.is_file():
+        raise RuntimeError(f"Could not locate Pi's system-prompt builder: {prompt_module}")
+
+    script = r"""
+const modulePath = process.argv[1];
+const customPrompt = process.argv[2];
+const cwd = process.argv[3];
+const { buildSystemPrompt } = await import(modulePath);
+const effective = buildSystemPrompt({
+  customPrompt,
+  selectedTools: [],
+  contextFiles: [],
+  skills: [],
+  cwd,
+});
+process.stdout.write(JSON.stringify(effective));
+"""
+    proc = subprocess.run(
+        ["node", "--input-type=module", "-e", script, prompt_module.as_uri(), system_prompt, str(CANONICAL_PI_CWD)],
+        text=True,
+        capture_output=True,
+        timeout=15,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"Could not build effective Pi system prompt: {proc.stderr.strip()}")
+    try:
+        effective_prompt = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Pi's system-prompt builder returned invalid JSON") from exc
+
+    expected = f"{system_prompt}\nCurrent working directory: {CANONICAL_PI_CWD}"
+    if effective_prompt != expected:
+        observed_hash = hashlib.sha256(str(effective_prompt).encode()).hexdigest()
+        raise RuntimeError(
+            "Pi's effective system prompt no longer matches protocol v4; refusing a non-comparable run "
+            f"(observed sha256={observed_hash}). Update and version the benchmark protocol explicitly."
+        )
+    return {
+        "benchmark_input_profile": CANONICAL_PROMPT_PROFILE,
+        "effective_system_prompt_sha256": hashlib.sha256(effective_prompt.encode()).hexdigest(),
+        "system_prompt_sha256": hashlib.sha256(system_prompt.encode()).hexdigest(),
+    }
+
+
 def run_pi(model: str, prompt: str, args: argparse.Namespace) -> dict:
     env = os.environ.copy()
     if args.offline:
@@ -808,7 +871,14 @@ def run_pi(model: str, prompt: str, args: argparse.Namespace) -> dict:
         cmd[1:1] = ["--system-prompt", args.system_prompt]
 
     start = time.time()
-    proc = subprocess.run(cmd, text=True, capture_output=True, env=env, timeout=args.timeout)
+    proc = subprocess.run(
+        cmd,
+        text=True,
+        capture_output=True,
+        env=env,
+        cwd=CANONICAL_PI_CWD,
+        timeout=args.timeout,
+    )
     wall = time.time() - start
     return {
         "cmd": cmd,
@@ -902,7 +972,7 @@ def main() -> int:
     parser.add_argument("--offline", action="store_true", help="Set PI_OFFLINE=1 for local-only benchmarking")
     parser.add_argument("--keep-env-offline", action="store_true", help="Respect an existing PI_OFFLINE env var")
     parser.add_argument("--allow-extensions", action="store_true", help="Do not pass --no-extensions; required for extension-provided providers such as claude-bridge")
-    parser.add_argument("--system-prompt", default="You are a precise benchmark participant. Follow the user's formatting requirements exactly.")
+    parser.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
     parser.add_argument("--task", dest="tasks", action="append", choices=[t["name"] for t in TASKS], help="Task to run; repeat for multiple tasks. Defaults to all tasks.")
     parser.add_argument("--db", default=str(ROOT / "results" / "pibench.sqlite"), help="SQLite database path; use 'none' to disable DB recording")
     parser.add_argument("--notes", help="Optional notes for this benchmark run")
@@ -941,6 +1011,18 @@ def main() -> int:
     elif not args.models:
         parser.error("provide at least one Pi model argument or --model-preset")
 
+    if args.system_prompt != DEFAULT_SYSTEM_PROMPT:
+        parser.error("protocol v4 requires the canonical --system-prompt")
+    if args.allow_extensions:
+        parser.error("protocol v4 cannot attest extension-modified system prompts; use a dedicated versioned runner")
+
+    try:
+        prompt_profile = prepare_prompt_profile(args.system_prompt)
+    except RuntimeError as exc:
+        parser.error(str(exc))
+    inference_metadata = run_metadata.setdefault("inference", {})
+    inference_metadata.update(prompt_profile)
+
     selected_tasks = [t for t in TASKS if not args.tasks or t["name"] in set(args.tasks)]
     for model in args.models:
         assert_local_server_model_matches(model)
@@ -964,9 +1046,11 @@ def main() -> int:
                 "keep_env_offline": args.keep_env_offline,
                 "allow_extensions": args.allow_extensions,
                 "system_prompt": args.system_prompt,
+                **prompt_profile,
             },
             args.notes,
             run_metadata,
+            benchmark_version=BENCHMARK_PROTOCOL_VERSION,
         )
         for task in selected_tasks:
             task_ids[task["name"]] = upsert_task(

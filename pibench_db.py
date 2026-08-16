@@ -675,6 +675,7 @@ def create_run(
     config: dict[str, Any],
     notes: str | None = None,
     metadata: dict[str, Any] | None = None,
+    benchmark_version: int | None = None,
 ) -> int:
     metadata = metadata or {}
     provenance = metadata.get("provenance", {}) if isinstance(metadata.get("provenance", {}), dict) else {}
@@ -692,7 +693,7 @@ def create_run(
         (
             str(uuid.uuid4()),
             benchmark_name,
-            SCHEMA_VERSION,
+            SCHEMA_VERSION if benchmark_version is None else benchmark_version,
             utc_now(),
             get_pi_version(),
             get_git_commit(),

@@ -37,7 +37,9 @@ Each task uses:
 --no-themes
 ```
 
-`--allow-extensions` removes only the extension restriction for providers that require one. A fixed system prompt asks the model to follow formatting requirements precisely.
+Protocol v4 uses a fixed system prompt and launches Pi from `/tmp/pibench-pi-agent-cwd-v1`. Before recording a run, the harness invokes the installed Pi system-prompt builder and requires the complete effective prompt to equal the protocol definition. It records SHA-256 hashes of both the supplied and effective system prompts and refuses to run if Pi adds or changes content. Custom prompts and extension-enabled runs are not accepted by this runner because they cannot share the canonical effective-prompt attestation.
+
+Pi versions through 0.80.6 silently appended `Current date: YYYY-MM-DD` to custom system prompts. Pi 0.82.0 removed that line. Consequently, historical pre-0.82 Pi-agent runs used a `legacy-date-injected` input profile and are not strictly comparable across dates or with date-free runs. They remain valid evidence for their exact effective prompt, and historical inputs can reproduce them, but curated current rankings use protocol-v4 results only. Direct endpoint benchmarks were unaffected.
 
 ## Executable checks
 
@@ -61,7 +63,7 @@ The schema separates metadata that applies to the whole run from metadata for ea
 - **Runtime:** backend name, version, commit, build, compiler, and backend-specific JSON.
 - **Model artifact:** format, quantization or precision, stable filename/service identifier, and optional SHA-256.
 - **Inference:** context size, KV-cache representation, and arbitrary backend-specific settings.
-- **Result:** exact Pi model argument, requested/effective thinking mode, task score, timing, stdout/stderr, and command.
+- **Result:** exact Pi model argument, requested/effective thinking mode, benchmark protocol version, effective-system-prompt hash, task score, timing, stdout/stderr, and command.
 
 For loopback llama.cpp routers, PiBench also discovers the backing `llama-server`, records its build number, Git commit and date, compiler/target from `--version`, selected CMake options, model filename, launch arguments, context, KV types, sampling, GPU offload, flash attention, parallelism, and speculation settings when available. The dedicated `llama_cpp_*` database columns are retained alongside generic runtime columns.
 
@@ -93,6 +95,7 @@ Regenerate the public export after adding reviewed runs:
 - Local and cloud reasoning controls are not equivalent.
 - Quantization and speculative decoding are part of the tested configuration.
 - OOM, malformed-artifact, infrastructure, and incomplete runs are excluded rather than scored as model failures.
+- Results are compared only within the same benchmark protocol and effective-prompt profile. Protocol v4 is the current canonical Pi-agent profile; older date-injected and date-free working-directory profiles are historical evidence.
 - Repeated equivalent runs are deduplicated in the summary tables.
 - Some older cloud rows combine the latest valid task result across partial invocations.
 - Static configuration checks verify requested content, not a live deployment.
