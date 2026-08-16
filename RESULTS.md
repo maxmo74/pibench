@@ -1,68 +1,51 @@
 # Reference results
 
-These are historical PiBench runs from one system. They show what was observed with particular model files and settings; they are not hardware-independent rankings.
+These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-07-24
+- Snapshot: 2026-08-16
+- Current benchmark input: Pi-agent protocol v4
+- Effective system-prompt SHA-256: `33367c8eccc8213267c551069af9e5c781122b08fe36b5f1f736d29e5269f711`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
 - RAM: 128 GB
 - GPU: NVIDIA GeForce RTX 3090, 24 GB
-- OS: Debian GNU/Linux 13, kernel 6.12.95+deb13-amd64
+- OS: Debian GNU/Linux 13, kernel 6.12.101+deb13-amd64
 - NVIDIA driver: 550.163.01
 - CUDA toolkit: 12.4.131
 
-Most final local runs used a 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and flash attention. llama.cpp builds, quantizations, thinking modes, temperatures, and speculative settings varied and are treated as part of the profile.
+Protocol v4 fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Current results use 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and seed 42 unless stated otherwise.
 
-## Local and cloud
+## Current protocol-v4 local profiles
 
-| Rank | Model/configuration | Where | Score | Effective output t/s |
-|---:|---|---|---:|---:|
-| 1 | Thor — DSV4Pro 27B Q4, thinking on, no MTP | Local | **60.9/65** | 9.5 |
-| 2 | Claude Opus 4.8, medium | Cloud | **60.2/65** | 41.8 |
-| 3 | GPT-5.5, high | Cloud | **59.2/65** | 17.5 |
-| 4 | GPT-5.6 Sol, high | Cloud | **58.9/65** | 17.5 |
-| 5 | GPT-5.5, medium | Cloud | **58.0/65** | 21.7 |
-| 6 | Qwen3.6 27B UD-Q5_K_XL, thinking on | Local | **58.0/65** | 5.7 |
-| 7 | GPT-5.6 Sol, medium | Cloud | **57.8/65** | 19.8 |
-| 8 | Claude Sonnet 4.6, medium | Cloud | **57.6/65** | 38.5 |
-| 9 | Claude Opus 4.8, high | Cloud | **56.9/65** | 42.8 |
-| 10 | Qwen3.6 35B Q3_K_M, thinking on | Local | **55.9/65** | 17.7 |
-| 11 | Qwen3.6 27B NEO CODE Q5, thinking off | Local | **55.9/65** | 3.0 |
-| 12 | Spiderman — Tmax 27B Q5, MTP n3 | Local | **55.8/65** | 46.3 |
-| 13 | GPT-5.4, medium | Cloud | **54.3/65** | 22.9 |
-| 14 | Qwen3.6 27B MTP Q4, thinking off | Local | **53.3/65** | 51.8 |
-| 15 | DSV4Pro 27B Q4, thinking on, MTP | Local | **53.1/65** | 17.1 |
-| 16 | ThinkingCap 27B Q5, thinking on | Local | **52.9/65** | 8.4 |
-| 17 | Qwen3.6 35B APEX Compact, thinking on | Local | **52.8/65** | 13.5 |
-| 18 | Tmax 27B IQ4_XS, thinking off | Local | **52.6/65** | 52.3 |
-| 19 | OpenHands 27B Q4, thinking off | Local | **52.2/65** | 48.7 |
-| 20 | Qwen3.6 35B APEX Quality, thinking off | Local | **51.7/65** | 137.8 |
+| Rank | Model/profile | Class | Run | Score | Passed | Effective output t/s |
+|---:|---|---|---:|---:|---:|---:|
+| 1 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Practical/long-output | 180/181 | **57.396/65** | 16/24 | 20.4 |
+| 2 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 177 | **54.792/65** | 17/24 | **144.9** |
+| 3 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 179 | **53.229/65** | 17/24 | 9.3 |
+| 4 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 178 | **51.568/65** | 13/24 | 47.8 |
+| 5 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
-## Local profiles
+Doctor Strange is deliberately a separate practical profile: it doubles the canonical output allowance and uses a quantized MTP sidecar. Runs 180 and 181 were exact repeats and produced byte-identical outputs on all 24 tasks. MTP draft2 was retained because draft3 was faster but changed task outcomes in paired testing.
 
-| Rank | Model/configuration | Score | Effective output t/s |
-|---:|---|---:|---:|
-| 1 | Thor — DSV4Pro 27B Q4 | **60.9/65** | 9.5 |
-| 2 | Qwen3.6 27B UD-Q5_K_XL, thinking on | **58.0/65** | 5.7 |
-| 3 | Qwen3.6 35B Q3_K_M, thinking on | **55.9/65** | 17.7 |
-| 4 | Qwen3.6 27B NEO CODE Q5 | **55.9/65** | 3.0 |
-| 5 | Spiderman — Tmax 27B Q5 MTP n3 | **55.8/65** | 46.3 |
-| 6 | Qwen3.6 27B MTP Q4 | **53.3/65** | 51.8 |
-| 7 | ThinkingCap 27B Q5 | **52.9/65** | 8.4 |
-| 8 | Qwen3.6 35B APEX Compact | **52.8/65** | 13.5 |
-| 9 | Tmax 27B IQ4_XS | **52.6/65** | 52.3 |
-| 10 | OpenHands 27B Q4 | **52.2/65** | 48.7 |
-| 11 | Qwen3.6 35B APEX Quality | **51.7/65** | 137.8 |
-| 12 | Gemma 4 26B A4B UD-Q4_K_XL | **51.7/65** | 77.8 |
-| 13 | Opus–DeepSeek distilled 27B Q4 | **51.1/65** | 31.9 |
-| 14 | Road Runner — Qwen3.6 35B Q4 MTP n3 | **50.9/65** | **145.7** |
-| 15 | Qwen3.6 27B Pi-Reasoning Q4 | **50.6/65** | 48.9 |
-| 16 | Qwopus 27B v2 Q4 | **49.3/65** | 49.7 |
-| 17 | Genesis 35B APEX Compact | **48.9/65** | 99.1 |
-| 18 | KAT-Coder V2.5 Dev Q4 | **48.8/65** | 100.1 |
-| 19 | SIQ-1 35B Q4 | **47.4/65** | 107.7 |
-| 20 | Ornith 1.0 35B Q4 | **46.4/65** | 29.0 |
+Road Runner remains the throughput leader. Doctor Strange is the current daily quality profile; its low reasoning setting and 8K allowance avoid the output-exhaustion failures observed with Qwen3.8's medium/xhigh behavior.
 
-Thor, Spiderman, and Road Runner are local aliases. Effective output speed is estimated visible output divided by end-to-end task time, not pure backend decode speed. Cloud rows can combine the latest valid result per task from partial invocations; failed infrastructure, OOM, malformed, and incomplete runs are excluded.
+## Historical prompt-profile boundary
 
-To contribute a result from another system, follow the metadata checklist in [README.md](README.md).
+Pi versions through 0.80.6 silently appended `Current date: YYYY-MM-DD` to caller-supplied system prompts. Pi 0.82.0 removed that line. The benchmark previously recorded only the supplied prompt, not Pi's augmented effective prompt.
+
+Restoring the exact historical dates reproduced the retained outputs byte-for-byte on all 24 tasks:
+
+| Historical profile | Original score | Date-free replay | Exact historical-input replay |
+|---|---:|---:|---:|
+| Thor | 60.875 | 53.792 | 60.875 |
+| Spiderman | 55.818 | 51.193 | 55.818 |
+| Road Runner | 50.854 | 50.854 | 50.854 |
+| Qwen3.6 27B Q4 MTP2 | 53.313 | 50.527 | 53.313 |
+
+The old scores are authentic and reproducible for their exact inputs, but date-injected runs are not directly comparable across dates or with protocol v4. They remain in `RESULTS.csv` as historical evidence and are excluded from the current ranking. Direct endpoint benchmarks were unaffected.
+
+## Historical cloud reference
+
+No cloud model has yet been rerun under protocol v4. Earlier cloud scores—including Claude Opus 4.8 at 60.2, GPT-5.5 high at 59.2, and GPT-5.6 Sol high at 58.9—belong to historical prompt profiles and must not be mixed into the table above.
+
+Effective output speed is visible output divided by end-to-end task time, not pure backend decode speed. The complete sanitized task-level history and reproducibility metadata are in [RESULTS.csv](RESULTS.csv). To contribute a result from another system, follow [README.md](README.md) and [METHODOLOGY.md](METHODOLOGY.md).

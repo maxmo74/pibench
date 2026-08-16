@@ -54,7 +54,7 @@ For a fully local provider:
 ./pi_agent_bench.py --offline 'local-llama/your-model:off'
 ```
 
-Pass several model IDs to compare them in one run. Use `--allow-extensions` when the provider is supplied by a Pi extension, and `--task TASK_NAME` for a shorter test.
+Pass several model IDs to compare them in one run, and use `--task TASK_NAME` for a shorter test. Protocol v4 deliberately refuses extension-enabled runs because an extension can modify the effective system prompt after attestation; use a separately versioned runner for those providers.
 
 PiBench records CPU, memory, detected accelerators, Pi version, and model configuration automatically. For a CPU-only run or a backend that cannot be discovered through Pi, add explicit metadata:
 
@@ -94,19 +94,17 @@ This diagnostic reuses current PiBench checks and records both effective output 
 
 ## Reference results
 
-These are selected historical runs, not universal model rankings. Quantization, context, reasoning mode, backend build, and sampling all affect the result.
+Current rankings use the fixed, attested protocol-v4 prompt. Quantization, context, reasoning mode, output allowance, backend build, and speculation remain part of each tested profile.
 
-| Model/configuration | Where | Score | Effective output t/s |
+| Model/profile | Class | Score | Effective output t/s |
 |---|---|---:|---:|
-| Thor — DSV4Pro 27B Q4, thinking on | Local | **60.9/65** | 9.5 |
-| Claude Opus 4.8, medium | Cloud | **60.2/65** | 41.8 |
-| GPT-5.5, high | Cloud | **59.2/65** | 17.5 |
-| GPT-5.6 Sol, high | Cloud | **58.9/65** | 17.5 |
-| Qwen3.6 27B UD-Q5_K_XL, thinking on | Local | **58.0/65** | 5.7 |
-| Spiderman — Tmax 27B Q5, MTP n3 | Local | **55.8/65** | 46.3 |
-| Road Runner — Qwen3.6 35B Q4, MTP n3 | Local | **50.9/65** | **145.7** |
+| Doctor Strange — Qwen3.8 27B Q4, low, 8K, MTP2 | Practical/long-output | **57.4/65** | 20.4 |
+| Road Runner — Qwen3.6 35B Q4, off, 4K, MTP3 | Canonical 4K | **54.8/65** | **144.9** |
+| Thor — DSV4Pro 27B Q4, thinking on, 4K, no MTP | Canonical 4K | **53.2/65** | 9.3 |
+| Spiderman — Tmax 27B Q5, off, 4K, MTP3 | Canonical 4K | **51.6/65** | 47.8 |
+| Qwen3.8 27B Q4, off, 4K, no MTP | Canonical 4K | **48.2/65** | 28.1 |
 
-Thor, Spiderman, and Road Runner are local deployment aliases, not upstream model names. The complete tables and configuration notes are in [RESULTS.md](RESULTS.md).
+Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases. Doctor Strange's result is listed separately from canonical 4K profiles because it uses an 8K output allowance and quantized MTP. Its exact repeat produced byte-identical outputs on all 24 tasks. Pre-v4 results remain in `RESULTS.csv` as historical evidence but are not mixed into the current ranking; see [RESULTS.md](RESULTS.md).
 
 ### Reference system
 
@@ -114,7 +112,7 @@ The reference local runs were made on this machine:
 
 | Component | Specification |
 |---|---|
-| OS | Debian GNU/Linux 13 (trixie), kernel 6.12.95+deb13-amd64 |
+| OS | Debian GNU/Linux 13 (trixie), kernel 6.12.101+deb13-amd64 |
 | CPU | AMD Ryzen 9 7900, 12 cores / 24 threads |
 | RAM | 128 GB |
 | GPU | NVIDIA GeForce RTX 3090, 24 GB (24,576 MiB) |
