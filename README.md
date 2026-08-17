@@ -23,7 +23,7 @@ Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md
 
 - Linux or WSL
 - Python 3.11+
-- [Pi](https://github.com/earendil-works/pi-coding-agent) with at least one configured model
+- [Pi](https://github.com/earendil-works/pi-coding-agent) 0.84.1 with at least one configured model (protocol v4 pins this exact version)
 - [Bubblewrap](https://github.com/containers/bubblewrap) for safely checking generated Python
 
 No particular GPU is required. PiBench itself has no Python package dependencies.
@@ -32,9 +32,12 @@ On Debian or Ubuntu:
 
 ```bash
 sudo apt install bubblewrap
+npm install -g @earendil-works/pi-coding-agent@0.84.1
 git clone https://github.com/maxmo74/pibench.git
 cd pibench
 ```
+
+Pi 0.84.2 changed the effective custom system prompt by adding a trailing newline. PiBench rejects it rather than silently mixing benchmark inputs. An immutable local 0.84.1 installation can be placed first on `PATH` if the system-wide Pi must remain current.
 
 List the models available to Pi:
 

@@ -3,7 +3,7 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-08-16
+- Snapshot: 2026-08-17
 - Current benchmark input: Pi-agent protocol v4
 - Effective system-prompt SHA-256: `33367c8eccc8213267c551069af9e5c781122b08fe36b5f1f736d29e5269f711`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
@@ -13,7 +13,7 @@ These runs were made on one reference workstation. They show observed model/prof
 - NVIDIA driver: 550.163.01
 - CUDA toolkit: 12.4.131
 
-Protocol v4 fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Current results use 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and seed 42 unless stated otherwise.
+Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Pi 0.84.2 is rejected because it adds a trailing newline. Current results use 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and seed 42 unless stated otherwise.
 
 ## Current protocol-v4 local profiles
 
@@ -28,6 +28,10 @@ Protocol v4 fixes Pi's working directory, verifies the complete effective system
 Doctor Strange is deliberately a separate practical profile: it doubles the canonical output allowance and uses a quantized MTP sidecar. Runs 180 and 181 were exact repeats and produced byte-identical outputs on all 24 tasks. MTP draft2 was retained because draft3 was faster but changed task outcomes in paired testing.
 
 Road Runner remains the throughput leader. Doctor Strange is the current daily quality profile; its low reasoning setting and 8K allowance avoid the output-exhaustion failures observed with Qwen3.8's medium/xhigh behavior.
+
+### Rejected Road Runner practical profile
+
+Road Runner low/8K on current llama.cpp b10434 (run 183) scored **49.542/65 at 24.2 effective visible tok/s**, versus its off/4K run at **54.792/65 and 144.9 tok/s**. Qwen3.6 maps low and medium to the same boolean thinking mode rather than Qwen3.8's graduated effort. The larger allowance mostly increased hidden reasoning; JSON path and semver produced effectively empty finals. The low/8K profile is rejected, and Road Runner remains configured off/4K.
 
 ## Historical prompt-profile boundary
 

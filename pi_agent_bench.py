@@ -37,6 +37,7 @@ OUTDIR = ROOT / "results"
 OUTDIR.mkdir(exist_ok=True)
 
 BENCHMARK_PROTOCOL_VERSION = 4
+REQUIRED_PI_VERSION = "0.84.1"
 CANONICAL_PROMPT_PROFILE = "pi-agent-v4-fixed-cwd"
 CANONICAL_PI_CWD = Path("/tmp/pibench-pi-agent-cwd-v1")
 DEFAULT_SYSTEM_PROMPT = "You are a precise benchmark participant. Follow the user's formatting requirements exactly."
@@ -802,6 +803,19 @@ def prepare_prompt_profile(system_prompt: str) -> dict[str, str]:
     pi_executable = shutil.which("pi")
     if not pi_executable:
         raise RuntimeError("Could not find the Pi executable on PATH")
+    version_proc = subprocess.run(
+        [pi_executable, "--version"],
+        text=True,
+        capture_output=True,
+        timeout=15,
+    )
+    pi_version = version_proc.stdout.strip().splitlines()[0] if version_proc.returncode == 0 else ""
+    if pi_version != REQUIRED_PI_VERSION:
+        raise RuntimeError(
+            f"Protocol v4 requires Pi {REQUIRED_PI_VERSION}, but PATH resolves to {pi_version or 'an unknown version'}. "
+            "Use an immutable Pi 0.84.1 installation; do not silently change the effective prompt."
+        )
+
     prompt_module = Path(pi_executable).resolve().parent / "core" / "system-prompt.js"
     if not prompt_module.is_file():
         raise RuntimeError(f"Could not locate Pi's system-prompt builder: {prompt_module}")
