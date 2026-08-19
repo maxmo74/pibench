@@ -1,6 +1,6 @@
 # Methodology
 
-PiBench is a practical coding and agent benchmark. The main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. Extensions can be enabled only when needed to provide the selected model.
+PiBench is a practical coding and agent benchmark. The main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. Protocol v4 refuses extension-provided models because an extension could change the effective prompt after attestation; such providers require a separate versioned runner.
 
 ## Scoring
 
@@ -40,6 +40,53 @@ Each task uses:
 Protocol v4 pins Pi 0.84.1, uses a fixed system prompt, and launches Pi from `/tmp/pibench-pi-agent-cwd-v1`. Before recording a run, the harness verifies the Pi version, invokes that installation's system-prompt builder, and requires the complete effective prompt to equal the protocol definition. It records SHA-256 hashes of both the supplied and effective system prompts and refuses to run if Pi adds or changes content. Custom prompts and extension-enabled runs are not accepted by this runner because they cannot share the canonical effective-prompt attestation. Pi 0.84.2 is intentionally rejected because it added a trailing newline to the effective prompt.
 
 Pi versions through 0.80.6 silently appended `Current date: YYYY-MM-DD` to custom system prompts. Pi 0.82.0 removed that line. Consequently, historical pre-0.82 Pi-agent runs used a `legacy-date-injected` input profile and are not strictly comparable across dates or with date-free runs. They remain valid evidence for their exact effective prompt, and historical inputs can reproduce them, but curated current rankings use protocol-v4 results only. Direct endpoint benchmarks were unaffected.
+
+## What protocol v4 does—and does not—normalize
+
+Protocol v4 normalizes the benchmark **input and evaluation path**:
+
+- exact Pi version and complete effective system prompt
+- fixed working-directory text
+- task prompts, order, weights, checks, and sandbox behavior
+- one clean Pi process per task
+- absence of sessions, tools, project context, skills, templates, themes, and extensions
+
+It does not pretend that all inference profiles are equivalent. Model identity, weights or service identifier, quantization, reasoning mode, context, output ceiling, sampler, speculation, runtime, hardware, and provider are part of the profile. A 4K no-spec local run, an 8K MTP local run, and a provider-native cloud run may share protocol-v4 input while answering under different resource envelopes. Curated tables must name those differences rather than presenting the score as an intrinsic property of model weights alone.
+
+## Local and cloud execution
+
+| Property | Local model | Cloud/API model |
+|---|---|---|
+| Model identity | Artifact filename and preferably SHA-256 | Provider and service model identifier |
+| Runtime identity | Backend version/commit/build, libraries, and launch arguments | API type and any version information exposed by the provider |
+| Inference controls | Context, KV cache, sampler, GPU offload, batch settings, and speculation can be recorded | Only request-visible controls can be recorded; internal routing and sampling remain opaque |
+| Change control | Artifacts and binaries can be retained and replayed | Weights and serving stack may change behind an unchanged model name |
+| Hardware | Known and recorded | Normally undisclosed or provider-managed |
+| Timing | Primarily host inference plus Pi overhead | Also includes network latency, queueing, routing, and provider execution |
+| Seed/determinism | A seed can make an exact pinned stack reproducible, subject to kernels and speculation | No seed-attested deterministic path is assumed |
+
+Cloud and local scores are therefore comparable as **observed end-to-end profile outcomes under the same tasks**, not as proof of equal compute, equal output budget, equal reasoning effort, or identical determinism. Local and cloud labels such as `medium` and `high` are provider-specific controls.
+
+## Repeatability and determinism
+
+PiBench uses the following terms deliberately:
+
+- **Input-identical:** protocol version, effective-prompt hash, tasks, and request-visible profile settings match.
+- **Stack-replayable:** model artifact, runtime, libraries, arguments, and hardware-relevant configuration are retained well enough to replay. This is usually achievable locally and usually impossible for a managed cloud service.
+- **Score-stable:** repeated complete runs receive the same weighted score. This does not imply the generated text is the same.
+- **Output-deterministic:** repeated complete runs produce byte-identical task output on all 24 tasks. This is the strongest observed repeatability claim and applies only to the tested stack.
+
+A seed is metadata, not proof of determinism. Different prompts, kernels, runtime builds, quantized speculative paths, or provider backends can change output despite the same nominal seed. Quantized MTP/DFlash results require particular caution because accepted draft tokens can alter the generated path.
+
+For current curated tables:
+
+- A repeated profile is rerun as a complete 24-task invocation, not assembled by selecting its best task attempts.
+- Managed cloud profiles are shown using the arithmetic mean and min–max range of complete equivalent runs; the best run is never used alone as the ranking value.
+- A single local run is shown as `n=1` with its range marked not measured. It must not be described as verified deterministic.
+- Output determinism is claimed only after private raw-output comparison. Raw text remains unpublished; the public CSV retains each run and task outcome separately.
+- Equal scores across repeats are reported as score stability. For example, two GPT-5.4 runs had the same score while only 3/24 outputs were byte-identical; Doctor Strange runs 180/181 were byte-identical on 24/24.
+
+The current two-run cloud sample estimates short-run variability; it is not a confidence interval or a guarantee about future service behavior. More repeats are appropriate when profiles have wide ranges or when a decision is sensitive to small score differences.
 
 ## Executable checks
 
@@ -91,13 +138,13 @@ Regenerate the public export after adding reviewed runs:
 
 ## Reading results
 
-- Effective output t/s is estimated visible output divided by end-to-end wall time; it includes invocation and prompt-processing overhead.
-- Local and cloud reasoning controls are not equivalent.
-- Quantization and speculative decoding are part of the tested configuration.
-- OOM, malformed-artifact, infrastructure, and incomplete runs are excluded rather than scored as model failures.
-- Results are compared only within the same benchmark protocol and effective-prompt profile. Protocol v4 is the current canonical Pi-agent profile; older date-injected and date-free working-directory profiles are historical evidence.
-- Repeated equivalent runs are deduplicated in the summary tables.
-- Some older cloud rows combine the latest valid task result across partial invocations.
+- Effective output t/s is visible output divided by end-to-end wall time; it includes Pi startup, prompt processing, hidden reasoning latency, network and queueing where applicable. It is not pure backend decode speed.
+- Local and cloud reasoning controls are not equivalent, and output ceilings must be read as part of the profile.
+- Quantization and speculative decoding are part of the tested configuration, not transparent acceleration layers.
+- OOM, malformed-artifact, infrastructure, authentication, quota, and incomplete runs are excluded rather than scored as model failures.
+- Results are compared only within the same benchmark protocol and effective-prompt profile. Protocol v4 is the current canonical Pi-agent input; older date-injected and date-free working-directory profiles are historical evidence.
+- Current cloud aggregates use complete-run means and ranges. Some explicitly historical cloud rows combined the latest valid task result across partial invocations; those rows are not protocol-v4 ranking inputs.
+- The public CSV contains individual run/task observations. Curated aggregate means, ranges, repeatability labels, and deployment decisions are documented in `README.md` and `RESULTS.md` rather than replacing raw observations.
 - Static configuration checks verify requested content, not a live deployment.
 
-The benchmark is intentionally small. Results should be reproduced on the hardware and software stack relevant to the intended deployment.
+The benchmark is intentionally small. A two-run range is descriptive, not statistically conclusive. Results should be reproduced on the hardware, software stack, service date, and request profile relevant to the intended deployment.

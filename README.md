@@ -97,17 +97,34 @@ This diagnostic reuses current PiBench checks and records both effective output 
 
 ## Reference results
 
-Current rankings use the fixed, attested protocol-v4 prompt. Quantization, context, reasoning mode, output allowance, backend build, and speculation remain part of each tested profile.
+Current rankings use the fixed, attested protocol-v4 input. The table is a strict score ordering of the ten highest completed v4 profiles currently available. Repeated cloud profiles use the two-run mean; a one-run local profile uses that run's score.
 
-| Model/profile | Class | Score | Effective output t/s |
-|---|---|---:|---:|
-| Doctor Strange — Qwen3.8 27B Q4, low, 8K, MTP2 | Practical/long-output | **57.4/65** | 20.4 |
-| Road Runner — Qwen3.6 35B Q4, off, 4K, MTP3 | Canonical 4K | **54.8/65** | **144.9** |
-| Thor — DSV4Pro 27B Q4, thinking on, 4K, no MTP | Canonical 4K | **53.2/65** | 9.3 |
-| Spiderman — Tmax 27B Q5, off, 4K, MTP3 | Canonical 4K | **51.6/65** | 47.8 |
-| Qwen3.8 27B Q4, off, 4K, no MTP | Canonical 4K | **48.2/65** | 28.1 |
+| Rank | Scope | Alias / real model and profile | Runs | Score used | Observed range | Effective output t/s |
+|---:|---|---|---:|---:|---:|---:|
+| 1 | Cloud | OpenAI **GPT-5.5**, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
+| 2 | Cloud | OpenAI **GPT-5.5**, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
+| 3 | Cloud | OpenAI **GPT-5.6 Sol**, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
+| 4 | Local | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | 180/181 | **57.396/65** | 57.396–57.396 | 20.4 |
+| 5 | Cloud | OpenAI **GPT-5.6 Sol**, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
+| 6 | Local | **Road Runner** — Qwen3.6-35B-A3B-MTP UD-Q4_K_M, off/4K/MTP3 | 177 | **54.792/65** | not measured (n=1) | **144.9** |
+| 7 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
+| 8 | Local | **Thor** — Qwen3.6-27B DSV4Pro Q4_LynnStyle, thinking/4K/no-spec | 179 | **53.229/65** | not measured (n=1) | 9.3 |
+| 9 | Local | **Spiderman** — Tmax-27B Q5_K_M, off/4K/MTP3 | 178 | **51.568/65** | not measured (n=1) | 47.8 |
+| 10 | Local | Road Runner practical — Qwen3.6-35B-A3B-MTP UD-Q4_K_M, low/8K/MTP3 | 183 | **49.542/65** | not measured (n=1) | 24.2 |
 
-Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases. Doctor Strange's result is listed separately from canonical 4K profiles because it uses an 8K output allowance and quantized MTP. Its exact repeat produced byte-identical outputs on all 24 tasks. Pre-v4 results remain in `RESULTS.csv` as historical evidence but are not mixed into the current ranking; see [RESULTS.md](RESULTS.md).
+The rank-10 Road Runner practical profile is published evidence but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. Qwen3.8 off/4K/no-spec is the next profile at 48.229/65. Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
+
+### Cloud versus local results
+
+Protocol v4 makes the **benchmark input** identical: pinned Pi 0.84.1, the same effective-system-prompt hash, fixed cwd, task prompts and graders, and no tools, context files, skills, themes, templates, or extensions. It does not make the execution environments equivalent:
+
+- Local runs can attest the GGUF hash, quantization, llama.cpp commit, server arguments, KV cache, sampler, speculation, and hardware. Seeded local generation can be reproducible, but quantized speculative decoding and runtime changes can still alter output.
+- Cloud runs attest the provider/model identifier and request profile, but not weights, backend build, routing, sampler implementation, or service updates. The API does not provide a seed-attested deterministic path, so repeated cloud runs are summarized by mean and range rather than their best score.
+- Doctor Strange is currently **output-deterministic on its tested stack**: runs 180/181 were byte-identical on all 24 tasks. GPT-5.4 repeated the same score but only 3/24 outputs were byte-identical, illustrating that score stability is not output determinism. GPT-5.5 varied by about 4.8 points between identical invocations.
+- Effective output t/s is end-to-end visible-output speed. Local figures primarily reflect the reference machine; cloud figures also include network, queueing, and opaque provider execution.
+- Output ceilings and reasoning controls are profile properties: local canonical runs use 4K, Doctor Strange uses 8K, and these OpenAI catalog entries expose a provider-native 128K ceiling. Local and cloud reasoning levels are not assumed equivalent.
+
+Pre-v4 results remain in `RESULTS.csv` as historical evidence but are not mixed into this ranking. See [RESULTS.md](RESULTS.md) and [METHODOLOGY.md](METHODOLOGY.md) for detailed interpretation rules.
 
 ### Reference system
 

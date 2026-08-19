@@ -3,7 +3,7 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-08-17
+- Snapshot: 2026-08-19
 - Current benchmark input: Pi-agent protocol v4
 - Effective system-prompt SHA-256: `33367c8eccc8213267c551069af9e5c781122b08fe36b5f1f736d29e5269f711`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
@@ -13,7 +13,7 @@ These runs were made on one reference workstation. They show observed model/prof
 - NVIDIA driver: 550.163.01
 - CUDA toolkit: 12.4.131
 
-Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Pi 0.84.2 is rejected because it adds a trailing newline. Current results use 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and seed 42 unless stated otherwise.
+Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Pi 0.84.2 is rejected because it adds a trailing newline. Current local results use 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and seed 42 unless stated otherwise. Cloud profiles use their request-visible provider settings, listed separately below.
 
 ## Current protocol-v4 local profiles
 
@@ -23,7 +23,8 @@ Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete 
 | 2 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 177 | **54.792/65** | 17/24 | **144.9** |
 | 3 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 179 | **53.229/65** | 17/24 | 9.3 |
 | 4 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 178 | **51.568/65** | 13/24 | 47.8 |
-| 5 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
+| 5 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
+| 6 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
 Doctor Strange is deliberately a separate practical profile: it doubles the canonical output allowance and uses a quantized MTP sidecar. Runs 180 and 181 were exact repeats and produced byte-identical outputs on all 24 tasks. MTP draft2 was retained because draft3 was faster but changed task outcomes in paired testing.
 
@@ -32,6 +33,39 @@ Road Runner remains the throughput leader. Doctor Strange is the current daily q
 ### Rejected Road Runner practical profile
 
 Road Runner low/8K on current llama.cpp b10434 (run 183) scored **49.542/65 at 24.2 effective visible tok/s**, versus its off/4K run at **54.792/65 and 144.9 tok/s**. Qwen3.6 maps low and medium to the same boolean thinking mode rather than Qwen3.8's graduated effort. The larger allowance mostly increased hidden reasoning; JSON path and semver produced effectively empty finals. The low/8K profile is rejected, and Road Runner remains configured off/4K.
+
+## Current protocol-v4 OpenAI profiles
+
+Each retained OpenAI profile received two complete runs through the OpenAI Codex Responses API. The table ranks the two-run mean and exposes the range because the service does not provide a seed-attested deterministic path.
+
+| Rank | Model/profile | Runs | Mean score | Range | Mean effective output t/s |
+|---:|---|---:|---:|---:|---:|
+| 1 | GPT-5.5, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
+| 2 | GPT-5.5, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
+| 3 | GPT-5.6 Sol, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
+| 4 | GPT-5.6 Sol, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
+| 5 | GPT-5.4, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
+
+All used protocol v4's pinned Pi 0.84.1, fixed cwd, effective-prompt hash, clean no-tools/no-context invocation, 272K registered context, and the provider-native 128K output ceiling. GPT-5.5 had unusually large 4.8-point ranges: JSON path and CSV inference changed outcomes between medium runs, while JSON path changed between high runs. GPT-5.4 repeated its score exactly but only 3/24 outputs were byte-identical, and GPT-5.6 Sol medium differed by only 0.146 point. Equal score is therefore described as score stability, not output determinism.
+
+## Current combined protocol-v4 ranking
+
+This table combines two-run means where repeats exist and single complete runs otherwise. Output allowances and reasoning controls remain part of each named profile.
+
+| Rank | Model/profile | Class | Score used |
+|---:|---|---|---:|
+| 1 | GPT-5.5, high | Cloud native, two-run mean | **60.813** |
+| 2 | GPT-5.5, medium | Cloud native, two-run mean | **59.625** |
+| 3 | GPT-5.6 Sol, medium | Cloud native, two-run mean | **57.516** |
+| 4 | Doctor Strange — Qwen3.8 27B, low/8K/MTP2 | Local practical, exact two-run mean | **57.396** |
+| 5 | GPT-5.6 Sol, high | Cloud native, two-run mean | **56.305** |
+| 6 | Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3 | Local canonical | **54.792** |
+| 7 | GPT-5.4, medium | Cloud native, exact two-run mean | **54.277** |
+| 8 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local canonical | **53.229** |
+| 9 | Spiderman — Tmax 27B, off/4K/MTP3 | Local canonical | **51.568** |
+| 10 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
+
+Qwen3.8 27B off/4K/no-spec is the next protocol-v4 profile at **48.229/65**.
 
 ## Historical prompt-profile boundary
 
@@ -50,6 +84,6 @@ The old scores are authentic and reproducible for their exact inputs, but date-i
 
 ## Historical cloud reference
 
-No cloud model has yet been rerun under protocol v4. Earlier cloud scores—including Claude Opus 4.8 at 60.2, GPT-5.5 high at 59.2, and GPT-5.6 Sol high at 58.9—belong to historical prompt profiles and must not be mixed into the table above.
+Earlier cloud scores—including Claude Opus 4.8 at 60.2, GPT-5.5 high at 59.2, and GPT-5.6 Sol high at 58.9—belong to historical prompt profiles. The OpenAI profiles now have protocol-v4 replacements above; Claude profiles still require normalization and must not be mixed into the current ranking.
 
 Effective output speed is visible output divided by end-to-end task time, not pure backend decode speed. The complete sanitized task-level history and reproducibility metadata are in [RESULTS.csv](RESULTS.csv). To contribute a result from another system, follow [README.md](README.md) and [METHODOLOGY.md](METHODOLOGY.md).
