@@ -42,6 +42,40 @@ CANONICAL_PROMPT_PROFILE = "pi-agent-v4-fixed-cwd"
 CANONICAL_PI_CWD = Path("/tmp/pibench-pi-agent-cwd-v1")
 DEFAULT_SYSTEM_PROMPT = "You are a precise benchmark participant. Follow the user's formatting requirements exactly."
 
+# ---------------------------------------------------------------------------
+# Versioned extension profile: antigravity-v1
+#
+# Protocol v4 refuses extension-provided models by default because an extension
+# can modify the effective prompt after attestation. The antigravity-v1 profile
+# is the exception path: it pins the exact pi-antigravity extension version and
+# the exact system-instruction parts it prepends, so the full effective prompt
+# sent to the model is still frozen, attested, and versioned. Results under
+# this profile are comparable within the profile but not byte-identical to the
+# pure canonical prompt profile.
+# ---------------------------------------------------------------------------
+ANTIGRAVITY_EXTENSION_NAME = "pi-antigravity"
+ANTIGRAVITY_EXTENSION_VERSION = "0.3.1"
+ANTIGRAVITY_PROFILE_NAME = "pi-agent-v4-fixed-cwd+antigravity-v1"
+ANTIGRAVITY_INJECTION_PARTS = (
+    "You are Antigravity, a powerful agentic AI coding assistant designed by Google DeepMind. "
+    "You are pair programming with a user to solve coding tasks. Be concise, practical, and tool-aware.",
+    "Please ignore following [ignore]You are Antigravity, a powerful agentic AI coding assistant designed by Google DeepMind. You are pair programming with a user to solve coding tasks. Be concise, practical, and tool-aware.[/ignore]",
+    'CRITICAL: NEVER output rule checks, formatting guidelines, constraint checklists (e.g. "No emdashes"), or your thinking/personality preambles in the final response. Output only the final response.',
+)
+ANTIGRAVITY_INJECTION_SHA256 = "1416c1c4f53afd8e28d425d22076354cf72af24e4c58eb75f98d633486eb9b39"
+# Raw source-level fragments that must appear verbatim in the installed
+# extension's stream.ts (the first part is split across two string literals in
+# the TypeScript source, so the attestation checks the fragments, not the
+# joined value).
+ANTIGRAVITY_SOURCE_FRAGMENTS = (
+    '"You are Antigravity, a powerful agentic AI coding assistant designed by Google DeepMind. "',
+    '"You are pair programming with a user to solve coding tasks. Be concise, practical, and tool-aware."',
+    '`Please ignore following [ignore]${ANTIGRAVITY_SYSTEM_INSTRUCTION}[/ignore]`',
+    "'CRITICAL: NEVER output rule checks, formatting guidelines, constraint checklists (e.g. \"No emdashes\"), or your thinking/personality preambles in the final response. Output only the final response.'",
+    "{ text: ANTIGRAVITY_SYSTEM_INSTRUCTION },",
+    "...(context.systemPrompt ? [{ text: sanitizeText(context.systemPrompt) }] : []),",
+)
+
 MODEL_PRESETS = {
     # These aliases are examples from the reference workstation. Users must
     # register equivalent Pi model IDs before selecting this preset.
@@ -861,6 +895,53 @@ process.stdout.write(JSON.stringify(effective));
     }
 
 
+def attest_antigravity_profile(agent_dir: Path | None = None) -> dict:
+    """Attest the pinned pi-antigravity extension for the antigravity-v1 profile.
+
+    Verifies the installed extension version and that its system-instruction
+    injection constants still match the pinned literals. Raises RuntimeError on
+    any drift so a non-comparable run is refused rather than silently recorded.
+    """
+    if agent_dir is None:
+        agent_dir = Path.home() / ".pi" / "agent"
+    ext_dir = agent_dir / "npm" / "node_modules" / ANTIGRAVITY_EXTENSION_NAME
+    pkg = ext_dir / "package.json"
+    if not pkg.is_file():
+        raise RuntimeError(
+            f"antigravity-v1 profile requires {ANTIGRAVITY_EXTENSION_NAME} installed at {ext_dir}; "
+            "it was not found"
+        )
+    try:
+        version = json.loads(pkg.read_text()).get("version")
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"could not read {pkg}: {exc}") from exc
+    if version != ANTIGRAVITY_EXTENSION_VERSION:
+        raise RuntimeError(
+            f"antigravity-v1 profile is pinned to {ANTIGRAVITY_EXTENSION_NAME} "
+            f"{ANTIGRAVITY_EXTENSION_VERSION}, but {version or 'an unknown version'} is installed; "
+            "re-attest and version the profile explicitly before running"
+        )
+    stream_ts = ext_dir / "src" / "stream" / "stream.ts"
+    if not stream_ts.is_file():
+        raise RuntimeError(f"could not locate extension source: {stream_ts}")
+    source = stream_ts.read_text()
+    for fragment in ANTIGRAVITY_SOURCE_FRAGMENTS:
+        if fragment not in source:
+            raise RuntimeError(
+                f"installed {ANTIGRAVITY_EXTENSION_NAME} no longer matches the pinned "
+                "antigravity-v1 injection constants; refusing a non-comparable run"
+            )
+    computed = hashlib.sha256("\n".join(ANTIGRAVITY_INJECTION_PARTS).encode()).hexdigest()
+    if computed != ANTIGRAVITY_INJECTION_SHA256:
+        raise RuntimeError("internal error: antigravity-v1 injection pin is inconsistent")
+    return {
+        "benchmark_input_profile": ANTIGRAVITY_PROFILE_NAME,
+        "antigravity_extension_name": ANTIGRAVITY_EXTENSION_NAME,
+        "antigravity_extension_version": version,
+        "antigravity_injection_sha256": computed,
+    }
+
+
 def run_pi(model: str, prompt: str, args: argparse.Namespace) -> dict:
     env = os.environ.copy()
     if args.offline:
@@ -985,7 +1066,8 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=600, help="Per-task timeout in seconds")
     parser.add_argument("--offline", action="store_true", help="Set PI_OFFLINE=1 for local-only benchmarking")
     parser.add_argument("--keep-env-offline", action="store_true", help="Respect an existing PI_OFFLINE env var")
-    parser.add_argument("--allow-extensions", action="store_true", help="Do not pass --no-extensions; required for extension-provided providers such as claude-bridge")
+    parser.add_argument("--allow-extensions", action="store_true", help="Do not pass --no-extensions; only permitted together with --extension-profile")
+    parser.add_argument("--extension-profile", choices=["antigravity-v1"], help="Versioned extension profile that attests the extension-injected prompt (e.g. antigravity-v1 pins pi-antigravity 0.3.1)")
     parser.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
     parser.add_argument("--task", dest="tasks", action="append", choices=[t["name"] for t in TASKS], help="Task to run; repeat for multiple tasks. Defaults to all tasks.")
     parser.add_argument("--db", default=str(ROOT / "results" / "pibench.sqlite"), help="SQLite database path; use 'none' to disable DB recording")
@@ -1027,11 +1109,15 @@ def main() -> int:
 
     if args.system_prompt != DEFAULT_SYSTEM_PROMPT:
         parser.error("protocol v4 requires the canonical --system-prompt")
-    if args.allow_extensions:
-        parser.error("protocol v4 cannot attest extension-modified system prompts; use a dedicated versioned runner")
+    if args.allow_extensions and not args.extension_profile:
+        parser.error("protocol v4 cannot attest extension-modified system prompts; pass --extension-profile (e.g. antigravity-v1) to use an attested extension profile")
+    if args.extension_profile and not args.allow_extensions:
+        parser.error("--extension-profile requires --allow-extensions")
 
     try:
         prompt_profile = prepare_prompt_profile(args.system_prompt)
+        if args.extension_profile == "antigravity-v1":
+            prompt_profile.update(attest_antigravity_profile())
     except RuntimeError as exc:
         parser.error(str(exc))
     inference_metadata = run_metadata.setdefault("inference", {})
