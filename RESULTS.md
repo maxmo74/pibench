@@ -48,6 +48,16 @@ Each retained OpenAI profile received two complete runs through the OpenAI Codex
 
 All used protocol v4's pinned Pi 0.84.1, fixed cwd, effective-prompt hash, clean no-tools/no-context invocation, 272K registered context, and the provider-native 128K output ceiling. GPT-5.5 had unusually large 4.8-point ranges: JSON path and CSV inference changed outcomes between medium runs, while JSON path changed between high runs. GPT-5.4 repeated its score exactly but only 3/24 outputs were byte-identical, and GPT-5.6 Sol medium differed by only 0.146 point. Equal score is therefore described as score stability, not output determinism.
 
+## Current protocol-v4 Antigravity profiles
+
+Antigravity (Google Cloud Code Assist) results run under the **antigravity-v1** versioned extension profile: the `pi-antigravity` 0.3.1 extension is pinned, and its fixed three-part system-instruction injection (sha256 `1416c1c4…eb9b39`) is attested against the installed source before every run. The full effective prompt sent to the model is therefore frozen as canonical prompt + fixed injection, but it is **not byte-identical to the pure canonical prompt** used by the OpenAI profiles; antigravity-v1 scores are comparable within the profile and across antigravity models, but sit on a different prompt variant.
+
+| Model/profile | Runtime | Runs | Mean score | Range | Mean effective output t/s |
+|---|---|---:|---:|---:|---:|
+| Gemini 3.7 Flash, medium | gemini-3.7-flash-tiered, thinkingConfig MEDIUM | 194/195 | **46.750/65** | 46.500–47.000 | 58.0 |
+
+Runs 194 and 195 passed 18/24 each; the recurring failures are JSON path (invalid-input rejection), retry schedule (2/3), changelog (5/6), ADR (6/7), and design review (7/8). Effective throughput (~58 tok/s) makes it the fastest cloud profile measured so far.
+
 ## Current combined protocol-v4 ranking
 
 This table combines two-run means where repeats exist and single complete runs otherwise. Output allowances and reasoning controls remain part of each named profile.
@@ -64,8 +74,10 @@ This table combines two-run means where repeats exist and single complete runs o
 | 8 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local canonical | **53.229** |
 | 9 | Spiderman — Tmax 27B, off/4K/MTP3 | Local canonical | **51.568** |
 | 10 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
+| 11 | Qwen3.8 27B, off/4K/no-spec | Local canonical | **48.229** |
+| 12 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 profile, two-run mean | **46.750** |
 
-Qwen3.8 27B off/4K/no-spec is the next protocol-v4 profile at **48.229/65**.
+The Gemini 3.7 Flash antigravity-v1 profile's prompt variant (canonical + fixed extension injection) differs from the pure canonical input of the other profiles, so its rank is reported within the combined ordering but on a distinct input variant.
 
 ## Historical prompt-profile boundary
 

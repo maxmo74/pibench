@@ -112,11 +112,11 @@ Current rankings use the fixed, attested protocol-v4 input. The table is a stric
 | 9 | Local | **Spiderman** — Tmax-27B Q5_K_M, off/4K/MTP3 | 178 | **51.568/65** | not measured (n=1) | 47.8 |
 | 10 | Local | Road Runner practical — Qwen3.6-35B-A3B-MTP UD-Q4_K_M, low/8K/MTP3 | 183 | **49.542/65** | not measured (n=1) | 24.2 |
 
-The rank-10 Road Runner practical profile is published evidence but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. Qwen3.8 off/4K/no-spec is the next profile at 48.229/65. Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
+The rank-10 Road Runner practical profile is published evidence but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. Qwen3.8 off/4K/no-spec is the next profile at 48.229/65, followed by Gemini 3.7 Flash medium (antigravity-v1 profile) at 46.750/65 from runs 194/195. Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
 
 ### Cloud versus local results
 
-Protocol v4 makes the **benchmark input** identical: pinned Pi 0.84.1, the same effective-system-prompt hash, fixed cwd, task prompts and graders, and no tools, context files, skills, themes, templates, or extensions. It does not make the execution environments equivalent:
+Protocol v4 makes the **benchmark input** identical: pinned Pi 0.84.1, the same effective-system-prompt hash, fixed cwd, task prompts and graders, and no tools, context files, skills, themes, templates, or extensions. The one documented exception is the **antigravity-v1** profile (Google Cloud Code Assist via the pinned `pi-antigravity` 0.3.1 extension), whose fixed three-part system-instruction injection is version-pinned and attested; those runs sit on canonical prompt + fixed injection rather than the pure canonical prompt. It does not make the execution environments equivalent:
 
 - Local runs can attest the GGUF hash, quantization, llama.cpp commit, server arguments, KV cache, sampler, speculation, and hardware. Seeded local generation can be reproducible, but quantized speculative decoding and runtime changes can still alter output.
 - Cloud runs attest the provider/model identifier and request profile, but not weights, backend build, routing, sampler implementation, or service updates. The API does not provide a seed-attested deterministic path, so repeated cloud runs are summarized by mean and range rather than their best score.

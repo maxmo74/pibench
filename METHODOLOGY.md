@@ -67,6 +67,16 @@ It does not pretend that all inference profiles are equivalent. Model identity, 
 
 Cloud and local scores are therefore comparable as **observed end-to-end profile outcomes under the same tasks**, not as proof of equal compute, equal output budget, equal reasoning effort, or identical determinism. Local and cloud labels such as `medium` and `high` are provider-specific controls.
 
+## Versioned extension profile: antigravity-v1
+
+Protocol v4 refuses extension-provided models by default because an extension can modify the effective prompt after attestation. The `antigravity-v1` profile is an explicit, versioned exception for the user-maintained `pi-antigravity` extension (Google Cloud Code Assist, free-tier capable):
+
+- `--extension-profile antigravity-v1` (with `--allow-extensions`) pins `pi-antigravity` **0.3.1** and refuses any other version.
+- Before running, the bench attests that the installed extension source still contains the exact three system-instruction parts it injects before the canonical prompt (injection sha256 `1416c1c4f53afd8e28d425d22076354cf72af24e4c58eb75f98d633486eb9b39`) and the four-part `systemInstruction` construction. Any drift aborts the run.
+- The canonical Pi effective prompt is still attested exactly as in protocol v4; the full wire prompt is therefore **canonical prompt + fixed injection**, frozen and hash-recorded per run (`benchmark_input_profile=pi-agent-v4-fixed-cwd+antigravity-v1`, `antigravity_injection_sha256` in run metadata).
+- Comparability: antigravity-v1 results are comparable **within the profile** (across antigravity models and dates) and are listed in the combined ranking, but they are not byte-identical to the pure canonical prompt input of the OpenAI/local profiles. The injected parts are constant strings (not date- or task-dependent), so the only input difference is the fixed prefix.
+- If the extension is updated or its injection changes, the profile must be re-attested and re-versioned (e.g. `antigravity-v2`) before new runs; old results remain valid for their recorded profile.
+
 ## Repeatability and determinism
 
 PiBench uses the following terms deliberately:
