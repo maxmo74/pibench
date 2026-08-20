@@ -112,7 +112,7 @@ Current rankings use the fixed, attested protocol-v4 input. The table is a stric
 | 9 | Local | **Spiderman** — Tmax-27B Q5_K_M, off/4K/MTP3 | 178 | **51.568/65** | not measured (n=1) | 47.8 |
 | 10 | Local | Road Runner practical — Qwen3.6-35B-A3B-MTP UD-Q4_K_M, low/8K/MTP3 | 183 | **49.542/65** | not measured (n=1) | 24.2 |
 
-The rank-10 Road Runner practical profile is published evidence but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. Qwen3.8 off/4K/no-spec is the next profile at 48.229/65, followed by Gemini 3.7 Flash medium (antigravity-v1 profile) at 46.750/65 from runs 194/195. Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
+The rank-10 Road Runner practical profile is published evidence but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. Qwen3.8 off/4K/no-spec is the next profile at 48.229/65, followed by the antigravity-v1 cloud profiles: Gemini 3.7 Flash medium at 46.750/65 (runs 194/195) and Gemini 3.1 Pro high at 44.250/65 (runs 196/197). Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
 
 ### Cloud versus local results
 

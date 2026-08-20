@@ -55,8 +55,11 @@ Antigravity (Google Cloud Code Assist) results run under the **antigravity-v1** 
 | Model/profile | Runtime | Runs | Mean score | Range | Mean effective output t/s |
 |---|---|---:|---:|---:|---:|
 | Gemini 3.7 Flash, medium | gemini-3.7-flash-tiered, thinkingConfig MEDIUM | 194/195 | **46.750/65** | 46.500–47.000 | 58.0 |
+| Gemini 3.1 Pro, high | gemini-pro-agent (high) | 196/197 | **44.250/65** | 41.000–47.500 | 13.8 |
 
-Runs 194 and 195 passed 18/24 each; the recurring failures are JSON path (invalid-input rejection), retry schedule (2/3), changelog (5/6), ADR (6/7), and design review (7/8). Effective throughput (~58 tok/s) makes it the fastest cloud profile measured so far.
+Flash medium passed 18/24 in both runs; its recurring failures are JSON path (invalid-input rejection), retry schedule (2/3), changelog (5/6), ADR (6/7), and design review (7/8). Its effective throughput (~58 tok/s) makes it the fastest cloud profile measured so far.
+
+Pro high is slower (~14 tok/s) and more variable: the two runs passed 18/24 and 17/24 with a 6.5-point range, driven by `unified_diff_hard` moving 3/3 → 1/3 and `json_path_set_hard` flipping between runs. Under this profile, the cheaper flash model at medium reasoning outscored pro at high reasoning on both mean and range, so flash medium is the stronger antigravity profile for PiBench workloads.
 
 ## Current combined protocol-v4 ranking
 
@@ -76,8 +79,9 @@ This table combines two-run means where repeats exist and single complete runs o
 | 10 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
 | 11 | Qwen3.8 27B, off/4K/no-spec | Local canonical | **48.229** |
 | 12 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 profile, two-run mean | **46.750** |
+| 13 | Gemini 3.1 Pro, high | Cloud antigravity-v1 profile, two-run mean | **44.250** |
 
-The Gemini 3.7 Flash antigravity-v1 profile's prompt variant (canonical + fixed extension injection) differs from the pure canonical input of the other profiles, so its rank is reported within the combined ordering but on a distinct input variant.
+The antigravity-v1 profiles' prompt variant (canonical + fixed extension injection) differs from the pure canonical input of the other profiles, so their ranks are reported within the combined ordering but on a distinct input variant.
 
 ## Historical prompt-profile boundary
 
