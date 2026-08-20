@@ -109,10 +109,10 @@ Current rankings use the fixed, attested protocol-v4 input. The table is a stric
 | 6 | Local | **Road Runner** — Qwen3.6-35B-A3B-MTP UD-Q4_K_M, off/4K/MTP3 | 177 | **54.792/65** | not measured (n=1) | **144.9** |
 | 7 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
 | 8 | Local | **Thor** — Qwen3.6-27B DSV4Pro Q4_LynnStyle, thinking/4K/no-spec | 179 | **53.229/65** | not measured (n=1) | 9.3 |
-| 9 | Local | **Spiderman** — Tmax-27B Q5_K_M, off/4K/MTP3 | 178 | **51.568/65** | not measured (n=1) | 47.8 |
-| 10 | Local | Road Runner practical — Qwen3.6-35B-A3B-MTP UD-Q4_K_M, low/8K/MTP3 | 183 | **49.542/65** | not measured (n=1) | 24.2 |
+| 9 | Cloud | **Claude Opus 4.6** (antigravity-v1 profile) | 198/199 | **52.500/65** | 48.000–57.000 | 40.0 |
+| 10 | Local | **Spiderman** — Tmax-27B Q5_K_M, off/4K/MTP3 | 178 | **51.568/65** | not measured (n=1) | 47.8 |
 
-The rank-10 Road Runner practical profile is published evidence but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. Qwen3.8 off/4K/no-spec is the next profile at 48.229/65, followed by the antigravity-v1 cloud profiles: Gemini 3.7 Flash medium at 46.750/65 (runs 194/195) and Gemini 3.1 Pro high at 44.250/65 (runs 196/197). Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
+Road Runner practical (Qwen3.6 35B-A3B, low/8K/MTP3) is published at 49.542/65 (run 183) but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. The other antigravity-v1 cloud profiles are below it: Gemini 3.7 Flash medium at 46.750/65 (runs 194/195) and Gemini 3.1 Pro high at 44.250/65 (runs 196/197); Qwen3.8 off/4K/no-spec sits between Spiderman and Road Runner practical at 48.229/65. Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
 
 ### Cloud versus local results
 
