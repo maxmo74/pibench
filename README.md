@@ -106,6 +106,17 @@ PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
 
 That profile gives Pi only `read`, `bash`, `edit`, and `write` inside a disposable Bubblewrap filesystem, uses three sequential turns in one session, hashes its effective tool-enabled system prompt, and scores the resulting code, service unit, documentation, test preservation, and change scope. Its 100-point score is a separate daily-operations diagnostic and is never mixed into the canonical 65-point no-tools ranking. Raw sessions and output remain under ignored local paths.
 
+For initial loop/termination qualification, use the separate experimental `pi-agent-reliability-v1` gate:
+
+```bash
+PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
+  ./pi_agent_reliability_bench.py \
+  'local-llama/Doctor Strange:low' \
+  'local-llama/Road Runner:off'
+```
+
+It runs three read-only synthetic investigations twice in fresh isolated sessions: evidence-backed diagnosis, graceful termination when decisive evidence is absent, and recovery after a large irrelevant context preamble. A model qualifies only if every run finishes normally, answers the fixture correctly, stays within 20 tools and 21 assistant messages, makes no exact duplicate tool call, and avoids repeated text blocks. This is deliberately a pass/fail screen rather than another score. It remains separate while its scenarios and thresholds are validated; passing is necessary evidence for autonomous use, not a guarantee of universal reliability. Private output records metrics, checks and hashes but not model text.
+
 ## Reference results
 
 Current rankings use the fixed, attested protocol-v4 input. The table is a strict score ordering of the twelve highest completed profiles currently available. Repeated profiles use the arithmetic mean of every equivalent complete run; ranges are observed minima and maxima, not confidence intervals.

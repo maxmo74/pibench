@@ -108,7 +108,17 @@ The Pi process runs inside Bubblewrap with a private filesystem, read-only syste
 
 Scoring is deterministic: retry behavior 35 points, service correctness/hardening 30, exact README commands 15, preservation of supplied tests 10, minimal file scope 5, and completion of all three turns 5. Tool-call count and wall time are descriptive tie-breakers, not score inputs. Raw event streams, sessions, model text, and workspaces remain private; public reports contain only aggregate scores, check outcomes, hashes, and profile metadata.
 
-`pi-ops-v1` measures three structured, convergent tasks; it does not establish reliability on ambiguous open-ended investigation. A model can pass this profile yet repeatedly call equivalent tools or fail to terminate on a less constrained request. Interpret its score together with observed interactive reliability. A future version should add an adversarial ambiguity turn and explicit duplicate-call, repeated-output, total-call, wall-time and normal-completion criteria.
+`pi-ops-v1` measures three structured, convergent tasks; it does not establish reliability on ambiguous open-ended investigation. A model can pass this profile yet repeatedly call equivalent tools or fail to terminate on a less constrained request. Interpret its score together with observed interactive reliability.
+
+## Experimental reliability gate: pi-agent-reliability-v1
+
+`pi_agent_reliability_bench.py` initially keeps loop and termination qualification separate from both canonical PiBench and `pi-ops-v1`. This preserves historical profiles while the new scenarios and thresholds accumulate validation evidence. It is a strict pass/fail gate, not a weighted score.
+
+The profile runs three synthetic read-only repositories: a browser-state defect with sufficient evidence, an incident whose decisive rotated log and metrics are deliberately absent, and a simple deployment mismatch after a large deterministic irrelevant-context preamble. Each scenario uses a fresh session and runs twice by default. Only `read` and `bash` are available; the fixture itself is mounted read-only inside Bubblewrap. Pi 0.84.1, fixed cwd, the scenario and preamble hashes, and the complete effective system-prompt hash are recorded.
+
+Every scenario-run must terminate normally, satisfy deterministic answer checks, use no more than 20 tools and 21 assistant messages, repeat no exact tool call, and stay below repeated-line and repeated-24-token-block thresholds. A timeout, length/error stop, missing final response, semantic failure, duplicate tool call, excessive exploration, or repeated output fails qualification. Private results retain only checks, counts, timings and content hashes—not model text.
+
+The gate is intentionally conservative for read-only work, where repeating an identical call cannot reveal new state. Passing all six default scenario-runs is necessary evidence for autonomous use, not proof against every future prompt or context. Integration into the main qualification workflow should occur only after the fixtures discriminate known failures without rejecting stable models for benign behavior.
 
 ## Executable checks
 
