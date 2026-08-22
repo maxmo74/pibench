@@ -37,7 +37,7 @@ OUTPUT_DIR = Path("/tmp/pibench-ops-output-v1")
 LOCK_PATH = Path("/tmp/pibench-ops-v1.lock")
 ATTESTOR = ROOT / "scripts" / "ops_prompt_attestor.ts"
 TOOLS = "read,bash,edit,write"
-EXPECTED_TASK_FILES = {"retry.py", "README.md", "deploy/pibench-worker.service"}
+EXPECTED_TASK_FILES = {"retry.py", "README.md", ".gitignore", "deploy/pibench-worker.service"}
 EXPECTED_SYSTEM_PROMPT_SHA256 = "c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9"
 
 TURN_PROMPTS = (
@@ -293,7 +293,12 @@ def score_workspace(test_hash: str, turns: list[dict[str, Any]]) -> tuple[float,
         ["git", "status", "--porcelain"], cwd=WORKSPACE, text=True, capture_output=True, check=True
     ).stdout.splitlines()
     changed = {line[3:] for line in status_lines if len(line) > 3}
-    scope_clean = bool(changed) and changed.issubset(EXPECTED_TASK_FILES)
+    generated = {
+        path for path in changed
+        if "__pycache__" in Path(path).parts or Path(path).suffix in {".pyc", ".pyo"}
+    }
+    reviewed_changes = changed - generated
+    scope_clean = bool(reviewed_changes) and reviewed_changes.issubset(EXPECTED_TASK_FILES)
     turns_complete = all(turn["returncode"] == 0 for turn in turns) and len(turns) == len(TURN_PROMPTS)
 
     score = 0.0
@@ -309,7 +314,8 @@ def score_workspace(test_hash: str, turns: list[dict[str, Any]]) -> tuple[float,
         "readme": readme_checks,
         "tests_unchanged": tests_unchanged,
         "scope_clean": scope_clean,
-        "changed_files": sorted(changed),
+        "changed_files": sorted(reviewed_changes),
+        "ignored_generated_files": sorted(generated),
         "turns_complete": turns_complete,
     }
     return score, details
