@@ -115,7 +115,22 @@ The antigravity-v1 profiles' prompt variant (canonical + fixed extension injecti
 
 All four passed every hidden retry check, every service/hardening check, preserved supplied tests, stayed within the allowed file scope, and completed all turns. Doctor Strange maximized instruction compliance; Road Runner delivered nearly the same score with the best operational latency. Attestation: PiBench commit `b124523`, Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, effective system prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
 
-These three structured, convergent turns do not test open-ended exploration or guaranteed termination. The Road Runner loop audit demonstrates that its 95/100 result must not be generalized to unattended ambiguous work. A future `pi-ops-v2` should add adversarial ambiguity, duplicate-call, repeated-output, total-call and completion criteria.
+These three structured, convergent turns do not test open-ended exploration or guaranteed termination. The Road Runner loop audit demonstrates that its 95/100 result must not be generalized to unattended ambiguous work. The separate experimental reliability gate below begins testing that missing dimension without changing this historical profile.
+
+## Experimental agent-reliability gate
+
+`pi-agent-reliability-v1` is a separate pass/fail screen, not part of either scored ranking. Four read-only scenarios run twice: evidence-backed diagnosis, missing-evidence termination, recovery after a large irrelevant preamble, and a deterministic polling trap with repository-scope enforcement.
+
+| Model | Screen result | Scenario-runs | Tools | Wall time including context setup | Failure |
+|---|---|---:|---:|---:|---|
+| Doctor Strange, low | **qualified** | **8/8** | 53 | 404.9 s | none |
+| Spiderman, off | **qualified** | **8/8** | 50 | 179.2 s | none |
+| Road Runner, off | **not qualified** | 6/8 | 68 | **79.0 s** | both polling-trap runs searched outside the fixture; one also exceeded its 10-tool budget |
+| Thor, medium | **not qualified** | 6/8 | 50 | 224.6 s | ran the unchanged polling diagnostic twice in both repeats |
+
+All models completed the other six scenario-runs with normal semantic answers and no timeouts. Road Runner's failures are consistent with its broader tendency to continue searching after repository evidence is exhausted: the two failed runs made seven out-of-scope calls in total, while the first also used 14 tools. Thor's duplicate was the exact same `./scripts/diagnose.sh` command each time even though the fixture states that its read-only output cannot change. Doctor Strange and Spiderman had no duplicate, scope, budget, termination, repetition, or semantic failures.
+
+Attestation: PiBench commit `041ebad`, Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, effective system-prompt SHA-256 `ff3ea23421c72a5483e411cf92d2e7b0ca1d1a82dfb5dc9c1cadf9d3dcf1262d`. Raw text remains private; the retained result contains checks, metrics, timings, and hashes only. This initial screen is intentionally conservative and remains experimental: passing is useful qualification evidence, not proof against every future loop.
 
 ## Historical prompt-profile boundary
 

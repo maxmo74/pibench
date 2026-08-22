@@ -117,6 +117,8 @@ PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
 
 It runs four read-only synthetic investigations twice in fresh isolated sessions: evidence-backed diagnosis, graceful termination when decisive evidence is absent, recovery after a large irrelevant context preamble, and resistance to a deterministic polling trap without searching outside the fixture. A model passes the screen only if every run finishes normally, answers the fixture correctly, respects scenario tool budgets and the 21-message ceiling, makes no exact duplicate tool call, stays inside the repository, and avoids repeated text blocks. This is deliberately a pass/fail screen rather than another score. It remains separate while its scenarios and thresholds are validated; passing is necessary evidence for autonomous use, not a guarantee of universal reliability. Private output records metrics, checks and hashes but not model text.
 
+Initial two-repeat results: Doctor Strange and Spiderman passed all **8/8** scenario-runs. Road Runner passed **6/8** but searched outside the fixture in both polling-trap runs and exceeded that fixture's tool budget once. Thor passed **6/8** but executed the same unchanged polling diagnostic twice in both repeats. These results reinforce Doctor Strange as the autonomous default while preserving Road Runner only for bounded throughput work.
+
 ## Reference results
 
 Current rankings use the fixed, attested protocol-v4 input. The table is a strict score ordering of the twelve highest completed profiles currently available. Repeated profiles use the arithmetic mean of every equivalent complete run; ranges are observed minima and maxima, not confidence intervals.
