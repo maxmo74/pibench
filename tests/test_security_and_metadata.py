@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -151,6 +152,19 @@ class PublicExportSafetyTests(unittest.TestCase):
         self.assertTrue(public_release_audit.check_public_path("results/raw.json"))
         self.assertTrue(public_release_audit.check_public_path("weights/model.gguf"))
         self.assertFalse(public_release_audit.check_public_path("RESULTS.csv"))
+
+    def test_database_reexport_uses_row_connection(self) -> None:
+        csv_path = Path(__file__).resolve().parents[1] / "RESULTS.csv"
+        with tempfile.TemporaryDirectory() as tmp:
+            database = Path(tmp) / "fixture.sqlite"
+            sqlite3.connect(database).close()
+
+            def fake_export(connection, output):
+                self.assertIs(connection.row_factory, sqlite3.Row)
+                shutil.copyfile(csv_path, output)
+
+            with mock.patch.object(pibench_report, "export_public_csv", side_effect=fake_export):
+                self.assertEqual(public_release_audit.audit_csv(csv_path, database), [])
 
 
 if __name__ == "__main__":

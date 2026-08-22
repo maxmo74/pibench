@@ -3,7 +3,7 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-08-19
+- Snapshot: 2026-08-22
 - Current benchmark input: Pi-agent protocol v4
 - Effective system-prompt SHA-256: `33367c8eccc8213267c551069af9e5c781122b08fe36b5f1f736d29e5269f711`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
@@ -19,20 +19,28 @@ Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete 
 
 | Rank | Model/profile | Class | Run | Score | Passed | Effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
-| 1 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Practical/long-output | 180/181 | **57.396/65** | 16/24 | 20.4 |
-| 2 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 177 | **54.792/65** | 17/24 | **144.9** |
-| 3 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 179 | **53.229/65** | 17/24 | 9.3 |
-| 4 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 178 | **51.568/65** | 13/24 | 47.8 |
+| 1 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Practical/long-output | 201 | **57.396/65** | 16/24 | 20.7 |
+| 2 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202 | **54.042/65** | 16/24 | **148.2** |
+| 3 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 206 | **52.729/65** | 15/24 | 48.1 |
+| 4 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
 | 5 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
 | 6 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
-Doctor Strange is deliberately a separate practical profile: it doubles the canonical output allowance and uses a quantized MTP sidecar. Runs 180 and 181 were exact repeats and produced byte-identical outputs on all 24 tasks. MTP draft2 was retained because draft3 was faster but changed task outcomes in paired testing.
+Doctor Strange is deliberately a separate practical profile: it doubles the canonical output allowance and uses a quantized MTP sidecar. Stable-v0.2.0 run 201 produced byte-identical outputs on all 24 tasks to b10434 runs 180/181 while improving mean effective throughput from 20.40 to 20.70 t/s. MTP draft2 remains the measured quality/speed point because draft3 changed task outcomes.
 
-Road Runner remains the throughput leader. Doctor Strange is the current daily quality profile; its low reasoning setting and 8K allowance avoid the output-exhaustion failures observed with Qwen3.8's medium/xhigh behavior.
+Road Runner remains the throughput leader. Run 202 is its current stable-runtime normalization. Its 0.750-point difference from old b301 run 177 was reproduced on the three changing tasks with b10434, proving that v0.2.0 did not introduce the trajectory change. Doctor Strange remains the daily quality profile.
 
-### Rejected Road Runner practical profile
+### Stable-runtime normalization and rejected candidates
 
-Road Runner low/8K on current llama.cpp b10434 (run 183) scored **49.542/65 at 24.2 effective visible tok/s**, versus its off/4K run at **54.792/65 and 144.9 tok/s**. Qwen3.6 maps low and medium to the same boolean thinking mode rather than Qwen3.8's graduated effort. The larger allowance mostly increased hidden reasoning; JSON path and semver produced effectively empty finals. The low/8K profile is rejected, and Road Runner remains configured off/4K.
+Production now uses stable llama.cpp v0.2.0/b10566, commit `bb4caa754`. Spiderman run 206 improved from b301 run 178 by 1.161 points and matched 6/24 outputs; Thor run 207 fell by 2.188 points and matched 3/24. These are current runtime-specific results rather than claims of intrinsic weight changes.
+
+| Candidate/profile | Runs | Score | Passed | Effective output t/s | Decision |
+|---|---:|---:|---:|---:|---|
+| Qwen3.8 + Sharp chat template v22.3.1, low/8K/MTP2 | 208 | **55.417/65** | 18/24 | 20.2 | Reject: below Doctor Strange and 19% slower end-to-end despite 21% less visible output |
+| Cold Fusion GAIN V1.1, low/8K/MTP2 | 200/203 | **55.006/65** | 17/24 | 19.8 | Reject: exact score/runtime replay but below Doctor Strange and far slower than Road Runner |
+| Ornith 1.5 35B-A3B AD-Q4 target-only, off/4K | 209 | **44.563/65** | 15/24 | 92.7 | Reject: lower quality and lower throughput than Road Runner; no MTP/thinking follow-up |
+
+Road Runner low/8K on b10434 (run 183) scored **49.542/65 at 24.2 t/s**. Qwen3.6 maps low and medium to the same boolean thinking mode; the larger allowance mostly increased hidden reasoning, and JSON path plus semver produced effectively empty finals. That practical profile remains rejected.
 
 ## Current protocol-v4 OpenAI profiles
 
@@ -54,38 +62,56 @@ Antigravity (Google Cloud Code Assist) results run under the **antigravity-v1** 
 
 | Model/profile | Runtime | Runs | Mean score | Range | Mean effective output t/s |
 |---|---|---:|---:|---:|---:|
-| Claude Opus 4.6 | claude-opus-4-6-thinking (thinking always on, no effort tiers) | 198/199 | **52.500/65** | 48.000–57.000 | 40.0 |
-| Gemini 3.7 Flash, medium | gemini-3.7-flash-tiered, thinkingConfig MEDIUM | 194/195 | **46.750/65** | 46.500–47.000 | 58.0 |
-| Gemini 3.1 Pro, high | gemini-pro-agent (high) | 196/197 | **44.250/65** | 41.000–47.500 | 13.8 |
+| Claude Opus 4.6 | claude-opus-4-6-thinking (thinking always on, no effort tiers) | 198/199/204 | **61.506/65** | 60.810–62.604 | 40.5 |
+| Gemini 3.7 Flash, medium | gemini-3.7-flash-tiered, thinkingConfig MEDIUM | 194/195 | **58.408/65** | 58.372–58.443 | 58.0 |
+| Gemini 3.1 Pro, high | gemini-pro-agent (high) | 196/197 | **57.836/65** | 54.479–61.193 | 13.8 |
 
-Flash medium passed 18/24 in both runs; its recurring failures are JSON path (invalid-input rejection), retry schedule (2/3), changelog (5/6), ADR (6/7), and design review (7/8). Its effective throughput (~58 tok/s) makes it the fastest cloud profile measured so far.
+Earlier prose incorrectly summarized Antigravity with the sum of weights for fully passing tasks, while `RESULTS.csv`, local profiles, OpenAI profiles, and the documented methodology all award proportional credit on independently scored checks. The corrected values above use the authoritative CSV formula. The task rows, pass counts, and raw grader values are unchanged.
 
-Claude Opus 4.6 is the strongest antigravity profile so far (52.500 mean, ~40 tok/s) and the first cloud model on this profile to pass 20+ tasks in a single run (run 198: 21/24). Its 9-point range is the largest measured on any profile: the runs passed 21/24 and 18/24, with `retry_schedule_hard` (3/3 → 2/3), `log_triage_incident` (7/7 → 6/7), and `design_review_find_flaws` (8/8 → 7/8) flipping, while `markdown_table_hard` (2/4) and `changelog_from_commits` (5/6) failed both runs. A further repeat would tighten the mean.
+Flash medium passed 18/24 in both runs and has the tightest Antigravity score range. Its recurring full-task failures still include JSON path, retry schedule, changelog, ADR, and design review, but partial checks preserve the credit it earned. Its ~58 t/s mean is the fastest cloud profile measured here.
 
-Pro high is slower (~14 tok/s) and more variable: the two runs passed 18/24 and 17/24 with a 6.5-point range, driven by `unified_diff_hard` moving 3/3 → 1/3 and `json_path_set_hard` flipping between runs. Under this profile, the cheaper flash model at medium reasoning outscored pro at high reasoning on both mean and range, so flash medium is the stronger antigravity profile for Gemini workloads; Claude Opus 4.6 is the strongest overall antigravity profile.
+The third Opus repeat, run 204, scored 61.104/65 with 19/24 full passes at 41.5 t/s. Across all three equivalent complete runs, Opus averages 61.506 with a 1.795-point range, replacing the misleading 9-point binary-pass range. It is the strongest Antigravity profile, though its fixed injected prompt keeps it on a distinct input variant from pure-canonical profiles.
+
+Pro high remains slower and more variable than Flash: its 6.714-point range is driven mainly by unified diff and JSON-path behavior. Flash medium is the stronger Gemini profile on mean, stability, and throughput. A Sonnet 4.6 attempt (run 205) exhausted the shared Claude quota after 7/24 tasks; it is explicitly `incomplete-infrastructure`, excluded from every aggregate, and may be completed only after the provider reset.
 
 ## Current combined protocol-v4 ranking
 
-This table combines two-run means where repeats exist and single complete runs otherwise. Output allowances and reasoning controls remain part of each named profile.
+This table uses the arithmetic mean of every equivalent complete run where repeats exist and a single complete run otherwise. Output allowances and reasoning controls remain part of each named profile; incomplete infrastructure runs are excluded.
 
 | Rank | Model/profile | Class | Score used |
 |---:|---|---|---:|
-| 1 | GPT-5.5, high | Cloud native, two-run mean | **60.813** |
-| 2 | GPT-5.5, medium | Cloud native, two-run mean | **59.625** |
-| 3 | GPT-5.6 Sol, medium | Cloud native, two-run mean | **57.516** |
-| 4 | Doctor Strange — Qwen3.8 27B, low/8K/MTP2 | Local practical, exact two-run mean | **57.396** |
-| 5 | GPT-5.6 Sol, high | Cloud native, two-run mean | **56.305** |
-| 6 | Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3 | Local canonical | **54.792** |
-| 7 | GPT-5.4, medium | Cloud native, exact two-run mean | **54.277** |
-| 8 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local canonical | **53.229** |
-| 9 | Claude Opus 4.6 | Cloud antigravity-v1 profile, two-run mean | **52.500** |
-| 10 | Spiderman — Tmax 27B, off/4K/MTP3 | Local canonical | **51.568** |
-| 11 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
-| 12 | Qwen3.8 27B, off/4K/no-spec | Local canonical | **48.229** |
-| 13 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 profile, two-run mean | **46.750** |
-| 14 | Gemini 3.1 Pro, high | Cloud antigravity-v1 profile, two-run mean | **44.250** |
+| 1 | Claude Opus 4.6 | Cloud antigravity-v1, three-run mean | **61.506** |
+| 2 | GPT-5.5, high | Cloud native, two-run mean | **60.813** |
+| 3 | GPT-5.5, medium | Cloud native, two-run mean | **59.625** |
+| 4 | Gemini 3.7 Flash, medium | Cloud antigravity-v1, two-run mean | **58.408** |
+| 5 | Gemini 3.1 Pro, high | Cloud antigravity-v1, two-run mean | **57.836** |
+| 6 | GPT-5.6 Sol, medium | Cloud native, two-run mean | **57.516** |
+| 7 | Doctor Strange — Qwen3.8 27B, low/8K/MTP2 | Local practical, exact runtime replay | **57.396** |
+| 8 | GPT-5.6 Sol, high | Cloud native, two-run mean | **56.305** |
+| 9 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected template A/B | **55.417** |
+| 10 | Cold Fusion, low/8K/MTP2 | Local rejected, exact two-run mean | **55.006** |
+| 11 | GPT-5.4, medium | Cloud native, exact two-run mean | **54.277** |
+| 12 | Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3 | Local canonical | **54.042** |
+| 13 | Spiderman — Tmax 27B, off/4K/MTP3 | Local canonical | **52.729** |
+| 14 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local canonical | **51.042** |
+| 15 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
+| 16 | Qwen3.8 27B, off/4K/no-spec | Local canonical | **48.229** |
+| 17 | Ornith 1.5 35B-A3B, target-only off/4K | Local rejected candidate | **44.563** |
 
-The antigravity-v1 profiles' prompt variant (canonical + fixed extension injection) differs from the pure canonical input of the other profiles, so their ranks are reported within the combined ordering but on a distinct input variant.
+The antigravity-v1 profiles' prompt variant (canonical + fixed extension injection) differs from the pure canonical input of the other profiles. Their corrected scores are shown in the combined ordering, but that boundary prevents a claim of byte-identical input equivalence.
+
+## Tool-enabled multi-turn daily operations
+
+`pi-ops-v1` is a separate 100-point profile and is not part of the 65-point ranking. Each model received the same three-turn persisted session, writable disposable repository, four Pi tools, hidden retry checks, systemd/README static checks, and scope/test-preservation checks.
+
+| Model | Score | Tool calls | Wall time | Main deduction |
+|---|---:|---:|---:|---|
+| Doctor Strange | **100/100** | 27 | 225.7 s | none |
+| Road Runner | **95/100** | 18 | **20.5 s** | omitted exact unittest command |
+| Thor | **95/100** | 15 | 74.0 s | omitted exact unittest command |
+| Spiderman | **85/100** | 18 | 53.6 s | omitted all three exact README commands |
+
+All four passed every hidden retry check, every service/hardening check, preserved supplied tests, stayed within the allowed file scope, and completed all turns. Doctor Strange maximized instruction compliance; Road Runner delivered nearly the same score with the best operational latency. Attestation: PiBench commit `b124523`, Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, effective system prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
 
 ## Historical prompt-profile boundary
 

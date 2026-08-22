@@ -7,6 +7,7 @@ import argparse
 import csv
 import math
 import re
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -134,7 +135,12 @@ def audit_csv(path: Path, database: Path | None) -> list[str]:
         else:
             with tempfile.TemporaryDirectory(prefix="pibench-public-audit-") as tmp:
                 regenerated = Path(tmp) / "RESULTS.csv"
-                pibench_report.export_public_csv(database, regenerated)
+                connection = sqlite3.connect(database)
+                connection.row_factory = sqlite3.Row
+                try:
+                    pibench_report.export_public_csv(connection, regenerated)
+                finally:
+                    connection.close()
                 if regenerated.read_bytes() != path.read_bytes():
                     errors.append("RESULTS.csv is stale or non-deterministic relative to the supplied database")
     return errors

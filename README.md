@@ -108,22 +108,39 @@ That profile gives Pi only `read`, `bash`, `edit`, and `write` inside a disposab
 
 ## Reference results
 
-Current rankings use the fixed, attested protocol-v4 input. The table is a strict score ordering of the ten highest completed v4 profiles currently available. Repeated cloud profiles use the two-run mean; a one-run local profile uses that run's score.
+Current rankings use the fixed, attested protocol-v4 input. The table is a strict score ordering of the twelve highest completed profiles currently available. Repeated profiles use the arithmetic mean of every equivalent complete run; ranges are observed minima and maxima, not confidence intervals.
 
 | Rank | Scope | Alias / real model and profile | Runs | Score used | Observed range | Effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
-| 1 | Cloud | OpenAI **GPT-5.5**, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
-| 2 | Cloud | OpenAI **GPT-5.5**, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
-| 3 | Cloud | OpenAI **GPT-5.6 Sol**, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
-| 4 | Local | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | 180/181 | **57.396/65** | 57.396–57.396 | 20.4 |
-| 5 | Cloud | OpenAI **GPT-5.6 Sol**, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
-| 6 | Local | **Road Runner** — Qwen3.6-35B-A3B-MTP UD-Q4_K_M, off/4K/MTP3 | 177 | **54.792/65** | not measured (n=1) | **144.9** |
-| 7 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
-| 8 | Local | **Thor** — Qwen3.6-27B DSV4Pro Q4_LynnStyle, thinking/4K/no-spec | 179 | **53.229/65** | not measured (n=1) | 9.3 |
-| 9 | Cloud | **Claude Opus 4.6** (antigravity-v1 profile) | 198/199 | **52.500/65** | 48.000–57.000 | 40.0 |
-| 10 | Local | **Spiderman** — Tmax-27B Q5_K_M, off/4K/MTP3 | 178 | **51.568/65** | not measured (n=1) | 47.8 |
+| 1 | Cloud variant | **Claude Opus 4.6** (antigravity-v1) | 198/199/204 | **61.506/65** | 60.810–62.604 | 40.5 |
+| 2 | Cloud | OpenAI **GPT-5.5**, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
+| 3 | Cloud | OpenAI **GPT-5.5**, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
+| 4 | Cloud variant | **Gemini 3.7 Flash**, medium (antigravity-v1) | 194/195 | **58.408/65** | 58.372–58.443 | 58.0 |
+| 5 | Cloud variant | **Gemini 3.1 Pro**, high (antigravity-v1) | 196/197 | **57.836/65** | 54.479–61.193 | 13.8 |
+| 6 | Cloud | OpenAI **GPT-5.6 Sol**, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
+| 7 | Local | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | 180/181/201 | **57.396/65** | 57.396–57.396 | 20.7 |
+| 8 | Cloud | OpenAI **GPT-5.6 Sol**, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
+| 9 | Local candidate | Qwen3.8-27B + **Sharp v22.3.1**, low/8K/MTP2 | 208 | **55.417/65** | not measured (n=1) | 20.2 |
+| 10 | Local candidate | **Cold Fusion** Qwen3.8-27B, low/8K/MTP2 | 200/203 | **55.006/65** | 55.006–55.006 | 19.8 |
+| 11 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
+| 12 | Local | **Road Runner** — Qwen3.6-35B-A3B UD-Q4_K_M, off/4K/MTP3 | 202 | **54.042/65** | not measured (n=1) | **148.2** |
 
-Road Runner practical (Qwen3.6 35B-A3B, low/8K/MTP3) is published at 49.542/65 (run 183) but rejected for deployment; Qwen3.6's boolean thinking mode made it slower and less accurate. The other antigravity-v1 cloud profiles are below it: Gemini 3.7 Flash medium at 46.750/65 (runs 194/195) and Gemini 3.1 Pro high at 44.250/65 (runs 196/197); Qwen3.8 off/4K/no-spec sits between Spiderman and Road Runner practical at 48.229/65. Doctor Strange, Road Runner, Thor, and Spiderman are local deployment aliases.
+The antigravity rows were previously summarized with binary pass-weight totals rather than PiBench's documented partial-credit formula. The table now uses the same canonical weighted calculation as `RESULTS.csv` and every other profile; no raw result was changed. Antigravity-v1 still has a distinct canonical-plus-fixed-injection input, so its combined position must be read with that boundary in mind.
+
+Stable llama.cpp v0.2.0/b10566 is now the production runtime. Current stable-runtime runs place Spiderman at 52.729/65 and 48.1 t/s (run 206) and Thor at 51.042/65 and 10.0 t/s (run 207). Road Runner practical remains rejected at 49.542/65 (run 183); Qwen3.8 off/4K/no-spec is below it at 48.229/65 (run 182), and target-only Ornith 1.5 was rejected at 44.563/65 and 92.7 t/s (run 209). Sharp and Cold Fusion did not beat Doctor Strange and were not promoted. Doctor Strange, Road Runner, Thor, and Spiderman remain the deployment aliases.
+
+### Tool-enabled daily-operations result
+
+The separate `pi-ops-v1` three-turn profile produced:
+
+| Alias | Score | Tool calls | Total wall time |
+|---|---:|---:|---:|
+| **Doctor Strange** | **100/100** | 27 | 225.7 s |
+| **Road Runner** | **95/100** | 18 | **20.5 s** |
+| **Thor** | **95/100** | 15 | 74.0 s |
+| **Spiderman** | **85/100** | 18 | 53.6 s |
+
+All four fixed the retry implementation, preserved tests, produced the fully hardened service, stayed in scope, and completed all turns. Road Runner and Thor omitted the exact requested unittest command; Spiderman missed all three exact README commands. Doctor Strange was the only 100/100 profile, while Road Runner was about eleven times faster. The profile used Pi 0.84.1, PiBench commit `b124523`, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, and effective tool-enabled system-prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
 
 ### Cloud versus local results
 
@@ -131,7 +148,7 @@ Protocol v4 makes the **benchmark input** identical: pinned Pi 0.84.1, the same 
 
 - Local runs can attest the GGUF hash, quantization, llama.cpp commit, server arguments, KV cache, sampler, speculation, and hardware. Seeded local generation can be reproducible, but quantized speculative decoding and runtime changes can still alter output.
 - Cloud runs attest the provider/model identifier and request profile, but not weights, backend build, routing, sampler implementation, or service updates. The API does not provide a seed-attested deterministic path, so repeated cloud runs are summarized by mean and range rather than their best score.
-- Doctor Strange is currently **output-deterministic on its tested stack**: runs 180/181 were byte-identical on all 24 tasks. GPT-5.4 repeated the same score but only 3/24 outputs were byte-identical, illustrating that score stability is not output determinism. GPT-5.5 varied by about 4.8 points between identical invocations.
+- Doctor Strange is currently **output-deterministic across its tested runtime replay**: stable-v0.2.0 run 201 was byte-identical on all 24 tasks to b10434 runs 180/181. GPT-5.4 repeated the same score but only 3/24 outputs were byte-identical, illustrating that score stability is not output determinism. GPT-5.5 varied by about 4.8 points between identical invocations.
 - Effective output t/s is end-to-end visible-output speed. Local figures primarily reflect the reference machine; cloud figures also include network, queueing, and opaque provider execution.
 - Output ceilings and reasoning controls are profile properties: local canonical runs use 4K, Doctor Strange uses 8K, and these OpenAI catalog entries expose a provider-native 128K ceiling. Local and cloud reasoning levels are not assumed equivalent.
 

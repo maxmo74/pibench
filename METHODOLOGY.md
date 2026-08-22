@@ -96,7 +96,7 @@ For current curated tables:
 - Output determinism is claimed only after private raw-output comparison. Raw text remains unpublished; the public CSV retains each run and task outcome separately.
 - Equal scores across repeats are reported as score stability. For example, two GPT-5.4 runs had the same score while only 3/24 outputs were byte-identical; Doctor Strange runs 180/181 were byte-identical on 24/24.
 
-The current two-run cloud sample estimates short-run variability; it is not a confidence interval or a guarantee about future service behavior. More repeats are appropriate when profiles have wide ranges or when a decision is sensitive to small score differences.
+The current small cloud samples (two complete runs for most profiles and three for Opus 4.6) estimate short-run variability; they are not confidence intervals or guarantees about future service behavior. More repeats are appropriate when profiles have wide ranges or when a decision is sensitive to small score differences.
 
 ## Tool-enabled multi-turn profile: pi-ops-v1
 
