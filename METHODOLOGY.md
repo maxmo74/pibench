@@ -98,6 +98,16 @@ For current curated tables:
 
 The current two-run cloud sample estimates short-run variability; it is not a confidence interval or a guarantee about future service behavior. More repeats are appropriate when profiles have wide ranges or when a decision is sensitive to small score differences.
 
+## Tool-enabled multi-turn profile: pi-ops-v1
+
+The canonical 65-point suite deliberately removes tools and conversational state. `pi_ops_bench.py` provides a separate 100-point diagnostic for daily coding and operations work; its scores are not comparable to, and are never mixed with, canonical Pi-agent scores.
+
+`pi-ops-v1` resets the same fixed disposable Git repository for every model and sends three sequential prompts through one persisted Pi session: repair and validate a retry implementation, harden a systemd service and update its README, then review and correct the combined change. Pi 0.84.1 is pinned. The only enabled tools are `read`, `bash`, `edit`, and `write`; context files, skills, templates, themes, and auto-discovered extensions are disabled. A source-pinned read-only attestor records the complete effective tool-enabled system-prompt SHA-256 before each turn and the harness requires one identical hash across all turns and models.
+
+The Pi process runs inside Bubblewrap with a private filesystem, read-only system/runtime mounts, fixed cwd `/tmp/pibench-ops-cwd-v1`, isolated model configuration, private session/output directories, and only the disposable repository writable. The host network namespace is shared solely so the process can reach a configured loopback inference server; therefore this profile accepts loopback HTTP providers only. Model-generated Python used for hidden scoring is evaluated again through PiBench's networkless generated-code sandbox.
+
+Scoring is deterministic: retry behavior 35 points, service correctness/hardening 30, exact README commands 15, preservation of supplied tests 10, minimal file scope 5, and completion of all three turns 5. Tool-call count and wall time are descriptive tie-breakers, not score inputs. Raw event streams, sessions, model text, and workspaces remain private; public reports contain only aggregate scores, check outcomes, hashes, and profile metadata.
+
 ## Executable checks
 
 Generated Python is treated as untrusted. Bubblewrap provides:

@@ -95,6 +95,17 @@ An OpenAI-compatible endpoint can also be tested directly without Pi:
 
 This diagnostic reuses current PiBench checks and records both effective output speed and native server timing fields when available. Pass `--task TASK_NAME` repeatedly to select specific tasks.
 
+For a separate tool-enabled, multi-turn operations diagnostic, run configured loopback models through the versioned `pi-ops-v1` profile:
+
+```bash
+PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
+  ./pi_ops_bench.py \
+  'local-llama/Doctor Strange:low' \
+  'local-llama/Road Runner:off'
+```
+
+That profile gives Pi only `read`, `bash`, `edit`, and `write` inside a disposable Bubblewrap filesystem, uses three sequential turns in one session, hashes its effective tool-enabled system prompt, and scores the resulting code, service unit, documentation, test preservation, and change scope. Its 100-point score is a separate daily-operations diagnostic and is never mixed into the canonical 65-point no-tools ranking. Raw sessions and output remain under ignored local paths.
+
 ## Reference results
 
 Current rankings use the fixed, attested protocol-v4 input. The table is a strict score ordering of the ten highest completed v4 profiles currently available. Repeated cloud profiles use the two-run mean; a one-run local profile uses that run's score.
