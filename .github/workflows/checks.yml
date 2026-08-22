@@ -18,3 +18,9 @@ jobs:
 
       - name: Compile Python
         run: python3 -m compileall -q .
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Audit public tree and CSV
+        run: python3 scripts/public_release_audit.py --current-only

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import ipaddress
 import json
 import math
 import re
@@ -224,9 +225,18 @@ def public_url(value: object) -> str:
         parsed = urllib.parse.urlsplit(str(value))
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             return ""
-        host = parsed.hostname
-        if ":" in host:
-            host = f"[{host}]"
+        hostname = parsed.hostname.rstrip(".").lower()
+        if hostname == "localhost" or hostname.endswith((".localhost", ".local", ".internal")):
+            return ""
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            if "." not in hostname or any(not label for label in hostname.split(".")):
+                return ""
+        else:
+            if not address.is_global:
+                return ""
+        host = f"[{hostname}]" if ":" in hostname else hostname
         netloc = f"{host}:{parsed.port}" if parsed.port is not None else host
         return urllib.parse.urlunsplit((parsed.scheme, netloc, parsed.path, "", ""))
     except (TypeError, ValueError):
