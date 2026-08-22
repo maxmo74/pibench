@@ -429,7 +429,7 @@ def tool_call_is_in_scope(tool_name: str, args: Any) -> bool:
         return False
     if re.search(r"(?:^|[\s;&|])\.\./", command):
         return False
-    absolute_paths = re.findall(r"(?<![\w:.])(/[A-Za-z0-9_./*?{}-]+)", command)
+    absolute_paths = re.findall(r"(?<![\w:.*?{}-])(/[A-Za-z0-9_./*?{}-]+)", command)
     return all(path.startswith(str(WORKSPACE)) or path.startswith("/dev/null") for path in absolute_paths)
 
 

@@ -79,6 +79,9 @@ class ReliabilityEventAnalysisTests(unittest.TestCase):
         self.assertTrue(reliability.tool_call_is_in_scope(
             "bash", {"command": "./scripts/diagnose.sh"}
         ))
+        self.assertTrue(reliability.tool_call_is_in_scope(
+            "bash", {"command": "find /tmp/pibench-reliability-cwd-v1 -not -path '*/.git/*'"}
+        ))
         self.assertFalse(reliability.tool_call_is_in_scope(
             "bash", {"command": "cd ../private && cat secret"}
         ))
