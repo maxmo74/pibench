@@ -38,9 +38,10 @@ LOCK_PATH = Path("/tmp/pibench-ops-v1.lock")
 ATTESTOR = ROOT / "scripts" / "ops_prompt_attestor.ts"
 TOOLS = "read,bash,edit,write"
 EXPECTED_TASK_FILES = {"retry.py", "README.md", "deploy/pibench-worker.service"}
+EXPECTED_SYSTEM_PROMPT_SHA256 = "c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9"
 
 TURN_PROMPTS = (
-    """Inspect this repository and fix the retry implementation so all tests pass. Requirements: retry_delays(attempts, base=1, cap=8) must return exactly `attempts` delays, use capped exponential backoff, reject booleans and non-positive/non-integer attempts with ValueError, reject non-positive base/cap with ValueError, and perform no sleeping or randomness. Do not modify tests. Run the tests before finishing.""",
+    """Inspect this repository and fix the retry implementation so all tests pass. Requirements: retry_delays(attempts, base=1, cap=8) must return exactly `attempts` delays, use capped exponential backoff, reject booleans and non-positive/non-integer attempts with ValueError, reject boolean or non-positive base/cap with ValueError, and perform no sleeping or randomness. Do not modify tests. Run the tests before finishing.""",
     """Now productionize deploy/pibench-worker.service without undoing the retry fix. It must wait for network-online.target, run as User and Group pibench, use WorkingDirectory=/opt/pibench, EnvironmentFile=-/etc/pibench/worker.env, ExecStart=/opt/pibench/venv/bin/python -m worker, restart on failure after 5 seconds, and include NoNewPrivileges=true, PrivateTmp=true, ProtectSystem=strict, ProtectHome=true, and ReadWritePaths=/var/lib/pibench. Update README.md with the exact unittest and systemctl enable/start commands. Keep the change minimal and run tests again.""",
     """Review the repository changes for correctness, security, and scope. Fix any remaining issue you find, rerun the tests, and finish with a concise summary of files changed and validation performed.""",
 )
@@ -132,7 +133,7 @@ def write_isolated_agent(model_arg: str) -> None:
     safe_provider = {
         key: value
         for key, value in provider_config.items()
-        if key in {"baseUrl", "api", "compat", "headers", "authHeader"}
+        if key in {"baseUrl", "api", "compat"}
     }
     safe_provider["apiKey"] = "pibench-local"
     safe_provider["models"] = [selected]
@@ -140,8 +141,12 @@ def write_isolated_agent(model_arg: str) -> None:
     AGENT_DIR.mkdir(mode=0o700)
     (AGENT_DIR / "models.json").write_text(json.dumps({"providers": {provider: safe_provider}}, indent=2) + "\n")
     (AGENT_DIR / "settings.json").write_text("{}\n")
+    (AGENT_DIR / "auth.json").write_text("{}\n")
+    shutil.copyfile(ATTESTOR, AGENT_DIR / "ops_prompt_attestor.ts")
     os.chmod(AGENT_DIR / "models.json", 0o600)
     os.chmod(AGENT_DIR / "settings.json", 0o600)
+    os.chmod(AGENT_DIR / "auth.json", 0o600)
+    os.chmod(AGENT_DIR / "ops_prompt_attestor.ts", 0o400)
 
 
 def reset_workspace() -> str:
@@ -180,7 +185,6 @@ def bwrap_command(pi_executable: Path, model_arg: str, session_id: str, prompt: 
         "--bind", str(AGENT_DIR), "/agent",
         "--bind", str(SESSION_DIR), "/sessions",
         "--bind", str(OUTPUT_DIR), "/output",
-        "--ro-bind", str(ATTESTOR), "/ops_prompt_attestor.ts",
         "--chdir", str(WORKSPACE), "--clearenv",
         "--setenv", "HOME", str(WORKSPACE),
         "--setenv", "PATH", "/usr/bin:/bin",
@@ -194,7 +198,7 @@ def bwrap_command(pi_executable: Path, model_arg: str, session_id: str, prompt: 
         "--session-dir", "/sessions",
         "--tools", TOOLS,
         "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes",
-        "--no-extensions", "--extension", "/ops_prompt_attestor.ts",
+        "--no-extensions", "--extension", "/agent/ops_prompt_attestor.ts",
         "--offline", "--mode", "json", "--print", prompt,
     ]
     return command
@@ -216,6 +220,8 @@ def run_turn(pi_executable: Path, model_arg: str, session_id: str, prompt: str, 
         stderr = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
         stderr = f"timeout after {timeout}s\n{stderr}"
     wall = time.monotonic() - started
+    if sha256_bytes((AGENT_DIR / "ops_prompt_attestor.ts").read_bytes()) != sha256_bytes(ATTESTOR.read_bytes()):
+        raise RuntimeError("tool-enabled session modified its prompt attestor")
     events = []
     for line in stdout.splitlines():
         try:
@@ -263,7 +269,7 @@ def service_checks() -> dict[str, bool]:
         "working_directory": "WorkingDirectory=/opt/pibench" in compact,
         "environment_file": "EnvironmentFile=-/etc/pibench/worker.env" in compact,
         "exec_start": "ExecStart=/opt/pibench/venv/bin/python -m worker" in compact,
-        "restart": "Restart=on-failure" in compact and "RestartSec=5" in compact,
+        "restart": "Restart=on-failure" in compact and bool({"RestartSec=5", "RestartSec=5s"} & compact),
         "no_new_privileges": "NoNewPrivileges=true" in compact,
         "private_tmp": "PrivateTmp=true" in compact,
         "filesystem_hardening": "ProtectSystem=strict" in compact and "ProtectHome=true" in compact,
@@ -323,6 +329,8 @@ def run_model(pi_executable: Path, model_arg: str, timeout: int) -> dict[str, An
     hashes = hashes_path.read_text().splitlines() if hashes_path.is_file() else []
     if len(hashes) != len(TURN_PROMPTS) or len(set(hashes)) != 1:
         raise RuntimeError(f"effective system prompt was not stable for {model_arg}: {hashes}")
+    if hashes[0] != EXPECTED_SYSTEM_PROMPT_SHA256:
+        raise RuntimeError(f"effective system prompt drifted for {model_arg}: {hashes[0]}")
     score, checks = score_workspace(test_hash, turns)
     return {
         "model": model_arg,
