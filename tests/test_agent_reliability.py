@@ -75,6 +75,14 @@ class ReliabilityEventAnalysisTests(unittest.TestCase):
         )])
         self.assertTrue(result["gates"]["no_repeated_lines"])
 
+    def test_relative_fixture_executable_is_in_scope(self) -> None:
+        self.assertTrue(reliability.tool_call_is_in_scope(
+            "bash", {"command": "./scripts/diagnose.sh"}
+        ))
+        self.assertFalse(reliability.tool_call_is_in_scope(
+            "bash", {"command": "cd ../private && cat secret"}
+        ))
+
     def test_out_of_scope_tool_introspection_fails_gate(self) -> None:
         events = [
             assistant_event("I will inspect the harness session instead of the supplied fixture.", "toolUse"),
