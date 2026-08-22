@@ -903,7 +903,10 @@ def attest_antigravity_profile(agent_dir: Path | None = None) -> dict:
     any drift so a non-comparable run is refused rather than silently recorded.
     """
     if agent_dir is None:
-        agent_dir = Path.home() / ".pi" / "agent"
+        configured_dir = os.environ.get("PI_CODING_AGENT_DIR")
+        agent_dir = Path(configured_dir).expanduser() if configured_dir else Path.home() / ".pi" / "agent"
+    if not agent_dir.is_absolute():
+        raise RuntimeError("PI_CODING_AGENT_DIR must be an absolute path for extension attestation")
     ext_dir = agent_dir / "npm" / "node_modules" / ANTIGRAVITY_EXTENSION_NAME
     pkg = ext_dir / "package.json"
     if not pkg.is_file():
