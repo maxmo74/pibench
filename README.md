@@ -127,7 +127,7 @@ Current rankings use the fixed, attested protocol-v4 input. The table is a stric
 
 The antigravity rows were previously summarized with binary pass-weight totals rather than PiBench's documented partial-credit formula. The table now uses the same canonical weighted calculation as `RESULTS.csv` and every other profile; no raw result was changed. Antigravity-v1 still has a distinct canonical-plus-fixed-injection input, so its combined position must be read with that boundary in mind.
 
-Stable llama.cpp v0.2.0/b10566 is now the production runtime. Current stable-runtime runs place Spiderman at 52.729/65 and 48.1 t/s (run 206) and Thor at 51.042/65 and 10.0 t/s (run 207). Road Runner practical remains rejected at 49.542/65 (run 183); Qwen3.8 off/4K/no-spec is below it at 48.229/65 (run 182), and target-only Ornith 1.5 was rejected at 44.563/65 and 92.7 t/s (run 209). Sharp and Cold Fusion did not beat Doctor Strange and were not promoted. Doctor Strange, Road Runner, Thor, and Spiderman remain the deployment aliases.
+Stable llama.cpp v0.2.0/b10566 is now the production runtime. Current stable-runtime runs place Spiderman at 52.729/65 and 48.1 t/s (run 206) and Thor at 51.042/65 and 10.0 t/s (run 207). Road Runner practical remains rejected at 49.542/65 (run 183); Qwen3.8 off/4K/no-spec is below it at 48.229/65 (run 182), and target-only Ornith 1.5 was rejected at 44.563/65 and 92.7 t/s (run 209). Sharp and Cold Fusion did not beat Doctor Strange and were not promoted. Doctor Strange, Road Runner, Thor, and Spiderman remain deployment aliases, but Road Runner is retained only as a bounded throughput specialist.
 
 ### Tool-enabled daily-operations result
 
@@ -141,6 +141,8 @@ The separate `pi-ops-v1` three-turn profile produced:
 | **Spiderman** | **85/100** | 18 | 53.6 s |
 
 All four fixed the retry implementation, preserved tests, produced the fully hardened service, stayed in scope, and completed all turns. Road Runner and Thor omitted the exact requested unittest command; Spiderman missed all three exact README commands. Doctor Strange was the only 100/100 profile, while Road Runner was about eleven times faster. The profile used Pi 0.84.1, PiBench commit `b124523`, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, and effective tool-enabled system-prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
+
+A subsequent adversarial replay exposed a limitation that `pi-ops-v1` does not measure: termination under ambiguous, open-ended investigation. A retained Road Runner session duplicated planning and searches, then repeated one paragraph 43 times until aborted. Replaying the exact branch on b10566 timed out with repeated tools under both MTP3 and target-only execution; repetition penalties reduced verbatim duplication but did not restore termination, and an explicit tool budget was ignored. MTP amplified the failure but was not its root cause. Road Runner should therefore not be used unattended for autonomous tool work; prefer Doctor Strange. Its 148.2 t/s result remains valid for the bounded no-tools profile.
 
 ### Cloud versus local results
 

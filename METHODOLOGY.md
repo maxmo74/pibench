@@ -108,6 +108,8 @@ The Pi process runs inside Bubblewrap with a private filesystem, read-only syste
 
 Scoring is deterministic: retry behavior 35 points, service correctness/hardening 30, exact README commands 15, preservation of supplied tests 10, minimal file scope 5, and completion of all three turns 5. Tool-call count and wall time are descriptive tie-breakers, not score inputs. Raw event streams, sessions, model text, and workspaces remain private; public reports contain only aggregate scores, check outcomes, hashes, and profile metadata.
 
+`pi-ops-v1` measures three structured, convergent tasks; it does not establish reliability on ambiguous open-ended investigation. A model can pass this profile yet repeatedly call equivalent tools or fail to terminate on a less constrained request. Interpret its score together with observed interactive reliability. A future version should add an adversarial ambiguity turn and explicit duplicate-call, repeated-output, total-call, wall-time and normal-completion criteria.
+
 ## Executable checks
 
 Generated Python is treated as untrusted. Bubblewrap provides:

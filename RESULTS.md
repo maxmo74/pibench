@@ -28,7 +28,9 @@ Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete 
 
 Doctor Strange is deliberately a separate practical profile: it doubles the canonical output allowance and uses a quantized MTP sidecar. Stable-v0.2.0 run 201 produced byte-identical outputs on all 24 tasks to b10434 runs 180/181 while improving mean effective throughput from 20.40 to 20.70 t/s. MTP draft2 remains the measured quality/speed point because draft3 changed task outcomes.
 
-Road Runner remains the throughput leader. Run 202 is its current stable-runtime normalization. Its 0.750-point difference from old b301 run 177 was reproduced on the three changing tasks with b10434, proving that v0.2.0 did not introduce the trajectory change. Doctor Strange remains the daily quality profile.
+Road Runner remains the bounded no-tools throughput leader. Run 202 is its current stable-runtime normalization. Its 0.750-point difference from old b301 run 177 was reproduced on the three changing tasks with b10434, proving that v0.2.0 did not introduce the trajectory change. Doctor Strange remains the daily quality and autonomous-tool profile.
+
+A later interactive reliability audit confirmed that Road Runner can enter severe repeated-tool and repeated-output loops on ambiguous investigations. The retained incident repeated one paragraph 43 times; exact b10566 replay failed to terminate with both MTP3 and target-only execution. Repeat penalty 1.1 suppressed literal repetition but not endless investigation, medium thinking exhausted the output allowance, and a prompt-level tool budget was ignored. MTP amplified duplication but was not the root cause. This does not invalidate run 202's bounded score or throughput, but it demotes Road Runner from general autonomous use to a short, externally bounded throughput specialist.
 
 ### Stable-runtime normalization and rejected candidates
 
@@ -112,6 +114,8 @@ The antigravity-v1 profiles' prompt variant (canonical + fixed extension injecti
 | Spiderman | **85/100** | 18 | 53.6 s | omitted all three exact README commands |
 
 All four passed every hidden retry check, every service/hardening check, preserved supplied tests, stayed within the allowed file scope, and completed all turns. Doctor Strange maximized instruction compliance; Road Runner delivered nearly the same score with the best operational latency. Attestation: PiBench commit `b124523`, Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, effective system prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
+
+These three structured, convergent turns do not test open-ended exploration or guaranteed termination. The Road Runner loop audit demonstrates that its 95/100 result must not be generalized to unattended ambiguous work. A future `pi-ops-v2` should add adversarial ambiguity, duplicate-call, repeated-output, total-call and completion criteria.
 
 ## Historical prompt-profile boundary
 
