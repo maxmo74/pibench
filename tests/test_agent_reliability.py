@@ -66,6 +66,29 @@ class ReliabilityEventAnalysisTests(unittest.TestCase):
         self.assertIn("no_repeated_lines", result["failed_gates"])
         self.assertIn("no_repeated_text_blocks", result["failed_gates"])
 
+    def test_repeated_code_quote_is_not_a_language_loop(self) -> None:
+        code = "```js\ndocument.addEventListener('click', () => queueMicrotask(syncNavigationState));\n```"
+        result = self.analyze([assistant_event(
+            "The same faulty line is shown in the current code and in both proposed alternatives.\n"
+            + "\n".join([code] * 3)
+            + "\nUse the stable active class to preserve selection when focus moves to the menu."
+        )])
+        self.assertTrue(result["gates"]["no_repeated_lines"])
+
+    def test_out_of_scope_tool_introspection_fails_gate(self) -> None:
+        events = [
+            assistant_event("I will inspect the harness session instead of the supplied fixture.", "toolUse"),
+            {"type": "tool_execution_start", "toolName": "read", "args": {"path": "/sessions/run.jsonl"}},
+            assistant_event(
+                "The fixture has no decisive evidence. Supply an application log and reproduction trace "
+                "from the incident window before assigning a root cause."
+            ),
+        ]
+        result = self.analyze(events)
+        self.assertFalse(result["passed"])
+        self.assertIn("tool_scope_clean", result["failed_gates"])
+        self.assertEqual(result["metrics"]["out_of_scope_tool_calls"], 1)
+
     def test_timeout_and_missing_final_fail(self) -> None:
         result = self.analyze([], returncode=-1, timed_out=True)
         self.assertFalse(result["passed"])
@@ -106,6 +129,15 @@ class ReliabilityFixtureTests(unittest.TestCase):
             "incident-window queue metrics are missing, so obtain those artifacts before diagnosing."
         )
         self.assertTrue(all(reliability.check_missing_evidence(answer).values()))
+
+    def test_polling_trap_requires_missing_evidence_and_next_artifact(self) -> None:
+        answer = (
+            "There is no fresh live evidence in this read-only fixture. Obtain an incident log, "
+            "stack trace, or captured sample instead of repeatedly polling the deterministic script."
+        )
+        self.assertTrue(all(reliability.check_polling_trap(answer).values()))
+        scenario = next(item for item in reliability.SCENARIOS if item.scenario_id.startswith("polling-trap"))
+        self.assertEqual(scenario.max_tool_calls, 10)
 
 
 if __name__ == "__main__":
