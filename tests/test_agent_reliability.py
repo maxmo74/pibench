@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
 import pi_agent_reliability_bench as reliability
 
@@ -117,6 +122,30 @@ class ReliabilityEventAnalysisTests(unittest.TestCase):
         self.assertIn("semantic_checks", result["failed_gates"])
         self.assertTrue(result["gates"]["no_duplicate_tools"])
         self.assertTrue(result["gates"]["no_repeated_text_blocks"])
+
+
+class ReliabilityCredentialIsolationTests(unittest.TestCase):
+    def test_builtin_provider_copies_only_selected_credential_to_memory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            isolated = root / "isolated"
+            source.mkdir()
+            (source / "models.json").write_text("{}\n")
+            (source / "auth.json").write_text(json.dumps({
+                "openai-codex": {"type": "oauth", "access": "selected-secret"},
+                "anthropic": {"type": "oauth", "access": "unrelated-secret"},
+            }))
+            with mock.patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(source)}), mock.patch.object(
+                reliability, "AGENT_DIR", isolated
+            ):
+                payload = reliability.write_isolated_agent("openai-codex/gpt-5.6-sol:high")
+                staged = json.loads((isolated / "auth.json").read_text())
+            self.assertEqual(payload, {
+                "openai-codex": {"type": "oauth", "access": "selected-secret"}
+            })
+            self.assertEqual(staged, {})
+            self.assertNotIn("anthropic", json.dumps(payload))
 
 
 class ReliabilityFixtureTests(unittest.TestCase):

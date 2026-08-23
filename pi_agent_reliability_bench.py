@@ -37,6 +37,7 @@ SESSION_DIR = Path("/tmp/pibench-reliability-sessions-v1")
 OUTPUT_DIR = Path("/tmp/pibench-reliability-output-v1")
 LOCK_PATH = Path("/tmp/pibench-reliability-v1.lock")
 ATTESTOR = ROOT / "scripts" / "ops_prompt_attestor.ts"
+SCOPE_GUARD = ROOT / "scripts" / "reliability_scope_guard.ts"
 TOOLS = "read,bash"
 EXPECTED_SYSTEM_PROMPT_SHA256 = "ff3ea23421c72a5483e411cf92d2e7b0ca1d1a82dfb5dc9c1cadf9d3dcf1262d"
 
@@ -90,38 +91,50 @@ def source_agent_dir() -> Path:
     return Path(configured).expanduser() if configured else Path.home() / ".pi" / "agent"
 
 
-def write_isolated_agent(model_arg: str) -> None:
+def write_isolated_agent(model_arg: str) -> dict[str, Any]:
     provider, model_id, _ = parse_model_arg(model_arg)
-    source = json.loads((source_agent_dir() / "models.json").read_text())
+    source_dir = source_agent_dir()
+    source = json.loads((source_dir / "models.json").read_text())
     provider_config = source.get("providers", {}).get(provider)
-    if not isinstance(provider_config, dict):
-        raise ValueError(f"provider not found in models.json: {provider}")
-    parsed = urllib.parse.urlsplit(str(provider_config.get("baseUrl", "")))
-    if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
-        raise ValueError(f"{PROFILE} only accepts loopback HTTP providers")
-    selected = next(
-        (candidate for candidate in provider_config.get("models", []) if candidate.get("id") == model_id),
-        None,
-    )
-    if selected is None:
-        raise ValueError(f"model not found in provider {provider}: {model_id}")
-    selected = {key: value for key, value in selected.items() if key != "metadata"}
-    safe_provider = {
-        key: value for key, value in provider_config.items() if key in {"baseUrl", "api", "compat"}
-    }
-    safe_provider["apiKey"] = "pibench-local"
-    safe_provider["models"] = [selected]
+    auth_payload: dict[str, Any] = {}
+    isolated_models: dict[str, Any] = {}
+
+    if isinstance(provider_config, dict):
+        parsed = urllib.parse.urlsplit(str(provider_config.get("baseUrl", "")))
+        if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+            raise ValueError(
+                f"configured providers must use loopback HTTP; use a built-in provider for cloud: {provider}"
+            )
+        selected = next(
+            (candidate for candidate in provider_config.get("models", []) if candidate.get("id") == model_id),
+            None,
+        )
+        if selected is None:
+            raise ValueError(f"model not found in provider {provider}: {model_id}")
+        selected = {key: value for key, value in selected.items() if key != "metadata"}
+        safe_provider = {
+            key: value for key, value in provider_config.items() if key in {"baseUrl", "api", "compat"}
+        }
+        safe_provider["apiKey"] = "pibench-local"
+        safe_provider["models"] = [selected]
+        isolated_models = {"providers": {provider: safe_provider}}
+    else:
+        source_auth = json.loads((source_dir / "auth.json").read_text())
+        credential = source_auth.get(provider)
+        if not isinstance(credential, dict):
+            raise ValueError(f"built-in provider has no auth.json credential: {provider}")
+        auth_payload = {provider: credential}
 
     shutil.rmtree(AGENT_DIR, ignore_errors=True)
     AGENT_DIR.mkdir(mode=0o700)
-    (AGENT_DIR / "models.json").write_text(
-        json.dumps({"providers": {provider: safe_provider}}, indent=2) + "\n"
-    )
+    (AGENT_DIR / "models.json").write_text(json.dumps(isolated_models, indent=2) + "\n")
     (AGENT_DIR / "settings.json").write_text("{}\n")
     (AGENT_DIR / "auth.json").write_text("{}\n")
     shutil.copyfile(ATTESTOR, AGENT_DIR / "prompt_attestor.ts")
+    shutil.copyfile(SCOPE_GUARD, AGENT_DIR / "scope_guard.ts")
     for path in AGENT_DIR.iterdir():
         os.chmod(path, 0o400 if path.suffix == ".ts" else 0o600)
+    return auth_payload
 
 
 def setup_focus_state(root: Path) -> None:
@@ -352,7 +365,9 @@ def bwrap_command(pi_executable: Path, model_arg: str, session_id: str, prompt: 
         "--session-id", session_id, "--session-dir", "/sessions",
         "--tools", TOOLS,
         "--no-context-files", "--no-skills", "--no-prompt-templates", "--no-themes",
-        "--no-extensions", "--extension", "/agent/prompt_attestor.ts",
+        "--no-extensions",
+        "--extension", "/agent/prompt_attestor.ts",
+        "--extension", "/agent/scope_guard.ts",
         "--offline", "--mode", "json", "--print", prompt,
     ]
     return command
@@ -422,7 +437,12 @@ def tool_call_is_in_scope(tool_name: str, args: Any) -> bool:
         return False
     if re.search(r"(^|[;&|]\s*)(?:env|printenv)(?:\s|$)", command):
         return False
-    if re.search(r"\b(?:curl|wget|nc|ncat|ssh)\b", command):
+    if re.search(
+        r"\b(?:curl|wget|nc|ncat|ssh|socat|telnet|ftp|openssl|python\d*|node|perl|ruby|php)\b",
+        command,
+    ):
+        return False
+    if re.search(r"/dev/(?:tcp|udp)\b", command):
         return False
     forbidden_roots = ("/agent", "/sessions", "/output", "/proc", "/etc", "/root", "/home")
     if any(root in command for root in forbidden_roots):
@@ -501,23 +521,47 @@ def analyze_events(
 
 def run_invocation(
     pi_executable: Path, model_arg: str, session_id: str, prompt: str, timeout: int,
+    auth_payload: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    auth_path = AGENT_DIR / "auth.json"
+    auth_path.write_text(json.dumps(auth_payload, separators=(",", ":")) + "\n")
+    os.chmod(auth_path, 0o600)
     started = time.monotonic()
     timed_out = False
     try:
-        proc = subprocess.run(
-            bwrap_command(pi_executable, model_arg, session_id, prompt),
-            text=True, capture_output=True, timeout=timeout,
-        )
-        returncode, stdout, stderr = proc.returncode, proc.stdout, proc.stderr
-    except subprocess.TimeoutExpired as exc:
-        timed_out = True
-        returncode = -1
-        stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-        stderr = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+        try:
+            proc = subprocess.run(
+                bwrap_command(pi_executable, model_arg, session_id, prompt),
+                text=True, capture_output=True, timeout=timeout,
+            )
+            returncode, stdout, stderr = proc.returncode, proc.stdout, proc.stderr
+        except subprocess.TimeoutExpired as exc:
+            timed_out = True
+            returncode = -1
+            stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+            stderr = exc.stderr.decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+    finally:
+        try:
+            if auth_path.is_file():
+                refreshed = json.loads(auth_path.read_text())
+                if not isinstance(refreshed, dict) or set(refreshed) != set(auth_payload):
+                    raise RuntimeError("isolated Pi process changed the provider credential scope")
+                auth_payload.clear()
+                auth_payload.update(refreshed)
+        finally:
+            auth_path.unlink(missing_ok=True)
     wall_s = time.monotonic() - started
-    if sha256_bytes((AGENT_DIR / "prompt_attestor.ts").read_bytes()) != sha256_bytes(ATTESTOR.read_bytes()):
-        raise RuntimeError("session modified its read-only prompt attestor")
+    source_hashes = {
+        "prompt attestor": (
+            AGENT_DIR / "prompt_attestor.ts", ATTESTOR
+        ),
+        "tool-scope guard": (
+            AGENT_DIR / "scope_guard.ts", SCOPE_GUARD
+        ),
+    }
+    for label, (isolated, source) in source_hashes.items():
+        if sha256_bytes(isolated.read_bytes()) != sha256_bytes(source.read_bytes()):
+            raise RuntimeError(f"session modified its read-only {label}")
     return parse_events(stdout), {
         "returncode": returncode,
         "timed_out": timed_out,
@@ -538,18 +582,26 @@ def verify_attestation(expected_invocations: int, model_arg: str, scenario_id: s
         raise RuntimeError(
             f"effective system prompt drifted for {model_arg}/{scenario_id}: {hashes[0]}"
         )
+    guard_path = OUTPUT_DIR / "scope-guard-active.txt"
+    guard_markers = guard_path.read_text().splitlines() if guard_path.is_file() else []
+    if guard_markers != ["active"] * expected_invocations:
+        raise RuntimeError(
+            f"tool-scope guard did not run before every agent turn for "
+            f"{model_arg}/{scenario_id}: {guard_markers}"
+        )
     return hashes[0]
 
 
 def run_scenario(
     pi_executable: Path, model_arg: str, scenario: Scenario, repeat: int, timeout: int,
+    auth_payload: dict[str, Any],
 ) -> dict[str, Any]:
     reset_paths(scenario)
     session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"pibench:{PROFILE}:{model_arg}:{scenario.scenario_id}:{repeat}"))
     setup_result = None
     if scenario.context_preamble is not None:
         setup_events, setup_process = run_invocation(
-            pi_executable, model_arg, session_id, scenario.context_preamble, timeout,
+            pi_executable, model_arg, session_id, scenario.context_preamble, timeout, auth_payload,
         )
         setup_result = analyze_events(
             setup_events, setup_process["returncode"], setup_process["timed_out"],
@@ -568,7 +620,9 @@ def run_scenario(
                 "context_setup": setup_result,
             }
 
-    events, process = run_invocation(pi_executable, model_arg, session_id, scenario.prompt, timeout)
+    events, process = run_invocation(
+        pi_executable, model_arg, session_id, scenario.prompt, timeout, auth_payload
+    )
     result = analyze_events(
         events, process["returncode"], process["timed_out"], process["wall_s"],
         scenario.semantic_check, max_tool_calls=scenario.max_tool_calls,
@@ -596,9 +650,9 @@ def run_model(
     pi_executable: Path, model_arg: str, timeout: int, repeats: int,
     scenarios: tuple[Scenario, ...],
 ) -> dict[str, Any]:
-    write_isolated_agent(model_arg)
+    auth_payload = write_isolated_agent(model_arg)
     results = [
-        run_scenario(pi_executable, model_arg, scenario, repeat, timeout)
+        run_scenario(pi_executable, model_arg, scenario, repeat, timeout, auth_payload)
         for scenario in scenarios for repeat in range(1, repeats + 1)
     ]
     return {
@@ -634,6 +688,8 @@ def main() -> int:
         parser.error(f"{PROFILE} requires Pi {REQUIRED_PI_VERSION}, got {version}")
     if not ATTESTOR.is_file():
         parser.error(f"missing prompt attestor: {ATTESTOR}")
+    if not SCOPE_GUARD.is_file():
+        parser.error(f"missing tool-scope guard: {SCOPE_GUARD}")
     selected_ids = set(args.scenario or [item.scenario_id for item in SCENARIOS])
     scenarios = tuple(item for item in SCENARIOS if item.scenario_id in selected_ids)
 
@@ -648,6 +704,7 @@ def main() -> int:
         "pi_version": version,
         "pibench_commit": git_commit(),
         "attestor_sha256": sha256_bytes(ATTESTOR.read_bytes()),
+        "scope_guard_sha256": sha256_bytes(SCOPE_GUARD.read_bytes()),
         "system_prompt_sha256": EXPECTED_SYSTEM_PROMPT_SHA256,
         "scenario_prompt_sha256": {
             item.scenario_id: sha256_bytes(item.prompt.encode()) for item in scenarios
