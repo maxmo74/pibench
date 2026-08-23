@@ -161,6 +161,12 @@ class ReliabilityFixtureTests(unittest.TestCase):
             "Use the stable active class instead, or limit synchronization to a tab click."
         )
         self.assertTrue(all(reliability.check_focus_state(answer).values()))
+        equivalent_without_internal_name = (
+            "A document-wide click synchronization derives aria-selected from focus, so focusing "
+            "the hamburger clears the active tab. Limit that update to a tab click or use the "
+            "stable active class instead."
+        )
+        self.assertTrue(all(reliability.check_focus_state(equivalent_without_internal_name).values()))
         self.assertFalse(all(reliability.check_focus_state("It is probably a CSS problem.").values()))
 
     def test_missing_evidence_check_rewards_stopping(self) -> None:

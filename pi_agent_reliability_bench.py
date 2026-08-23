@@ -177,7 +177,6 @@ document.addEventListener('click', () => queueMicrotask(syncNavigationState));
 def check_focus_state(text: str) -> dict[str, bool]:
     lower = text.lower()
     return {
-        "identifies_sync_function": "syncnavigationstate" in lower,
         "identifies_focus_dependency": "activeelement" in lower or "focus" in lower,
         "identifies_aria_state": "aria-selected" in lower,
         "identifies_global_click": "document" in lower and "click" in lower,
