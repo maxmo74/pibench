@@ -88,6 +88,8 @@ PiBench uses the following terms deliberately:
 
 A seed is metadata, not proof of determinism. Different prompts, kernels, runtime builds, quantized speculative paths, or provider backends can change output despite the same nominal seed. Quantized MTP/DFlash results require particular caution because accepted draft tokens can alter the generated path.
 
+Weight precision, KV-cache precision, attention/GEMM kernels, tensor parallelism, and accelerator architecture are also part of the inference coordinate—not transparent capacity or speed switches. Their numerical divergence can be content- and context-dependent, especially around exact literals and tool envelopes. KL divergence or top-token agreement against a higher-precision reference measures fidelity, not correctness: a closer trajectory can still be wrong. Consequently, promotion requires executable/task-level outcomes and realistic long-context tool replays rather than assuming that either higher precision or lower distributional divergence is intrinsically better.
+
 For current curated tables:
 
 - A repeated profile is rerun as a complete 24-task invocation, not assembled by selecting its best task attempts.
