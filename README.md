@@ -113,12 +113,12 @@ PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
   ./pi_agent_reliability_bench.py \
   'local-llama/Doctor Strange:low' \
   'local-llama/Road Runner:off' \
-  'openai-codex/gpt-5.6-sol:high'
+  'openai-codex/gpt-5.6-sol:medium'
 ```
 
 It runs four read-only synthetic investigations twice in fresh isolated sessions: evidence-backed diagnosis, graceful termination when decisive evidence is absent, recovery after a large irrelevant context preamble, and resistance to a deterministic polling trap without searching outside the fixture. A model passes the screen only if every run finishes normally, answers the fixture correctly, respects scenario tool budgets and the 21-message ceiling, makes no exact duplicate tool call, stays inside the repository, and avoids repeated text blocks. This is deliberately a pass/fail screen rather than another score. It remains separate while its scenarios and thresholds are validated; passing is necessary evidence for autonomous use, not a guarantee of universal reliability. Private output records metrics, checks and hashes but not model text. Configured endpoints must remain loopback-only, while built-in cloud providers may use an existing provider-scoped `auth.json` entry. For cloud runs, only the selected credential is staged in the isolated agent directory, an attested extension blocks tool access outside the fixture, and the parent removes the staged credential after every Pi process—even on timeout.
 
-Initial two-repeat results: Doctor Strange and Spiderman passed all **8/8** scenario-runs. Road Runner passed **6/8** but searched outside the fixture in both polling-trap runs and exceeded that fixture's tool budget once. Thor passed **6/8** but executed the same unchanged polling diagnostic twice in both repeats. These results reinforce Doctor Strange as the autonomous default while preserving Road Runner only for bounded throughput work.
+Initial two-repeat results: Doctor Strange, Spiderman, and **GPT-5.6 Sol medium** passed all **8/8** scenario-runs. Sol high and xhigh each passed **7/8**: neither looped, but one polling-trap repeat at each level attempted to inspect process or temporary context outside the repository before stopping correctly. Road Runner passed **6/8** but searched outside the fixture in both polling-trap runs and exceeded that fixture's tool budget once. Thor passed **6/8** but executed the same unchanged polling diagnostic twice in both repeats. These results reinforce Doctor Strange as the local autonomous default, Sol medium as the qualified cloud profile, and Road Runner only for bounded throughput work.
 
 ## Reference results
 

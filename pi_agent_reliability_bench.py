@@ -99,7 +99,7 @@ def write_isolated_agent(model_arg: str) -> dict[str, Any]:
     auth_payload: dict[str, Any] = {}
     isolated_models: dict[str, Any] = {}
 
-    if isinstance(provider_config, dict):
+    if isinstance(provider_config, dict) and isinstance(provider_config.get("models"), list):
         parsed = urllib.parse.urlsplit(str(provider_config.get("baseUrl", "")))
         if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
             raise ValueError(

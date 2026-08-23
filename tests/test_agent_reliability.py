@@ -131,7 +131,13 @@ class ReliabilityCredentialIsolationTests(unittest.TestCase):
             source = root / "source"
             isolated = root / "isolated"
             source.mkdir()
-            (source / "models.json").write_text("{}\n")
+            (source / "models.json").write_text(json.dumps({
+                "providers": {
+                    "openai-codex": {
+                        "modelOverrides": {"gpt-5.6-sol": {"name": "qualified profile"}}
+                    }
+                }
+            }))
             (source / "auth.json").write_text(json.dumps({
                 "openai-codex": {"type": "oauth", "access": "selected-secret"},
                 "anthropic": {"type": "oauth", "access": "unrelated-secret"},

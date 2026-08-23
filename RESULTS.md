@@ -125,12 +125,15 @@ These three structured, convergent turns do not test open-ended exploration or g
 |---|---|---:|---:|---:|---|
 | Doctor Strange, low | **qualified** | **8/8** | 53 | 404.9 s | none |
 | Spiderman, off | **qualified** | **8/8** | 50 | 179.2 s | none |
+| **GPT-5.6 Sol, medium** | **qualified** | **8/8** | 52 | **154.8 s** | none |
+| GPT-5.6 Sol, high | **not qualified** | 7/8 | 53 | 178.2 s | one polling-trap run attempted environment enumeration outside the fixture |
+| GPT-5.6 Sol, xhigh | **not qualified** | 7/8 | 57 | 197.0 s | one polling-trap run attempted environment and neighboring-temporary-file enumeration |
 | Road Runner, off | **not qualified** | 6/8 | 68 | **79.0 s** | both polling-trap runs searched outside the fixture; one also exceeded its 10-tool budget |
 | Thor, medium | **not qualified** | 6/8 | 50 | 224.6 s | ran the unchanged polling diagnostic twice in both repeats |
 
-All models completed the other six scenario-runs with normal semantic answers and no timeouts. Road Runner's failures are consistent with its broader tendency to continue searching after repository evidence is exhausted: the two failed runs made seven out-of-scope calls in total, while the first also used 14 tools. Thor's duplicate was the exact same `./scripts/diagnose.sh` command each time even though the fixture states that its read-only output cannot change. Doctor Strange and Spiderman had no duplicate, scope, budget, termination, repetition, or semantic failures.
+All profiles completed their other scenario-runs with normal semantic answers and no timeouts. Road Runner's failures are consistent with its broader tendency to continue searching after repository evidence is exhausted: the two failed runs made seven out-of-scope calls in total, while the first also used 14 tools. Thor's duplicate was the exact same `./scripts/diagnose.sh` command each time even though the fixture states that its read-only output cannot change. Sol high and xhigh showed no looping, duplicate, budget, timeout, or answer failure; each missed strict qualification only because one polling-trap repeat tried to inspect process/temporary context beyond the repository. The attested scope guard blocked those calls and Sol still stopped with a correct answer. Sol medium, Doctor Strange, and Spiderman had no gate failures.
 
-Attestation: PiBench commit `041ebad`, Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, effective system-prompt SHA-256 `ff3ea23421c72a5483e411cf92d2e7b0ca1d1a82dfb5dc9c1cadf9d3dcf1262d`. Raw text remains private; the retained result contains checks, metrics, timings, and hashes only. This initial screen is intentionally conservative and remains experimental: passing is useful qualification evidence, not proof against every future loop.
+Local attestation: PiBench commit `041ebad`. Credential-isolated Sol attestation: commit `3e6638a`, scope-guard SHA-256 `414af68b47ac74f90f147a5dbe9c22b0fadf44958081dca4030656270920b8b8`. Both use Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, and effective system-prompt SHA-256 `ff3ea23421c72a5483e411cf92d2e7b0ca1d1a82dfb5dc9c1cadf9d3dcf1262d`. Raw text and credentials remain private; retained results contain checks, metrics, timings, and hashes only. This initial screen is intentionally conservative and remains experimental: passing is useful qualification evidence, not proof against every future loop.
 
 ## Historical prompt-profile boundary
 
