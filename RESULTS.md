@@ -3,40 +3,47 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-08-22
+- Snapshot: 2026-08-25
 - Current benchmark input: Pi-agent protocol v4
 - Effective system-prompt SHA-256: `33367c8eccc8213267c551069af9e5c781122b08fe36b5f1f736d29e5269f711`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
 - RAM: 128 GB
 - GPU: NVIDIA GeForce RTX 3090, 24 GB
 - OS: Debian GNU/Linux 13, kernel 6.12.101+deb13-amd64
-- NVIDIA driver: 550.163.01
+- NVIDIA driver: 595.91.07 for current Peregrine production; earlier local results used 550.163.01
 - CUDA toolkit: 12.4.131
 
-Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Pi 0.84.2 is rejected because it adds a trailing newline. Current local results use 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and seed 42 unless stated otherwise. Cloud profiles use their request-visible provider settings, listed separately below.
+Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Pi 0.84.2 is rejected because it adds a trailing newline. Current local results generally use 131,072-token context, quantized KV cache, and full GPU offload; parallelism, sampler, seed, output allowance, runtime, and request history remain named profile coordinates. Peregrine omits the request seed and uses server seed 0. Cloud profiles use their request-visible provider settings, listed separately below.
 
 ## Current protocol-v4 local profiles
 
-| Rank | Model/profile | Class | Run | Score | Passed | Effective output t/s |
+| Rank | Model/profile | Class | Runs | Mean score | Passed | Mean effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
-| 1 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Practical/long-output | 201 | **57.396/65** | 16/24 | 20.7 |
-| 2 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202 | **54.042/65** | 16/24 | **148.2** |
-| 3 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 206 | **52.729/65** | 15/24 | 48.1 |
-| 4 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
-| 5 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
-| 6 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
+| 1 | **Peregrine** — Qwen3.8 27B W4A16, FP8 KV, low reasoning, 8K output, MTP3, temp 0.7 | Production practical/long-output | 213/214/215 | **61.006/65** | 18/24 | **39.3** |
+| 2 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Fallback practical/long-output | 201 | **57.396/65** | 16/24 | 20.7 |
+| 3 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202 | **54.042/65** | 16/24 | **148.2** |
+| 4 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 206 | **52.729/65** | 15/24 | 48.1 |
+| 5 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
+| 6 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
+| 7 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
-Doctor Strange is deliberately a separate practical profile: it doubles the canonical output allowance and uses a quantized MTP sidecar. Stable-v0.2.0 run 201 produced byte-identical outputs on all 24 tasks to b10434 runs 180/181 while improving mean effective throughput from 20.40 to 20.70 t/s. MTP draft2 remains the measured quality/speed point because draft3 changed task outcomes.
+Peregrine is a separate practical profile and the new supervised production daily driver. Runs 213–215 were clean-start, byte-identical 24/24, and each scored 61.005952; their effective-output means were 39.26–39.43 t/s. The exact runtime is vLLM 0.27.1 at revision `00210159`, Qwen3.8-27B W4A16 AutoRound with quantized LM head/MTP and int8 embeddings, FP8 attention KV, FP16 recurrent state, MTP3 probabilistic drafting, aligned prefix caching, GPU utilization 0.87, max-seqs 8, 131,072 context, 8,192 output, temperature 0.7/top-p 0.9/top-k 20, server seed 0, and no request seed.
 
-Road Runner remains the bounded no-tools throughput leader. Run 202 is its current stable-runtime normalization. Its 0.750-point difference from old b301 run 177 was reproduced on the three changing tasks with b10434, proving that v0.2.0 did not introduce the trajectory change. Doctor Strange remains the daily quality and autonomous-tool profile.
+The official NVIDIA 595.91.07 packaged DKMS stack produced the same 160,620-token KV pool on three clean starts. A production context gate passed at 121,879 prompt tokens with an 8K answer reservation, at 129,040 tokens near the limit, and on a true-low 121,902-token request; cached follow-up was 62.78× faster. Two simultaneous 50K prompts and four simultaneous 16K prompts also passed. Minimum observed free VRAM was 2,039 MiB in the near-limit gate and 1,979 MiB in the concurrency gate at the retained 280 W limit.
+
+A request-history control found an important boundary: an inference-based startup probe advanced vLLM's unseeded RNG and changed the clean-start score to 58.256/65. One greedy no-thinking readiness request preserved the 61.006 trajectory, while periodic production health now uses vLLM's engine-health RPC and model metadata only—no inference request. The final DB runs record `startup-health=greedy-no-thinking`, `periodic-health=engine-rpc-no-inference`, `server-seed=0`, `request-seed=none`, and `nvidia-gsp=off`. No best-task selection was used.
+
+Doctor Strange remains a separate fallback practical profile: it doubles the older canonical output allowance and uses a quantized MTP sidecar. Stable-v0.2.0 run 201 produced byte-identical outputs on all 24 tasks to b10434 runs 180/181. Road Runner remains the bounded no-tools throughput leader; Doctor Strange remains the automatic rollback backend for Peregrine.
 
 A later interactive reliability audit confirmed that Road Runner can enter severe repeated-tool and repeated-output loops on ambiguous investigations. The retained incident repeated one paragraph 43 times; exact b10566 replay failed to terminate with both MTP3 and target-only execution. Repeat penalty 1.1 suppressed literal repetition but not endless investigation, medium thinking exhausted the output allowance, and a prompt-level tool budget was ignored. MTP amplified duplication but was not the root cause.
 
 A [Level1Techs inference-fidelity report](https://forum.level1techs.com/t/why-your-local-llm-feels-dumber-than-it-is/253917) motivated a long-context follow-up testing two additional hypotheses. Qwen's official non-thinking sampler (temperature 0.7, top-p 0.8, top-k 20, min-p 0, presence penalty 1.5) eventually stopped, but only after 73 tool calls and 13 repetitions of one read; its diagnosis remained incorrect/incomplete. Matched target-only Q8 and F16 KV controls each received the same 48,091-token initial prompt at 64K context and both timed out. Q8 made 28 calls with one read repeated seven times; F16 made 135 calls with one read repeated 126 times. KV precision materially changed the trajectory, but higher precision was not a monotonic correctness fix and Q4 KV is not the sole cause. This does not invalidate run 202's bounded score or throughput, but it demotes Road Runner from general autonomous use to a short, externally bounded throughput specialist.
 
-### Stable-runtime normalization and rejected candidates
+### Qualification controls, fallback runtime, and rejected candidates
 
-Production now uses stable llama.cpp v0.2.0/b10566, commit `bb4caa754`. Spiderman run 206 improved from b301 run 178 by 1.161 points and matched 6/24 outputs; Thor run 207 fell by 2.188 points and matched 3/24. These are current runtime-specific results rather than claims of intrinsic weight changes.
+Peregrine's promotion was not based on its highest exploratory score. BF16-KV/80K scored 53.652/65 and passed 22/24 reliability scenario-runs. FP8-KV/131K at the original sampler scored 57.610/65 and passed 21/24. KVarN K4V2/240K appeared to score 62.854/65 with prefix caching, but combined perplexity regressed from about 8.09 to 9.30; disabling the cache restored perplexity and reduced PiBench to 49.313/65 with reliability 18/24. The selected temperature-0.7 FP8 coordinate scored 61.006 and passed 24/24 synthetic reliability runs, but its three retained real-session replays consistently changed menu positioning instead of the actual active-tab CSS cascade. It is therefore promoted for supervised daily use, not represented as universally safe for consequential autonomous edits.
+
+Stable llama.cpp v0.2.0/b10566, commit `bb4caa754`, remains installed as the rollback runtime. Spiderman run 206 improved from b301 run 178 by 1.161 points and matched 6/24 outputs; Thor run 207 fell by 2.188 points and matched 3/24. These are current runtime-specific results rather than claims of intrinsic weight changes.
 
 | Candidate/profile | Runs | Score | Passed | Effective output t/s | Decision |
 |---|---:|---:|---:|---:|---|
@@ -85,22 +92,23 @@ This table uses the arithmetic mean of every equivalent complete run where repea
 | Rank | Model/profile | Class | Score used |
 |---:|---|---|---:|
 | 1 | Claude Opus 4.6 | Cloud antigravity-v1, three-run mean | **61.506** |
-| 2 | GPT-5.5, high | Cloud native, two-run mean | **60.813** |
-| 3 | GPT-5.5, medium | Cloud native, two-run mean | **59.625** |
-| 4 | Gemini 3.7 Flash, medium | Cloud antigravity-v1, two-run mean | **58.408** |
-| 5 | Gemini 3.1 Pro, high | Cloud antigravity-v1, two-run mean | **57.836** |
-| 6 | GPT-5.6 Sol, medium | Cloud native, two-run mean | **57.516** |
-| 7 | Doctor Strange — Qwen3.8 27B, low/8K/MTP2 | Local practical, exact runtime replay | **57.396** |
-| 8 | GPT-5.6 Sol, high | Cloud native, two-run mean | **56.305** |
-| 9 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected template A/B | **55.417** |
-| 10 | Cold Fusion, low/8K/MTP2 | Local rejected, exact two-run mean | **55.006** |
-| 11 | GPT-5.4, medium | Cloud native, exact two-run mean | **54.277** |
-| 12 | Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3 | Local canonical | **54.042** |
-| 13 | Spiderman — Tmax 27B, off/4K/MTP3 | Local canonical | **52.729** |
-| 14 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local canonical | **51.042** |
-| 15 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
-| 16 | Qwen3.8 27B, off/4K/no-spec | Local canonical | **48.229** |
-| 17 | Ornith 1.5 35B-A3B, target-only off/4K | Local rejected candidate | **44.563** |
+| 2 | **Peregrine — Qwen3.8 27B W4A16, FP8-KV/131K, low/8K/MTP3** | Local production, exact three-run mean | **61.006** |
+| 3 | GPT-5.5, high | Cloud native, two-run mean | **60.813** |
+| 4 | GPT-5.5, medium | Cloud native, two-run mean | **59.625** |
+| 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1, two-run mean | **58.408** |
+| 6 | Gemini 3.1 Pro, high | Cloud antigravity-v1, two-run mean | **57.836** |
+| 7 | GPT-5.6 Sol, medium | Cloud native, two-run mean | **57.516** |
+| 8 | Doctor Strange — Qwen3.8 27B, low/8K/MTP2 | Local fallback, exact runtime replay | **57.396** |
+| 9 | GPT-5.6 Sol, high | Cloud native, two-run mean | **56.305** |
+| 10 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected template A/B | **55.417** |
+| 11 | Cold Fusion, low/8K/MTP2 | Local rejected, exact two-run mean | **55.006** |
+| 12 | GPT-5.4, medium | Cloud native, exact two-run mean | **54.277** |
+| 13 | Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3 | Local canonical | **54.042** |
+| 14 | Spiderman — Tmax 27B, off/4K/MTP3 | Local canonical | **52.729** |
+| 15 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local canonical | **51.042** |
+| 16 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
+| 17 | Qwen3.8 27B, off/4K/no-spec | Local canonical | **48.229** |
+| 18 | Ornith 1.5 35B-A3B, target-only off/4K | Local rejected candidate | **44.563** |
 
 The antigravity-v1 profiles' prompt variant (canonical + fixed extension injection) differs from the pure canonical input of the other profiles. Their corrected scores are shown in the combined ordering, but that boundary prevents a claim of byte-identical input equivalence.
 
@@ -110,12 +118,13 @@ The antigravity-v1 profiles' prompt variant (canonical + fixed extension injecti
 
 | Model | Score | Tool calls | Wall time | Main deduction |
 |---|---:|---:|---:|---|
+| **Peregrine** | **100/100** | **19** | **59.3 s** | none |
 | Doctor Strange | **100/100** | 27 | 225.7 s | none |
 | Road Runner | **95/100** | 18 | **20.5 s** | omitted exact unittest command |
 | Thor | **95/100** | 15 | 74.0 s | omitted exact unittest command |
 | Spiderman | **85/100** | 18 | 53.6 s | omitted all three exact README commands |
 
-All four passed every hidden retry check, every service/hardening check, preserved supplied tests, stayed within the allowed file scope, and completed all turns. Doctor Strange maximized instruction compliance; Road Runner delivered nearly the same score with the best operational latency. Attestation: PiBench commit `b124523`, Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, effective system prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
+All profiles passed every hidden retry check, every service/hardening check, preserved supplied tests, stayed within the allowed file scope, and completed all turns. Peregrine and Doctor Strange both maximized instruction compliance; Peregrine used eight fewer tools and completed about 3.8× faster. Peregrine attestation used PiBench tip `0b0dbf6`; the older four used commit `b124523`. All used Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, effective system prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
 
 These three structured, convergent turns do not test open-ended exploration or guaranteed termination. The Road Runner loop audit demonstrates that its 95/100 result must not be generalized to unattended ambiguous work. The separate experimental reliability gate below begins testing that missing dimension without changing this historical profile.
 
@@ -125,6 +134,7 @@ These three structured, convergent turns do not test open-ended exploration or g
 
 | Model | Screen result | Scenario-runs | Tools | Wall time including context setup | Failure |
 |---|---|---:|---:|---:|---|
+| **Peregrine, low, temp 0.7** | **qualified** | **24/24** | 149 | 490.2 s | none; separate retained-session semantic warning |
 | Doctor Strange, low | **qualified** | **8/8** | 53 | 404.9 s | none |
 | Spiderman, off | **qualified** | **8/8** | 50 | 179.2 s | none |
 | **GPT-5.6 Sol, medium** | **qualified** | **8/8** | 52 | **154.8 s** | none |
@@ -133,9 +143,9 @@ These three structured, convergent turns do not test open-ended exploration or g
 | Road Runner, off | **not qualified** | 6/8 | 68 | **79.0 s** | both polling-trap runs searched outside the fixture; one also exceeded its 10-tool budget |
 | Thor, medium | **not qualified** | 6/8 | 50 | 224.6 s | ran the unchanged polling diagnostic twice in both repeats |
 
-All profiles completed their other scenario-runs with normal semantic answers and no timeouts. Road Runner's failures are consistent with its broader tendency to continue searching after repository evidence is exhausted: the two failed runs made seven out-of-scope calls in total, while the first also used 14 tools. Thor's duplicate was the exact same `./scripts/diagnose.sh` command each time even though the fixture states that its read-only output cannot change. Sol high and xhigh showed no looping, duplicate, budget, timeout, or answer failure; each missed strict qualification only because one polling-trap repeat tried to inspect process/temporary context beyond the repository. The attested scope guard blocked those calls and Sol still stopped with a correct answer. Sol medium, Doctor Strange, and Spiderman had no gate failures.
+Peregrine also passed an additional 8/8 suite after installation on the packaged production stack. Its 24/24 row is the three-suite final qualification coordinate and is kept separate from the three retained real-session replays that all selected the wrong CSS fix. All profiles completed their other scenario-runs with normal semantic answers and no timeouts. Road Runner's failures are consistent with its broader tendency to continue searching after repository evidence is exhausted: the two failed runs made seven out-of-scope calls in total, while the first also used 14 tools. Thor's duplicate was the exact same `./scripts/diagnose.sh` command each time even though the fixture states that its read-only output cannot change. Sol high and xhigh showed no looping, duplicate, budget, timeout, or answer failure; each missed strict qualification only because one polling-trap repeat tried to inspect process/temporary context beyond the repository. The attested scope guard blocked those calls and Sol still stopped with a correct answer. Sol medium, Doctor Strange, and Spiderman had no gate failures.
 
-Local attestation: PiBench commit `041ebad`. Credential-isolated Sol attestation: commit `3e6638a`, scope-guard SHA-256 `414af68b47ac74f90f147a5dbe9c22b0fadf44958081dca4030656270920b8b8`. Both use Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, and effective system-prompt SHA-256 `ff3ea23421c72a5483e411cf92d2e7b0ca1d1a82dfb5dc9c1cadf9d3dcf1262d`. Raw text and credentials remain private; retained results contain checks, metrics, timings, and hashes only. This initial screen is intentionally conservative and remains experimental: passing is useful qualification evidence, not proof against every future loop.
+Peregrine attestation: PiBench tip `0b0dbf6`. Earlier local attestation: commit `041ebad`. Credential-isolated Sol attestation: commit `3e6638a`, scope-guard SHA-256 `414af68b47ac74f90f147a5dbe9c22b0fadf44958081dca4030656270920b8b8`. All use Pi 0.84.1, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, and effective system-prompt SHA-256 `ff3ea23421c72a5483e411cf92d2e7b0ca1d1a82dfb5dc9c1cadf9d3dcf1262d`. Raw text and credentials remain private; retained results contain checks, metrics, timings, and hashes only. This initial screen is intentionally conservative and remains experimental: passing is useful qualification evidence, not proof against every future loop.
 
 ## Historical prompt-profile boundary
 

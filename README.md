@@ -118,7 +118,7 @@ PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
 
 It runs four read-only synthetic investigations twice in fresh isolated sessions: evidence-backed diagnosis, graceful termination when decisive evidence is absent, recovery after a large irrelevant context preamble, and resistance to a deterministic polling trap without searching outside the fixture. A model passes the screen only if every run finishes normally, answers the fixture correctly, respects scenario tool budgets and the 21-message ceiling, makes no exact duplicate tool call, stays inside the repository, and avoids repeated text blocks. This is deliberately a pass/fail screen rather than another score. It remains separate while its scenarios and thresholds are validated; passing is necessary evidence for autonomous use, not a guarantee of universal reliability. Private output records metrics, checks and hashes but not model text. Configured endpoints must remain loopback-only, while built-in cloud providers may use an existing provider-scoped `auth.json` entry. For cloud runs, only the selected credential is staged in the isolated agent directory, an attested extension blocks tool access outside the fixture, and the parent removes the staged credential after every Pi process—even on timeout.
 
-Initial two-repeat results: Doctor Strange, Spiderman, and **GPT-5.6 Sol medium** passed all **8/8** scenario-runs. Sol high and xhigh each passed **7/8**: neither looped, but one polling-trap repeat at each level attempted to inspect process or temporary context outside the repository before stopping correctly. Road Runner passed **6/8** but searched outside the fixture in both polling-trap runs and exceeded that fixture's tool budget once. Thor passed **6/8** but executed the same unchanged polling diagnostic twice in both repeats. These results reinforce Doctor Strange as the local autonomous default, Sol medium as the qualified cloud profile, and Road Runner only for bounded throughput work.
+Initial two-repeat results: Doctor Strange, Spiderman, and **GPT-5.6 Sol medium** passed all **8/8** scenario-runs. Peregrine's selected FP8/131K profile later passed **24/24** across three complete suites, plus an **8/8** check on the packaged production stack. Sol high and xhigh each passed 7/8; Road Runner and Thor each passed 6/8. Peregrine still made the same incorrect CSS/menu fix in three retained real-session replays, so its promotion is explicitly a **supervised daily-driver** decision rather than a claim of universal autonomous reliability. Doctor Strange remains the automatic rollback backend, and Road Runner remains bounded-throughput only.
 
 ## Reference results
 
@@ -127,21 +127,23 @@ Current rankings use the fixed, attested protocol-v4 input. The table is a stric
 | Rank | Scope | Alias / real model and profile | Runs | Score used | Observed range | Effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
 | 1 | Cloud variant | **Claude Opus 4.6** (antigravity-v1) | 198/199/204 | **61.506/65** | 60.810–62.604 | 40.5 |
-| 2 | Cloud | OpenAI **GPT-5.5**, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
-| 3 | Cloud | OpenAI **GPT-5.5**, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
-| 4 | Cloud variant | **Gemini 3.7 Flash**, medium (antigravity-v1) | 194/195 | **58.408/65** | 58.372–58.443 | 58.0 |
-| 5 | Cloud variant | **Gemini 3.1 Pro**, high (antigravity-v1) | 196/197 | **57.836/65** | 54.479–61.193 | 13.8 |
-| 6 | Cloud | OpenAI **GPT-5.6 Sol**, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
-| 7 | Local | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | 180/181/201 | **57.396/65** | 57.396–57.396 | 20.7 |
-| 8 | Cloud | OpenAI **GPT-5.6 Sol**, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
-| 9 | Local candidate | Qwen3.8-27B + **Sharp v22.3.1**, low/8K/MTP2 | 208 | **55.417/65** | not measured (n=1) | 20.2 |
-| 10 | Local candidate | **Cold Fusion** Qwen3.8-27B, low/8K/MTP2 | 200/203 | **55.006/65** | 55.006–55.006 | 19.8 |
-| 11 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
-| 12 | Local | **Road Runner** — Qwen3.6-35B-A3B UD-Q4_K_M, off/4K/MTP3 | 202 | **54.042/65** | not measured (n=1) | **148.2** |
+| 2 | Local production | **Peregrine** — Qwen3.8-27B W4A16, FP8 KV, low/8K/MTP3, temp 0.7 | 213/214/215 | **61.006/65** | 61.006–61.006 | 39.3 |
+| 3 | Cloud | OpenAI **GPT-5.5**, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
+| 4 | Cloud | OpenAI **GPT-5.5**, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
+| 5 | Cloud variant | **Gemini 3.7 Flash**, medium (antigravity-v1) | 194/195 | **58.408/65** | 58.372–58.443 | 58.0 |
+| 6 | Cloud variant | **Gemini 3.1 Pro**, high (antigravity-v1) | 196/197 | **57.836/65** | 54.479–61.193 | 13.8 |
+| 7 | Cloud | OpenAI **GPT-5.6 Sol**, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
+| 8 | Local fallback | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | 180/181/201 | **57.396/65** | 57.396–57.396 | 20.7 |
+| 9 | Cloud | OpenAI **GPT-5.6 Sol**, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
+| 10 | Local candidate | Qwen3.8-27B + **Sharp v22.3.1**, low/8K/MTP2 | 208 | **55.417/65** | not measured (n=1) | 20.2 |
+| 11 | Local candidate | **Cold Fusion** Qwen3.8-27B, low/8K/MTP2 | 200/203 | **55.006/65** | 55.006–55.006 | 19.8 |
+| 12 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
 
 The antigravity rows were previously summarized with binary pass-weight totals rather than PiBench's documented partial-credit formula. The table now uses the same canonical weighted calculation as `RESULTS.csv` and every other profile; no raw result was changed. Antigravity-v1 still has a distinct canonical-plus-fixed-injection input, so its combined position must be read with that boundary in mind.
 
-Stable llama.cpp v0.2.0/b10566 is now the production runtime. Current stable-runtime runs place Spiderman at 52.729/65 and 48.1 t/s (run 206) and Thor at 51.042/65 and 10.0 t/s (run 207). Road Runner practical remains rejected at 49.542/65 (run 183); Qwen3.8 off/4K/no-spec is below it at 48.229/65 (run 182), and target-only Ornith 1.5 was rejected at 44.563/65 and 92.7 t/s (run 209). Sharp and Cold Fusion did not beat Doctor Strange and were not promoted. Doctor Strange, Road Runner, Thor, and Spiderman remain deployment aliases, but Road Runner is retained only as a bounded throughput specialist.
+Peregrine is now the production daily driver: vLLM 0.27.1, Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, MTP3, prefix-cache alignment, 131,072 context, 8K output, temperature 0.7/top-p 0.9/top-k 20, and no request seed. Three clean-start protocol-v4 runs were byte-identical at **61.006/65** and averaged **39.3 visible t/s**. The packaged NVIDIA 595.91.07 stack produced a reproducible 160,620-token KV pool, passed the 129,040-token near-limit gate, two concurrent 50K prompts, four concurrent 16K prompts, and `pi-ops-v1` at 100/100. Periodic health uses vLLM's engine RPC without an inference request because an inference-based probe changes an unseeded request-history coordinate.
+
+Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. Peregrine's three repeated retained-session CSS replays stayed scoped and terminated, but all changed menu positioning instead of the actual active-tab cascade. Consequential autonomous edits therefore still require supervision despite the strong canonical and synthetic-reliability results.
 
 ### Tool-enabled daily-operations result
 
@@ -149,12 +151,13 @@ The separate `pi-ops-v1` three-turn profile produced:
 
 | Alias | Score | Tool calls | Total wall time |
 |---|---:|---:|---:|
+| **Peregrine** | **100/100** | **19** | **59.3 s** |
 | **Doctor Strange** | **100/100** | 27 | 225.7 s |
 | **Road Runner** | **95/100** | 18 | **20.5 s** |
 | **Thor** | **95/100** | 15 | 74.0 s |
 | **Spiderman** | **85/100** | 18 | 53.6 s |
 
-All four fixed the retry implementation, preserved tests, produced the fully hardened service, stayed in scope, and completed all turns. Road Runner and Thor omitted the exact requested unittest command; Spiderman missed all three exact README commands. Doctor Strange was the only 100/100 profile, while Road Runner was about eleven times faster. The profile used Pi 0.84.1, PiBench commit `b124523`, attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, and effective tool-enabled system-prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
+All profiles fixed the retry implementation, preserved tests, produced the fully hardened service, stayed in scope, and completed all turns. Peregrine and Doctor Strange both earned 100/100; Peregrine used 19 tools and completed in 59.3 seconds. Road Runner and Thor omitted the exact requested unittest command; Spiderman missed all three exact README commands. Road Runner remained the fastest older bounded profile. Peregrine used Pi 0.84.1 at PiBench tip `0b0dbf6`; the older four used commit `b124523`. Both used attestor SHA-256 `0480e4d9c6e8b2b7905a10c78206b37ac45cd9203068140123e7f08e8c51d013`, and effective tool-enabled system-prompt SHA-256 `c9f6885987f161b6c530b108b61e2d6b173e1b79dd1caeac2ddc0fb7f18b6cb9`.
 
 A subsequent adversarial replay exposed a limitation that `pi-ops-v1` does not measure: termination under ambiguous, open-ended investigation. A retained Road Runner session duplicated planning and searches, then repeated one paragraph 43 times until aborted. Replaying the exact branch on b10566 timed out with repeated tools under both MTP3 and target-only execution; repetition penalties reduced verbatim duplication but did not restore termination, and an explicit tool budget was ignored. MTP amplified the failure but was not its root cause. Road Runner should therefore not be used unattended for autonomous tool work; prefer Doctor Strange. Its 148.2 t/s result remains valid for the bounded no-tools profile.
 
@@ -164,9 +167,9 @@ Protocol v4 makes the **benchmark input** identical: pinned Pi 0.84.1, the same 
 
 - Local runs can attest the GGUF hash, quantization, llama.cpp commit, server arguments, KV cache, sampler, speculation, and hardware. Seeded local generation can be reproducible, but quantized speculative decoding and runtime changes can still alter output.
 - Cloud runs attest the provider/model identifier and request profile, but not weights, backend build, routing, sampler implementation, or service updates. The API does not provide a seed-attested deterministic path, so repeated cloud runs are summarized by mean and range rather than their best score.
-- Doctor Strange is currently **output-deterministic across its tested runtime replay**: stable-v0.2.0 run 201 was byte-identical on all 24 tasks to b10434 runs 180/181. GPT-5.4 repeated the same score but only 3/24 outputs were byte-identical, illustrating that score stability is not output determinism. GPT-5.5 varied by about 4.8 points between identical invocations.
+- Peregrine's clean-start production runs 213–215 were byte-identical on all 24 tasks. This claim includes server seed 0, omitted request seed, and one greedy startup readiness request; periodic checks are non-inference engine-RPC probes. An extra inference request changes the subsequent unseeded trajectory and is therefore a different request-history coordinate. Doctor Strange remains output-deterministic across its tested b10434/b10566 replay. GPT-5.4 repeated the same score but only 3/24 outputs were byte-identical.
 - Effective output t/s is end-to-end visible-output speed. Local figures primarily reflect the reference machine; cloud figures also include network, queueing, and opaque provider execution.
-- Output ceilings and reasoning controls are profile properties: local canonical runs use 4K, Doctor Strange uses 8K, and these OpenAI catalog entries expose a provider-native 128K ceiling. Local and cloud reasoning levels are not assumed equivalent.
+- Output ceilings and reasoning controls are profile properties: local canonical runs use 4K, Peregrine and Doctor Strange use 8K, and these OpenAI catalog entries expose a provider-native 128K ceiling. Local and cloud reasoning levels are not assumed equivalent.
 
 Pre-v4 results remain in `RESULTS.csv` as historical evidence but are not mixed into this ranking. See [RESULTS.md](RESULTS.md) and [METHODOLOGY.md](METHODOLOGY.md) for detailed interpretation rules.
 
@@ -180,10 +183,10 @@ The reference local runs were made on this machine:
 | CPU | AMD Ryzen 9 7900, 12 cores / 24 threads |
 | RAM | 128 GB |
 | GPU | NVIDIA GeForce RTX 3090, 24 GB (24,576 MiB) |
-| NVIDIA driver | 550.163.01 |
+| NVIDIA driver | 595.91.07 (current Peregrine production); earlier local runs used 550.163.01 |
 | CUDA toolkit | 12.4.131 |
 
-Most final local comparisons used a 131,072-token context, one parallel slot, quantized KV cache, full GPU offload, and flash attention. Exact model settings are part of each result profile.
+Most final local comparisons used a 131,072-token context, quantized KV cache, full GPU offload, and flash attention. Peregrine admits eight sequences but its 160,620-token KV pool provides 1.23× maximum-length concurrency; the llama.cpp fallback uses one parallel slot. Exact settings are part of each result profile.
 
 ## Contributing results
 

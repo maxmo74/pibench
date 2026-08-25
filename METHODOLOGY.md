@@ -63,7 +63,7 @@ It does not pretend that all inference profiles are equivalent. Model identity, 
 | Change control | Artifacts and binaries can be retained and replayed | Weights and serving stack may change behind an unchanged model name |
 | Hardware | Known and recorded | Normally undisclosed or provider-managed |
 | Timing | Primarily host inference plus Pi overhead | Also includes network latency, queueing, routing, and provider execution |
-| Seed/determinism | A seed can make an exact pinned stack reproducible, subject to kernels and speculation | No seed-attested deterministic path is assumed |
+| Seed/determinism | A request seed can help reproduce an exact pinned stack, subject to kernels and speculation; a server seed alone may still leave request-history dependence | No seed-attested deterministic path is assumed |
 
 Cloud and local scores are therefore comparable as **observed end-to-end profile outcomes under the same tasks**, not as proof of equal compute, equal output budget, equal reasoning effort, or identical determinism. Local and cloud labels such as `medium` and `high` are provider-specific controls.
 
@@ -88,12 +88,20 @@ PiBench uses the following terms deliberately:
 
 A seed is metadata, not proof of determinism. Different prompts, kernels, runtime builds, quantized speculative paths, or provider backends can change output despite the same nominal seed. Quantized MTP/DFlash results require particular caution because accepted draft tokens can alter the generated path.
 
+### Request history and health probes
+
+For an unseeded request, the state of a local server before the benchmark is part of the inference coordinate. Earlier inference can advance sampler or speculative-drafter RNG, populate prefix caches, trigger compilation, alter scheduler state, or change allocator residency even when model weights and request-visible sampler settings are unchanged. `server-seed=0` is not equivalent to putting an explicit seed on every request.
+
+Peregrine exposed this directly. Three clean-start FP8/MTP3 runs after one greedy no-thinking readiness request were byte-identical at 61.005952/65. Replacing that readiness step with a temperature-0.7 thinking request advanced the unseeded trajectory; three otherwise matching runs were byte-identical at 58.255952/65. Neither coordinate is a best-task splice, but they must not be averaged because their prior request histories differ. The accidental coordinate was retained privately and removed from canonical SQLite before publication.
+
+Consequently, a replayable local profile records any startup inference, whether the benchmark starts from a fresh server, request seed versus server seed, and whether periodic monitoring performs inference. Peregrine's startup probe is fixed as greedy/no-thinking; periodic monitoring calls vLLM's engine-health RPC and authenticated model listing without generation. This checks the engine while avoiding a hidden sampler-state mutation. Operational services that require an inference canary must record it as part of request history, or use an explicit independent request seed if the backend proves that it isolates generator state.
+
 Weight precision, KV-cache precision, attention/GEMM kernels, tensor parallelism, and accelerator architecture are also part of the inference coordinate—not transparent capacity or speed switches. Their numerical divergence can be content- and context-dependent, especially around exact literals and tool envelopes. KL divergence or top-token agreement against a higher-precision reference measures fidelity, not correctness: a closer trajectory can still be wrong. Consequently, promotion requires executable/task-level outcomes and realistic long-context tool replays rather than assuming that either higher precision or lower distributional divergence is intrinsically better.
 
 For current curated tables:
 
 - A repeated profile is rerun as a complete 24-task invocation, not assembled by selecting its best task attempts.
-- Managed cloud profiles are shown using the arithmetic mean and min–max range of complete equivalent runs; the best run is never used alone as the ranking value.
+- Repeated local and managed-cloud profiles are shown using the arithmetic mean and min–max range of complete equivalent runs; the best run is never used alone as the ranking value.
 - A single local run is shown as `n=1` with its range marked not measured. It must not be described as verified deterministic.
 - Output determinism is claimed only after private raw-output comparison. Raw text remains unpublished; the public CSV retains each run and task outcome separately.
 - Equal scores across repeats are reported as score stability. For example, two GPT-5.4 runs had the same score while only 3/24 outputs were byte-identical; Doctor Strange runs 180/181 were byte-identical on 24/24.
@@ -122,7 +130,7 @@ Configured providers are accepted only at loopback HTTP endpoints. Built-in clou
 
 Every scenario-run must terminate normally, satisfy deterministic answer checks, respect its tool budget and the 21-assistant-message ceiling, repeat no exact tool call, keep tool access within the fixture, and stay below repeated-line and repeated-24-token-block thresholds. The default ceiling is 20 tools; the deliberately tiny polling fixture permits 10. A timeout, length/error stop, missing final response, semantic failure, duplicate tool call, out-of-scope introspection, excessive exploration, or repeated output fails qualification. Private results retain only checks, counts, timings and content hashes—not model text.
 
-The gate is intentionally conservative for read-only work, where repeating an identical call cannot reveal new state. Passing all eight default scenario-runs is necessary evidence for autonomous use, not proof against every future prompt or context. Integration into the main qualification workflow should occur only after the fixtures discriminate known failures without rejecting stable models for benign behavior.
+The gate is intentionally conservative for read-only work, where repeating an identical call cannot reveal new state. Passing all eight default scenario-runs is necessary evidence for autonomous use, not proof against every future prompt or context. Retained real-session replays remain an independent semantic gate: a profile can pass the synthetic screen yet choose the wrong edit in a realistic workspace, as Peregrine did three times. Such a critical retained failure must be disclosed and may restrict a deployment to supervised use even when the synthetic screen is clean. Integration into the main qualification workflow should occur only after the fixtures discriminate known failures without rejecting stable models for benign behavior.
 
 ## Executable checks
 
@@ -145,7 +153,7 @@ The schema separates metadata that applies to the whole run from metadata for ea
 - **Host:** OS, CPU, memory, detected accelerators, compute mode (`cpu`, `gpu`, `hybrid`, `remote`, `cloud`, or `other`), and the devices actually used.
 - **Runtime:** backend name, version, commit, build, compiler, and backend-specific JSON.
 - **Model artifact:** format, quantization or precision, stable filename/service identifier, and optional SHA-256.
-- **Inference:** context size, KV-cache representation, and arbitrary backend-specific settings.
+- **Inference:** context size, KV-cache representation, sampler, request/server seeds, startup request history, monitoring behavior, speculation, driver/kernel coordinates, and arbitrary backend-specific settings.
 - **Result:** exact Pi model argument, requested/effective thinking mode, benchmark protocol version, effective-system-prompt hash, task score, timing, stdout/stderr, and command.
 
 For loopback llama.cpp routers, PiBench also discovers the backing `llama-server`, records its build number, Git commit and date, compiler/target from `--version`, selected CMake options, model filename, launch arguments, context, KV types, sampling, GPU offload, flash attention, parallelism, and speculation settings when available. The dedicated `llama_cpp_*` database columns are retained alongside generic runtime columns.
