@@ -15,7 +15,7 @@ The main suite contains 24 tasks with a weighted maximum of 65 points. It covers
 - incident analysis and issue triage
 - documentation, architecture decisions, and design review
 
-Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md](METHODOLOGY.md) for the scoring and clean-run controls.
+Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md](METHODOLOGY.md) for the scoring and clean-run controls, [LEADERBOARDS.md](LEADERBOARDS.md) for the explicit overall and local rankings, and [RESULTS.md](RESULTS.md) for qualification details.
 
 ## Run it
 
@@ -122,7 +122,9 @@ Initial two-repeat results: Doctor Strange, Spiderman, and **GPT-5.6 Sol medium*
 
 ## Reference results
 
-Current rankings use the fixed, attested protocol-v4 input. The table is a strict score ordering of the twelve highest completed profiles currently available. Repeated profiles use the arithmetic mean of every equivalent complete run; ranges are observed minima and maxima, not confidence intervals.
+### Top 20 overall (18 eligible current profiles)
+
+Current rankings use the fixed, attested protocol-v4 input. Eighteen complete current profiles are eligible, so the Top-20 table presently has 18 rows rather than padding it with historical or incomplete runs. Repeated profiles use the arithmetic mean of every equivalent complete run; ranges are observed minima and maxima, not confidence intervals. See [LEADERBOARDS.md](LEADERBOARDS.md) for this full ranking plus the explicit Top 10 local table.
 
 | Rank | Scope | Alias / real model and profile | Runs | Score used | Observed range | Effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
@@ -138,6 +140,27 @@ Current rankings use the fixed, attested protocol-v4 input. The table is a stric
 | 10 | Local candidate | Qwen3.8-27B + **Sharp v22.3.1**, low/8K/MTP2 | 208 | **55.417/65** | not measured (n=1) | 20.2 |
 | 11 | Local candidate | **Cold Fusion** Qwen3.8-27B, low/8K/MTP2 | 200/203 | **55.006/65** | 55.006–55.006 | 19.8 |
 | 12 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
+| 13 | Local bounded | **Road Runner** — Qwen3.6-35B-A3B UD-Q4_K_M, off/4K/MTP3 | 202 | **54.042/65** | not measured (n=1) | **148.2** |
+| 14 | Local retained | **Spiderman** — Tmax 27B Q5, off/4K/MTP3 | 206 | **52.729/65** | not measured (n=1) | 48.1 |
+| 15 | Local retained | **Thor** — DSV4Pro 27B Q4, thinking/4K/no-spec | 207 | **51.042/65** | not measured (n=1) | 10.0 |
+| 16 | Local rejected practical | Road Runner, low/8K/MTP3 | 183 | **49.542/65** | not measured (n=1) | 24.2 |
+| 17 | Local comparison | Qwen3.8-27B Q4_K_M, off/4K/no-spec | 182 | **48.229/65** | not measured (n=1) | 28.1 |
+| 18 | Local rejected candidate | Ornith 1.5 35B-A3B AD-Q4, target-only off/4K | 209 | **44.563/65** | not measured (n=1) | 92.7 |
+
+### Top 10 local
+
+| Rank | Local profile | Score used | Deployment status |
+|---:|---|---:|---|
+| 1 | **Peregrine** — Qwen3.8-27B W4A16, FP8-KV/131K, low/8K/MTP3 | **61.006/65** | Production; supervise consequential edits |
+| 2 | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | **57.396/65** | Automatic fallback and autonomous default |
+| 3 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | **55.417/65** | Rejected candidate |
+| 4 | Cold Fusion, low/8K/MTP2 | **55.006/65** | Rejected candidate |
+| 5 | **Road Runner** — Qwen3.6-35B-A3B, off/4K/MTP3 | **54.042/65** | Bounded no-tools throughput specialist |
+| 6 | **Spiderman** — Tmax 27B, off/4K/MTP3 | **52.729/65** | Retained local profile |
+| 7 | **Thor** — DSV4Pro 27B, thinking/4K/no-spec | **51.042/65** | Retained local profile |
+| 8 | Road Runner practical, low/8K/MTP3 | **49.542/65** | Rejected practical profile |
+| 9 | Qwen3.8-27B Q4_K_M, off/4K/no-spec | **48.229/65** | Comparison profile |
+| 10 | Ornith 1.5 35B-A3B AD-Q4, target-only off/4K | **44.563/65** | Rejected candidate |
 
 The antigravity rows were previously summarized with binary pass-weight totals rather than PiBench's documented partial-credit formula. The table now uses the same canonical weighted calculation as `RESULTS.csv` and every other profile; no raw result was changed. Antigravity-v1 still has a distinct canonical-plus-fixed-injection input, so its combined position must be read with that boundary in mind.
 

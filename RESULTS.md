@@ -85,9 +85,9 @@ The third Opus repeat, run 204, scored 61.104/65 with 19/24 full passes at 41.5 
 
 Pro high remains slower and more variable than Flash: its 6.714-point range is driven mainly by unified diff and JSON-path behavior. Flash medium is the stronger Gemini profile on mean, stability, and throughput. A Sonnet 4.6 attempt (run 205) exhausted the shared Claude quota after 7/24 tasks; it is explicitly `incomplete-infrastructure`, excluded from every aggregate, and may be completed only after the provider reset.
 
-## Current combined protocol-v4 ranking
+## Top 20 combined protocol-v4 ranking (18 eligible)
 
-This table uses the arithmetic mean of every equivalent complete run where repeats exist and a single complete run otherwise. Output allowances and reasoning controls remain part of each named profile; incomplete infrastructure runs are excluded.
+This table uses the arithmetic mean of every equivalent complete run where repeats exist and a single complete run otherwise. Output allowances and reasoning controls remain part of each named profile; incomplete infrastructure runs are excluded. Eighteen current profiles qualify for inclusion, so the table stops at 18 rather than mixing in historical or incomplete runs. See [LEADERBOARDS.md](LEADERBOARDS.md) for this overall ranking and the explicit Top 10 local view.
 
 | Rank | Model/profile | Class | Score used |
 |---:|---|---|---:|
