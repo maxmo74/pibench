@@ -15,7 +15,7 @@ The main suite contains 24 tasks with a weighted maximum of 65 points. It covers
 - incident analysis and issue triage
 - documentation, architecture decisions, and design review
 
-Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md](METHODOLOGY.md) for the scoring and clean-run controls, [LEADERBOARDS.md](LEADERBOARDS.md) for the explicit overall and local rankings, and [RESULTS.md](RESULTS.md) for qualification details.
+Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md](METHODOLOGY.md) for the scoring and clean-run controls, [LEADERBOARDS.md](LEADERBOARDS.md) for the explicit overall and local rankings, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, and [RESULTS.md](RESULTS.md) for qualification details.
 
 ## Run it
 
@@ -164,7 +164,7 @@ Current rankings use the fixed, attested protocol-v4 input. Eighteen complete cu
 
 The antigravity rows were previously summarized with binary pass-weight totals rather than PiBench's documented partial-credit formula. The table now uses the same canonical weighted calculation as `RESULTS.csv` and every other profile; no raw result was changed. Antigravity-v1 still has a distinct canonical-plus-fixed-injection input, so its combined position must be read with that boundary in mind.
 
-Peregrine is now the production daily driver: vLLM 0.27.1, Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, MTP3, prefix-cache alignment, 131,072 context, 8K output, temperature 0.7/top-p 0.9/top-k 20, and no request seed. Three clean-start protocol-v4 runs were byte-identical at **61.006/65** and averaged **39.3 visible t/s**. The packaged NVIDIA 595.91.07 stack produced a reproducible 160,620-token KV pool, passed the 129,040-token near-limit gate, two concurrent 50K prompts, four concurrent 16K prompts, and `pi-ops-v1` at 100/100. Periodic health uses vLLM's engine RPC without an inference request because an inference-based probe changes an unseeded request-history coordinate.
+Peregrine is now the production daily driver: vLLM 0.27.1, Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, MTP3, prefix-cache alignment, 131,072 context, 8K output, temperature 0.7/top-p 0.9/top-k 20, and no request seed. Three clean-start protocol-v4 runs were byte-identical at **61.006/65** and averaged **39.3 visible t/s**. The packaged NVIDIA 595.91.07 stack produced a reproducible 160,620-token KV pool, passed the 129,040-token near-limit gate, two concurrent 50K prompts, four concurrent 16K prompts, and `pi-ops-v1` at 100/100. Periodic health uses vLLM's engine RPC without an inference request because an inference-based probe changes an unseeded request-history coordinate. The exact vLLM and Pi settings, llama.cpp fallback coordinate, alternatives, and setup-specific portability boundary are documented in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
 
 Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. Peregrine's three repeated retained-session CSS replays stayed scoped and terminated, but all changed menu positioning instead of the actual active-tab cascade. Consequential autonomous edits therefore still require supervision despite the strong canonical and synthetic-reliability results.
 

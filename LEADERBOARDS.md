@@ -50,4 +50,4 @@ This is strict score order, not a deployment recommendation. Critical reliabilit
 
 Peregrine passed 24/24 synthetic reliability scenario-runs and scored 100/100 on `pi-ops-v1`, but three retained real-session replays made the same wrong CSS diagnosis. Its production role is therefore supervised. Doctor Strange remains the automatic fallback. Road Runner remains restricted to short, externally bounded no-tools work despite its throughput.
 
-See [RESULTS.md](RESULTS.md) for qualification evidence and separate operations/reliability tables, [METHODOLOGY.md](METHODOLOGY.md) for ranking rules, and [RESULTS.csv](RESULTS.csv) for the sanitized task-level records.
+See [RESULTS.md](RESULTS.md) for qualification evidence and separate operations/reliability tables, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, [METHODOLOGY.md](METHODOLOGY.md) for ranking rules, and [RESULTS.csv](RESULTS.csv) for the sanitized task-level records.
