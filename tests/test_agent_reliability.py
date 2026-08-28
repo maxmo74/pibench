@@ -85,7 +85,7 @@ class ReliabilityEventAnalysisTests(unittest.TestCase):
             "bash", {"command": "./scripts/diagnose.sh"}
         ))
         self.assertTrue(reliability.tool_call_is_in_scope(
-            "bash", {"command": "find /tmp/pibench-reliability-cwd-v1 -not -path '*/.git/*'"}
+            "bash", {"command": f"find {reliability.WORKSPACE} -not -path '*/.git/*'"}
         ))
         self.assertFalse(reliability.tool_call_is_in_scope(
             "bash", {"command": "cd ../private && cat secret"}
@@ -131,6 +131,8 @@ class ReliabilityCredentialIsolationTests(unittest.TestCase):
             source = root / "source"
             isolated = root / "isolated"
             source.mkdir()
+            (source / "extensions").mkdir()
+            (source / "extensions" / reliability.LOOP_GUARD_NAME).write_text("export default function guard() {}\n")
             (source / "models.json").write_text(json.dumps({
                 "providers": {
                     "openai-codex": {

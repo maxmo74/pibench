@@ -6,7 +6,7 @@ This guide records the currently recommended local inference coordinates, the Pi
 
 | Role | Current profile | Runtime | Guidance |
 |---|---|---|---|
-| Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16 + DFlash2 k7** | patched vLLM 0.28.0 | Reliability-qualified; reproducible v5 runs 232–234 |
+| Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16 + DFlash2 k7** | patched vLLM 0.28.0 | Reliability-qualified; reproducible Pi 0.84.3 runs 232–234 |
 | Autonomous fallback | **Doctor Strange — Qwen3.8-27B Q4_K_M** | llama.cpp v0.2.0/b10566 | Lower throughput and score; retained as the independently qualified fallback |
 
 A published score is a property of the complete profile—not just the weights. Changing the runtime, artifact, KV format, context, sampler, speculation, startup request history, or Pi prompt creates a different coordinate that must be measured separately.
@@ -51,13 +51,13 @@ The general principles are portable: freeze the complete inference coordinate, r
 | Network | Loopback only |
 | Reference host | RTX 3090 24 GB; NVIDIA 595.91.07; GSP off; 280 W |
 
-Recorded clean-start protocol-v5 runs 232–234 each scored **57.970/65**, passed 18/24 complete tasks with 74/81 raw points, and produced byte-identical private outputs on all 24 tasks. Effective output ranged from 58.03 to 58.17 t/s with a 58.11 mean. Temperature-0.60/top-p-0.95 reliability-v2 passed 12/12 on repeated PiBench-owned fixtures. No external-project replay was run.
+Recorded clean-start Pi 0.84.3 runs 232–234 each scored **57.970/65**, passed 18/24 complete tasks with 74/81 raw points, and produced byte-identical private outputs on all 24 tasks. Effective output ranged from 58.03 to 58.17 t/s with a 58.11 mean. Temperature-0.60/top-p-0.95 reliability passed 12/12 on repeated PiBench-owned fixtures. No external-project replay was run.
 
 This is a **supervised production** profile. It exceeds the default score and throughput floors and improves the otherwise identical top-p-0.90 coordinate by 1.949 points and 1.03 effective t/s. The coordinate requires the `#48375` cache-tail backport, async-off scheduling, max-seqs 2, loop guard, full patch preflight, DFlash2 artifact hashes, and a hash-bound promotion certificate. Doctor Strange remains automatic rollback.
 
 ### Rejected DFlash2 samplers
 
-Temperature-0.70 runs 224/225/227 were byte-identical and scored 57.649/65 at 57.7 t/s; reliability-v2 passed 12/12, but both retained cold and cache-hot sessions exhausted the 60-call limit without a final. Temperature-0.60/top-p-0.90 runs 229–231 scored 56.021/65 at 57.1 t/s and were superseded by top-p 0.95. Temperatures 0.65, 0.625, and 0.61 also failed cache-hot replay. A temperature-0.55 cold probe finalized normally at 53 calls; its hot replay and score were not run after the external-project fixture was withdrawn.
+Temperature-0.70 runs 224/225/227 were byte-identical and scored 57.649/65 at 57.7 t/s; reliability passed 12/12, but both retained cold and cache-hot sessions exhausted the 60-call limit without a final. Temperature-0.60/top-p-0.90 runs 229–231 scored 56.021/65 at 57.1 t/s and were superseded by top-p 0.95. Temperatures 0.65, 0.625, and 0.61 also failed cache-hot replay. A temperature-0.55 cold probe finalized normally at 53 calls; its hot replay and score were not run after the external-project fixture was withdrawn.
 
 ## Launcher settings
 
@@ -194,7 +194,7 @@ Launch explicitly with:
 pi --model local-peregrine/qwen3.8-27b:low
 ```
 
-The current published score uses protocol v5's immutable Pi 0.84.3 runner and attested prompt. Use the separate Pi 0.84.1 runner only to reproduce protocol-v4 history.
+The current published score uses the sole PiBench runner with bridge-qualified Pi 0.84.3 and an attested effective prompt. Pi upgrades do not renumber the score protocol after exact local compatibility bridges; historical runner source remains in Git history.
 
 ## Thinking level
 
@@ -280,8 +280,8 @@ Do not transfer vLLM settings such as int8-per-token-head KV, `GPU_UTIL`, `MAX_S
 4. Exercise true-low wire formatting and tool calls.
 5. Reserve the full 8K answer at the intended prompt length.
 6. Test staggered concurrency and inspect minimum free VRAM.
-7. Run the complete versioned 24-task PiBench profile; retain n=1 as provisional and use complete repeats before determinism claims.
-8. Run reliability-v2 plus cold and cache-hot retained realistic tool sessions.
+7. Run the complete 24-task PiBench profile; retain n=1 as provisional and use complete repeats before determinism claims.
+8. Run the reliability gate plus cold and cache-hot PiBench-owned tool fixtures.
 9. Record arithmetic means and observed ranges; never publish only the best run.
 
 See [RESULTS.md](RESULTS.md) for the measured evidence, [METHODOLOGY.md](METHODOLOGY.md) for coordinate and repeatability rules, [LEADERBOARDS.md](LEADERBOARDS.md) for the current ranking, and the [Qwen3.8 RTX 3090 vLLM 0.28 port](https://github.com/syv-ai/qwen38-27b-rtx3090/pull/43) for its patch, optimization, long-context, quality, and gotcha documentation.

@@ -4,8 +4,8 @@ These runs were made on one reference workstation. They show observed model/prof
 
 - Suite: 24 tasks, 65 weighted points
 - Snapshot: 2026-08-28
-- Score protocol: pi-agent-24/65; v5 current and v4 retained as a measured execution revision
-- Current v5 effective system-prompt SHA-256: `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`
+- Score protocol: pi-agent-24/65
+- Current Pi: 0.84.3; effective system-prompt SHA-256: `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
 - RAM: 128 GB
 - GPU: NVIDIA GeForce RTX 3090, 24 GB
@@ -13,39 +13,39 @@ These runs were made on one reference workstation. They show observed model/prof
 - NVIDIA driver: 595.91.07 for current Peregrine production; earlier local results used 550.163.01
 - CUDA toolkit: 12.4.131
 
-Protocol v5 pins Pi 0.84.3 and explicitly attests the trailing-newline effective prompt introduced after v4. Protocol v4 remains immutable on Pi 0.84.1. Because tasks, prompts, graders, weights, sandbox, and clean invocation are unchanged, four complete bridge runs tested score compatibility. Both local profiles reproduced all task outcomes and private outputs byte-for-byte; both GPT-5.5 profiles stayed within ordinary cloud variation. V4 and v5 are therefore execution revisions of the `pi-agent-24/65` score protocol. Every result retains its measured revision. Runtime, parallelism, sampler, seed, output allowance, and request history remain named profile coordinates.
+Pi 0.84.3 adds a trailing newline to the effective prompt used under Pi 0.84.1. Because tasks, prompts, graders, weights, sandbox, and clean invocation were unchanged, four complete bridge runs tested score compatibility. Both deterministic local profiles reproduced all task outcomes and private outputs byte-for-byte; both GPT-5.5 profiles stayed within ordinary cloud variation. PiBench therefore kept one `pi-agent-24/65` score protocol. Every result retains its exact Pi version and prompt hash. Runtime, parallelism, sampler, seed, output allowance, and request history remain named profile coordinates.
 
-## V4/v5 compatibility bridge
+## Pi 0.84.1 to 0.84.3 compatibility bridge
 
-| Profile | V4 score evidence | V5 score | V5 passed | V5 raw points | Interpretation |
+| Profile | Pi 0.84.1 score evidence | Pi 0.84.3 score | Passed | Raw points | Interpretation |
 |---|---:|---:|---:|---:|---|
-| GPT-5.5, medium | 57.208, 62.042 | **62.375/65** | 21/24 | 78/81 | Managed-service variation; one task differs from closest v4 run |
-| GPT-5.5, high | 58.375, 63.250 | **59.250/65** | 21/24 | 79/81 | Inside v4 range; one task differs from each v4 run |
+| GPT-5.5, medium | 57.208, 62.042 | **62.375/65** | 21/24 | 78/81 | Managed-service variation; one task differs from closest earlier run |
+| GPT-5.5, high | 58.375, 63.250 | **59.250/65** | 21/24 | 79/81 | Inside the earlier range; one task differs from each earlier run |
 | Doctor Strange, low | 57.396 | **57.396/65** | 16/24 | 71/81 | 24/24 outcomes and outputs byte-identical |
 | Road Runner, off | 54.042 | **54.042/65** | 16/24 | 72/81 | 24/24 outcomes and outputs byte-identical |
 
 ## Current production profile
 
-| Model/profile | Class | Evidence | Revision | Weighted score | Passed | Raw grader points | Effective output t/s |
+| Model/profile | Class | Evidence | Pi | Weighted score | Passed | Raw grader points | Effective output t/s |
 |---|---|---:|---|---:|---:|---:|---:|
-| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, int8 KV, low reasoning, 8K output, DFlash2 k7, top-p 0.95 | Production | 232/233/234 | v5 | **57.970/65** | 18/24 | 74/81 | **58.1** |
+| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, int8 KV, low reasoning, 8K output, DFlash2 k7, top-p 0.95 | Production | 232/233/234 | 0.84.3 | **57.970/65** | 18/24 | 74/81 | **58.1** |
 
-Runs 232–234 were complete clean-start repetitions. All three produced byte-identical private outputs, each scoring 57.970238/65; effective output ranged from 58.03 to 58.17 t/s with a 58.11 mean. The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, a W4A16 DFlash2 k7 drafter, int8-per-token-head attention KV, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.60/top-p 0.95/top-k 20, and no request seed. Reliability-v2 passed 12/12 using repeated PiBench-owned fixtures; no external-project replay was run.
+Runs 232–234 were complete clean-start repetitions. All three produced byte-identical private outputs, each scoring 57.970238/65; effective output ranged from 58.03 to 58.17 t/s with a 58.11 mean. The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, a W4A16 DFlash2 k7 drafter, int8-per-token-head attention KV, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.60/top-p 0.95/top-k 20, and no request seed. The reliability gate passed 12/12 using repeated PiBench-owned fixtures; no external-project replay was run.
 
 The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The superseded top-p-0.90 DFlash2 runs 229–231 scored 56.021/65 at 57.08 t/s. Changing only top-p to 0.95 improved the deterministic score by 1.949 points and mean effective throughput by 1.03 t/s. The hash-bound production gate includes the DFlash2 artifact, complete startup patch verification, PiBench-owned reliability evidence, and the Peregrine loop guard.
 
 ## RTX 3090 candidate search conclusion
 
-DFlash2 temperature 0.60/top-p 0.95 met the **57/65** and **35 effective t/s** gates across three deterministic complete runs and passed reliability-v2. It uses the same Qwen3.8 W4A16 target on patched vLLM 0.28 with a W4A16 k7 drafter, int8-per-token-head KV, prefix caching, synchronous scheduling, and max-seqs 2.
+DFlash2 temperature 0.60/top-p 0.95 met the **57/65** and **35 effective t/s** gates across three deterministic complete runs and passed the reliability gate. It uses the same Qwen3.8 W4A16 target on patched vLLM 0.28 with a W4A16 k7 drafter, int8-per-token-head KV, prefix caching, synchronous scheduling, and max-seqs 2.
 
 | Candidate coordinate | Complete runs | Mean score | Mean effective output t/s | Reliability/replay result | Decision |
 |---|---:|---:|---:|---|---|
-| DFlash2, temperature 0.70 | 224/225/227 | **57.649/65** | **57.7** | reliability-v2 12/12; cold and cache-hot each hit the 60-call guard without a final | Reject: retained-session gate |
+| DFlash2, temperature 0.70 | 224/225/227 | **57.649/65** | **57.7** | reliability 12/12; cold and cache-hot each hit the 60-call guard without a final | Reject: retained-session gate |
 | DFlash2, temperature 0.65 | none | not scored | not scored | cold finalized at 59 calls; cache-hot hit the guard | Reject before score run |
 | DFlash2, temperature 0.625 | none | not scored | not scored | cold finalized at 41 calls; cache-hot hit the guard | Reject before score run |
 | DFlash2, temperature 0.61 | none | not scored | not scored | cold finalized at 58 calls; cache-hot hit the guard | Reject before score run |
-| DFlash2, temperature 0.60, top-p 0.95 | 232/233/234 | **57.970/65** | **58.1** | reliability-v2 12/12 on PiBench-owned repeated fixtures | Promote: production winner |
-| DFlash2, temperature 0.60, top-p 0.90 | 229/230/231 | **56.021/65** | **57.1** | reliability-v2 12/12; historical private replay evidence retained | Superseded by top-p 0.95 |
+| DFlash2, temperature 0.60, top-p 0.95 | 232/233/234 | **57.970/65** | **58.1** | reliability 12/12 on PiBench-owned repeated fixtures | Promote: production winner |
+| DFlash2, temperature 0.60, top-p 0.90 | 229/230/231 | **56.021/65** | **57.1** | reliability 12/12; historical private replay evidence retained | Superseded by top-p 0.95 |
 | DFlash2, temperature 0.55 | none | not scored | not scored | cold finalized normally at 53 calls; hot replay was not run after the external-project fixture was withdrawn | Reject: required replay pair incomplete; score not run |
 
 Runs 232–234 are the production aggregate. Runs 229–231 establish the superseded top-p-0.90 baseline; exploratory run 228 produced the same score but is excluded from that aggregate. Runs 224, 225, and 227 were complete temperature-0.70 repetitions; run 226 ended after 6/24 tasks and is excluded. Sampler coordinates rejected by, or unable to complete, the retained replay gate were not score-tested. Doctor Strange remains rollback.
@@ -92,7 +92,7 @@ Road Runner low/8K on b10434 (run 183) scored **49.542/65 at 24.2 t/s**. Qwen3.6
 
 ## OpenAI profiles
 
-Each retained OpenAI profile received complete runs through the OpenAI Codex Responses API. GPT-5.5 includes one v5 bridge run in addition to two v4 runs. The table ranks the complete-run mean and exposes the range because the service does not provide a seed-attested deterministic path.
+Each retained OpenAI profile received complete runs through the OpenAI Codex Responses API. GPT-5.5 includes one Pi 0.84.3 bridge run in addition to two Pi 0.84.1 runs. The table ranks the complete-run mean and exposes the range because the service does not provide a seed-attested deterministic path.
 
 | Rank | Model/profile | Runs | Mean score | Range | Mean effective output t/s |
 |---:|---|---:|---:|---:|---:|
@@ -102,9 +102,9 @@ Each retained OpenAI profile received complete runs through the OpenAI Codex Res
 | 4 | GPT-5.6 Sol, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
 | 5 | GPT-5.4, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
 
-The original runs used v4's pinned Pi 0.84.1; run 216 used v5's pinned Pi 0.84.3. All used the fixed cwd, attested effective-prompt revision, clean no-tools/no-context invocation, 272K registered context, and provider-native 128K output ceiling. GPT-5.5 had unusually large 4.8-point ranges: JSON path and CSV inference changed outcomes between medium runs, while JSON path changed between high runs. GPT-5.4 repeated its score exactly but only 3/24 outputs were byte-identical, and GPT-5.6 Sol medium differed by only 0.146 point. Equal score is therefore described as score stability, not output determinism.
+The original runs used Pi 0.84.1; run 216 used Pi 0.84.3. All used the fixed cwd, attested effective-prompt revision, clean no-tools/no-context invocation, 272K registered context, and provider-native 128K output ceiling. GPT-5.5 had unusually large 4.8-point ranges: JSON path and CSV inference changed outcomes between medium runs, while JSON path changed between high runs. GPT-5.4 repeated its score exactly but only 3/24 outputs were byte-identical, and GPT-5.6 Sol medium differed by only 0.146 point. Equal score is therefore described as score stability, not output determinism.
 
-## Frozen protocol-v4 Antigravity profiles
+## Frozen Antigravity prompt profiles
 
 Antigravity (Google Cloud Code Assist) results run under the **antigravity-v1** versioned extension profile: the `pi-antigravity` 0.3.1 extension is pinned, and its fixed three-part system-instruction injection (sha256 `1416c1c4…eb9b39`) is attested against the installed source before every run. The full effective prompt sent to the model is therefore frozen as canonical prompt + fixed injection, but it is **not byte-identical to the pure canonical prompt** used by the OpenAI profiles; antigravity-v1 scores are comparable within the profile and across antigravity models, but sit on a different prompt variant.
 
@@ -124,26 +124,26 @@ Pro high remains slower and more variable than Flash: its 6.714-point range is d
 
 ## Combined pi-agent-24/65 ranking (21 eligible)
 
-This table uses the arithmetic mean of every equivalent complete run, including compatible v4/v5 bridge runs, and a single complete run otherwise. Every row retains its measured revision in [LEADERBOARDS.md](LEADERBOARDS.md).
+This table uses the arithmetic mean of every equivalent complete run, including bridge-qualified Pi versions, and a single complete run otherwise. Every run retains its measured Pi version in [RESULTS.csv](RESULTS.csv).
 
 | Rank | Model/profile | Class | Score used |
 |---:|---|---|---:|
 | 1 | Claude Opus 4.6 | Cloud antigravity-v1 | **61.506** |
 | 2 | Peregrine, vLLM 0.27, low/8K/MTP3 | Local retired | **61.006** |
-| 3 | GPT-5.5, medium | Cloud native, v4+v5 mean | **60.542** |
-| 4 | GPT-5.5, high | Cloud native, v4+v5 mean | **60.292** |
+| 3 | GPT-5.5, medium | Cloud native, Pi 0.84.1/0.84.3 mean | **60.542** |
+| 4 | GPT-5.5, high | Cloud native, Pi 0.84.1/0.84.3 mean | **60.292** |
 | 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 | **58.408** |
 | 6 | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | Local production, exact three-run mean | **57.970** |
 | 7 | Gemini 3.1 Pro, high | Cloud antigravity-v1 | **57.836** |
 | 8 | GPT-5.6 Sol, medium | Cloud native | **57.516** |
-| 9 | Doctor Strange, low/8K/MTP2 | Local fallback, v4+v5 exact replay | **57.396** |
+| 9 | Doctor Strange, low/8K/MTP2 | Local fallback, Pi-version exact replay | **57.396** |
 | 10 | GPT-5.6 Sol, high | Cloud native | **56.305** |
 | 11 | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | Local predecessor | **56.021** |
 | 12 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected | **55.417** |
 | 13 | Cold Fusion, low/8K/MTP2 | Local rejected | **55.006** |
 | 14 | Peregrine, vLLM 0.28, low/8K/MTP3 | Local predecessor | **54.771** |
 | 15 | GPT-5.4, medium | Cloud native | **54.277** |
-| 16 | Road Runner, off/4K/MTP3 | Local bounded, v4+v5 exact replay | **54.042** |
+| 16 | Road Runner, off/4K/MTP3 | Local bounded, Pi-version exact replay | **54.042** |
 | 17 | Spiderman, off/4K/MTP3 | Local retained | **52.729** |
 | 18 | Thor, thinking/4K/no-spec | Local retained | **51.042** |
 | 19 | Road Runner practical, low/8K/MTP3 | Local rejected | **49.542** |
@@ -168,9 +168,9 @@ All profiles passed every hidden retry check, every service/hardening check, pre
 
 These three structured, convergent turns do not test open-ended exploration or guaranteed termination. The Road Runner loop audit demonstrates that its 95/100 result must not be generalized to unattended ambiguous work. The separate experimental reliability gate below begins testing that missing dimension without changing this historical profile.
 
-## Versioned agent-reliability gates
+## Agent reliability gate
 
-`pi-agent-reliability-v1` is the frozen Pi 0.84.1 pass/fail screen, not part of either scored ranking. `pi-agent-reliability-v2` pins Pi 0.84.3, retains the four scenario classes, loads the production loop guard, and is mandatory for current Peregrine promotion. Packaged vLLM 0.28 Peregrine passed 12/12. The v1 evidence below remains protocol-specific history. Four read-only scenarios run twice: evidence-backed diagnosis, missing-evidence termination, recovery after a large irrelevant preamble, and a deterministic polling trap with repository-scope enforcement.
+The merged `pi_agent_reliability_bench.py` runner pins Pi 0.84.3, retains the four scenario classes, loads the production loop guard, and is mandatory for current Peregrine promotion. Packaged vLLM 0.28 Peregrine passed 12/12. Earlier Pi 0.84.1 evidence below remains historical qualification evidence. Four read-only scenarios run twice: evidence-backed diagnosis, missing-evidence termination, recovery after a large irrelevant preamble, and a deterministic polling trap with repository-scope enforcement.
 
 | Model | Screen result | Scenario-runs | Tools | Wall time including context setup | Failure |
 |---|---|---:|---:|---:|---|
@@ -200,10 +200,10 @@ Restoring the exact historical dates reproduced the retained outputs byte-for-by
 | Road Runner | 50.854 | 50.854 | 50.854 |
 | Qwen3.6 27B Q4 MTP2 | 53.313 | 50.527 | 53.313 |
 
-The old scores are authentic and reproducible for their exact inputs, but date-injected runs are not directly comparable across dates or with protocol v4. They remain in `RESULTS.csv` as historical evidence and are excluded from the current ranking. Direct endpoint benchmarks were unaffected.
+The old scores are authentic and reproducible for their exact inputs, but date-injected runs are not directly comparable across dates or with the current score protocol. They remain in `RESULTS.csv` as historical evidence and are excluded from the current ranking. Direct endpoint benchmarks were unaffected.
 
 ## Historical cloud reference
 
-Earlier cloud scores—including Claude Opus 4.8 at 60.2, GPT-5.5 high at 59.2, and GPT-5.6 Sol high at 58.9—belong to historical prompt profiles and remain historical evidence only. The OpenAI profiles and Claude Opus 4.6 now have protocol-v4 replacements above (Opus 4.6 via the antigravity-v1 profile); the historical Opus 4.8 and other pre-v4 Claude scores must not be mixed into the current ranking.
+Earlier cloud scores—including Claude Opus 4.8 at 60.2, GPT-5.5 high at 59.2, and GPT-5.6 Sol high at 58.9—belong to historical prompt profiles and remain historical evidence only. The OpenAI profiles and Claude Opus 4.6 now have date-free replacements above (Opus 4.6 via the antigravity-v1 profile); the historical Opus 4.8 and other date-injected Claude scores must not be mixed into the current ranking.
 
 Effective output speed is visible output divided by end-to-end task time, not pure backend decode speed. The complete sanitized task-level history and reproducibility metadata are in [RESULTS.csv](RESULTS.csv). To contribute a result from another system, follow [README.md](README.md) and [METHODOLOGY.md](METHODOLOGY.md).

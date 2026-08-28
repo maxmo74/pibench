@@ -37,15 +37,15 @@ OUTDIR = ROOT / "results"
 OUTDIR.mkdir(exist_ok=True)
 
 BENCHMARK_PROTOCOL_VERSION = 4
-REQUIRED_PI_VERSION = "0.84.1"
-CANONICAL_PROMPT_PROFILE = "pi-agent-v4-fixed-cwd"
+REQUIRED_PI_VERSION = "0.84.3"
+CANONICAL_PROMPT_PROFILE = "pi-agent-fixed-cwd"
 CANONICAL_PI_CWD = Path("/tmp/pibench-pi-agent-cwd-v1")
 DEFAULT_SYSTEM_PROMPT = "You are a precise benchmark participant. Follow the user's formatting requirements exactly."
 
 # ---------------------------------------------------------------------------
 # Versioned extension profile: antigravity-v1
 #
-# Protocol v4 refuses extension-provided models by default because an extension
+# The canonical profile refuses extension-provided models because an extension
 # can modify the effective prompt after attestation. The antigravity-v1 profile
 # is the exception path: it pins the exact pi-antigravity extension version and
 # the exact system-instruction parts it prepends, so the full effective prompt
@@ -55,7 +55,7 @@ DEFAULT_SYSTEM_PROMPT = "You are a precise benchmark participant. Follow the use
 # ---------------------------------------------------------------------------
 ANTIGRAVITY_EXTENSION_NAME = "pi-antigravity"
 ANTIGRAVITY_EXTENSION_VERSION = "0.3.1"
-ANTIGRAVITY_PROFILE_NAME = "pi-agent-v4-fixed-cwd+antigravity-v1"
+ANTIGRAVITY_PROFILE_NAME = "pi-agent-fixed-cwd+antigravity-v1"
 ANTIGRAVITY_INJECTION_PARTS = (
     "You are Antigravity, a powerful agentic AI coding assistant designed by Google DeepMind. "
     "You are pair programming with a user to solve coding tasks. Be concise, practical, and tool-aware.",
@@ -827,7 +827,7 @@ def assert_local_server_model_matches(model_arg: str) -> None:
 
 
 def prepare_prompt_profile(system_prompt: str) -> dict[str, str]:
-    """Build and attest the effective Pi system prompt used by protocol v4."""
+    """Build and attest the current protocol's effective Pi prompt."""
     if CANONICAL_PI_CWD.is_symlink():
         raise RuntimeError(f"Refusing symlinked canonical Pi cwd: {CANONICAL_PI_CWD}")
     CANONICAL_PI_CWD.mkdir(mode=0o700, parents=False, exist_ok=True)
@@ -846,11 +846,11 @@ def prepare_prompt_profile(system_prompt: str) -> dict[str, str]:
     pi_version = version_proc.stdout.strip().splitlines()[0] if version_proc.returncode == 0 else ""
     if pi_version != REQUIRED_PI_VERSION:
         raise RuntimeError(
-            f"Protocol v4 requires Pi {REQUIRED_PI_VERSION}, but PATH resolves to {pi_version or 'an unknown version'}. "
-            "Use an immutable Pi 0.84.1 installation; do not silently change the effective prompt."
+            f"New PiBench runs require Pi {REQUIRED_PI_VERSION}, but PATH resolves to "
+            f"{pi_version or 'an unknown version'}. Use a bridge-qualified Pi installation."
         )
 
-    prompt_module = Path(pi_executable).resolve().parent / "core" / "system-prompt.js"
+    prompt_module = Path(pi_executable).resolve().parent.parent / "core" / "system-prompt.js"
     if not prompt_module.is_file():
         raise RuntimeError(f"Could not locate Pi's system-prompt builder: {prompt_module}")
 
@@ -881,11 +881,11 @@ process.stdout.write(JSON.stringify(effective));
     except json.JSONDecodeError as exc:
         raise RuntimeError("Pi's system-prompt builder returned invalid JSON") from exc
 
-    expected = f"{system_prompt}\nCurrent working directory: {CANONICAL_PI_CWD}"
+    expected = f"{system_prompt}\nCurrent working directory: {CANONICAL_PI_CWD}\n"
     if effective_prompt != expected:
         observed_hash = hashlib.sha256(str(effective_prompt).encode()).hexdigest()
         raise RuntimeError(
-            "Pi's effective system prompt no longer matches protocol v4; refusing a non-comparable run "
+            "Pi's effective system prompt drifted; refusing a non-comparable run "
             f"(observed sha256={observed_hash}). Update and version the benchmark protocol explicitly."
         )
     return {
@@ -1111,9 +1111,9 @@ def main() -> int:
         parser.error("provide at least one Pi model argument or --model-preset")
 
     if args.system_prompt != DEFAULT_SYSTEM_PROMPT:
-        parser.error("protocol v4 requires the canonical --system-prompt")
+        parser.error("the score protocol requires the canonical --system-prompt")
     if args.allow_extensions and not args.extension_profile:
-        parser.error("protocol v4 cannot attest extension-modified system prompts; pass --extension-profile (e.g. antigravity-v1) to use an attested extension profile")
+        parser.error("the score protocol cannot attest unprofiled extensions; pass --extension-profile (e.g. antigravity-v1)")
     if args.extension_profile and not args.allow_extensions:
         parser.error("--extension-profile requires --allow-extensions")
 

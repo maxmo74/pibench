@@ -15,6 +15,11 @@ from production_qualification import build_fingerprint, file_sha256, verify_arti
 
 DEFAULT_ARTIFACT = Path("/var/lib/pibench/qualifications/peregrine.json")
 DEFAULT_CONFIG = Path("/etc/pibench-production-qualification.json")
+RELIABILITY_PROFILES = frozenset({
+    "pi-agent-reliability",
+    "pi-agent-reliability-v1",
+    "pi-agent-reliability-v2",
+})
 
 
 def load_inputs(config_path: Path) -> dict[str, Path]:
@@ -33,7 +38,7 @@ def evidence(path: Path) -> dict[str, object]:
     payload = json.loads(path.read_text())
     passed = payload.get("passed") is True
     runs = payload.get("runs", 0)
-    if payload.get("profile") == "pi-agent-reliability-v2":
+    if payload.get("profile") in RELIABILITY_PROFILES:
         results = payload.get("results", [])
         passed = bool(results) and all(item.get("passed") is True for item in results)
         runs = sum(int(item.get("scenarios_total", 0)) for item in results)

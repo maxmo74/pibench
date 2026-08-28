@@ -2,7 +2,7 @@ import { appendFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const WORKSPACE = "/tmp/pibench-reliability-cwd-v1";
+const WORKSPACE = "/tmp/pibench-reliability-cwd-v2";
 const MARKER_PATH = "/output/scope-guard-active.txt";
 const FORBIDDEN_ROOTS = ["/agent", "/sessions", "/output", "/proc", "/etc", "/root", "/home"];
 

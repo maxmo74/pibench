@@ -1,6 +1,6 @@
 # Methodology
 
-PiBench is a practical coding and agent benchmark. The main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. Protocol v4 is frozen on Pi 0.84.1; protocol v5 is current on Pi 0.84.3. Both refuse unversioned extension-provided inputs because an extension could change the effective prompt after attestation.
+PiBench is a practical coding and agent benchmark. The sole main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. New runs pin Pi 0.84.3 and attest the complete effective prompt. Pi dependency versions are execution metadata, not score-protocol versions.
 
 ## Scoring
 
@@ -21,7 +21,7 @@ The suite has 24 tasks and a maximum score of 65. Binary tasks receive zero or t
 | Changelog | 2.0 | GitHub issue triage | 2.5 |
 | Architecture decision | 3.5 | Design review | 3.5 |
 
-The prompts, checks, weights, and sandbox behavior in `pi_agent_bench.py` and `pi_agent_bench_v5.py` are identical. The version split records Pi/effective-prompt drift, not a task or grader change.
+The score protocol changes only when benchmark semantics change: tasks, prompts, weights, graders, sandbox behavior, or invocation rules. A Pi upgrade does not renumber the protocol when complete bridge runs on at least two deterministic local profiles reproduce all task outcomes and private outputs byte-for-byte. Any deterministic mismatch or systematic score shift requires investigation and may require a protocol change. Pi version and effective-prompt hash are always retained, even after a successful bridge.
 
 ## Clean Pi invocation
 
@@ -37,40 +37,40 @@ Each task uses:
 --no-themes
 ```
 
-Protocol v4 pins Pi 0.84.1, uses a fixed system prompt, and launches Pi from `/tmp/pibench-pi-agent-cwd-v1`. Before recording a run, the harness verifies the Pi version, invokes that installation's system-prompt builder, and requires the complete effective prompt to equal the protocol definition. It records SHA-256 hashes of both the supplied and effective system prompts and refuses to run if Pi adds or changes content. Custom prompts and extension-enabled runs are not accepted by this runner because they cannot share the canonical effective-prompt attestation. Pi 0.84.2 is intentionally rejected because it added a trailing newline to the effective prompt.
+The runner pins Pi 0.84.3, uses a fixed system prompt, and launches from `/tmp/pibench-pi-agent-cwd-v1`. Before recording a run, it verifies the Pi version, invokes Pi's system-prompt builder, and requires the complete effective prompt to equal the attested definition. It records SHA-256 hashes of both the supplied and effective prompts and refuses drift. Custom prompts and unprofiled extensions are rejected.
 
-Protocol v5 pins Pi 0.84.3, launches from the same fixed cwd, and attests the new effective prompt including its trailing newline (SHA-256 `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`). V4 and v5 retain distinct revision metadata even where their scores are aggregated.
+Pi 0.84.1 omitted a trailing newline that Pi 0.84.3 includes. The current effective-prompt SHA-256 is `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`. This dependency change was bridge-tested rather than treated as an automatic score-protocol change.
 
-Pi versions through 0.80.6 silently appended `Current date: YYYY-MM-DD` to custom system prompts. Pi 0.82.0 removed that line. Consequently, historical pre-0.82 Pi-agent runs used a `legacy-date-injected` input profile and are not strictly comparable across dates or with date-free runs. They remain valid evidence for their exact effective prompt, and historical inputs can reproduce them, but curated `pi-agent-24/65` rankings use only v4/v5 results. Direct endpoint benchmarks were unaffected.
+Pi versions through 0.80.6 silently appended `Current date: YYYY-MM-DD` to custom system prompts. Pi 0.82.0 removed that line. Those historical date-injected runs are not comparable across dates or with the current date-free input. They remain valid evidence for their exact effective prompt but are excluded from the curated `pi-agent-24/65` ranking. Direct endpoint benchmarks were unaffected.
 
-## V4/v5 compatibility bridge
+## Pi 0.84.1 to 0.84.3 compatibility bridge
 
-Four complete v5 runs tested whether the Pi-version and trailing-newline change materially altered the unchanged 24-task/65-point suite:
+Four complete runs tested whether the Pi-version and trailing-newline change materially altered the unchanged 24-task/65-point suite:
 
-| Profile | V4 evidence | V5 result | Task-level interpretation |
+| Profile | Pi 0.84.1 evidence | Pi 0.84.3 result | Task-level interpretation |
 |---|---:|---:|---|
-| GPT-5.5 medium | 57.208, 62.042 | 62.375 | One task differed from the closest v4 run; consistent with existing cloud variation |
-| GPT-5.5 high | 58.375, 63.250 | 59.250 | One task differed from each v4 run; inside the v4 range |
+| GPT-5.5 medium | 57.208, 62.042 | 62.375 | One task differed from the closest earlier run; consistent with existing cloud variation |
+| GPT-5.5 high | 58.375, 63.250 | 59.250 | One task differed from each earlier run; inside the earlier range |
 | Doctor Strange low | 57.396 | 57.396 | 24/24 task outcomes and private outputs byte-identical |
 | Road Runner off | 54.042 | 54.042 | 24/24 task outcomes and private outputs byte-identical |
 
-This bridge found no material revision effect. PiBench therefore defines `pi-agent-24/65` as the score protocol and v4/v5 as measured execution revisions. Combined rankings may average equivalent complete runs across those revisions, but every run and row must retain its actual revision and effective-prompt hash. This conclusion does not make pre-v4 date-injected profiles compatible, does not merge versioned extension variants with pure-canonical input, and can be revisited if broader bridge data shows a systematic effect.
+The two deterministic local controls reproduced exactly, and the managed-service controls remained within prior variation. PiBench therefore treats both Pi environments as the same `pi-agent-24/65` score protocol. Exact Pi versions and prompt hashes remain recorded. This does not make date-injected history compatible and does not merge the Antigravity prompt variant with pure-canonical input.
 
-## What protocols v4 and v5 do—and do not—normalize
+## What the score protocol does—and does not—normalize
 
-Across these revisions, the protocol normalizes the benchmark **input and evaluation path**, except for the attested trailing newline described above:
+The protocol normalizes the benchmark **input and evaluation path**:
 
-- exact Pi version and complete effective system prompt
+- recorded Pi version and an exactly attested effective system prompt
 - fixed working-directory text
 - task prompts, order, weights, checks, and sandbox behavior
 - one clean Pi process per task
 - absence of sessions, tools, project context, skills, templates, themes, and extensions
 
-It does not pretend that all inference profiles are equivalent. Model identity, weights or service identifier, quantization, reasoning mode, context, output ceiling, sampler, speculation, runtime, hardware, and provider are part of the profile. A 4K no-spec local run, an 8K MTP local run, and a provider-native cloud run may share protocol-v4 input while answering under different resource envelopes. Curated tables must name those differences rather than presenting the score as an intrinsic property of model weights alone.
+It does not pretend that all inference profiles are equivalent. Model identity, weights or service identifier, quantization, reasoning mode, context, output ceiling, sampler, speculation, runtime, hardware, and provider are part of the profile. A 4K no-spec local run, an 8K MTP local run, and a provider-native cloud run may share the score protocol while answering under different resource envelopes. Curated tables must name those differences rather than presenting the score as an intrinsic property of model weights alone.
 
-Production selection adds gates beyond the bounded score. A candidate must meet its predeclared score and throughput thresholds across complete equivalent runs and pass reliability-v2 with cold and cache-hot repetitions of PiBench-owned termination fixtures. No run may contain duplicate cycles, repeated failed calls, timeout, missing final, or guard activation. A high score cannot compensate for a termination failure. Replay-rejected sampler coordinates may be documented with the rejection reason without spending a complete score run. Fixtures must be anonymized and self-contained; external-project evidence remains historical and is not rerun.
+Production selection adds gates beyond the bounded score. A candidate must meet its predeclared score and throughput thresholds across complete equivalent runs and pass the reliability gate with cold and cache-hot repetitions of PiBench-owned termination fixtures. No run may contain duplicate cycles, repeated failed calls, timeout, missing final, or guard activation. A high score cannot compensate for a termination failure. Replay-rejected sampler coordinates may be documented with the rejection reason without spending a complete score run. Fixtures must be anonymized and self-contained; external-project evidence remains historical and is not rerun.
 
-The initial DFlash2 temperature-0.60/top-p-0.90 promotion was a recorded operator exception. A subsequent one-variable challenger changed top-p to 0.95: runs 232–234 were byte-identical at 57.970238/65, averaged 58.11 effective t/s, and passed reliability-v2 12/12 on PiBench-owned repeated fixtures. It superseded the exception coordinate after meeting the default score and throughput thresholds.
+The initial DFlash2 temperature-0.60/top-p-0.90 promotion was a recorded operator exception. A subsequent one-variable challenger changed top-p to 0.95: runs 232–234 were byte-identical at 57.970238/65, averaged 58.11 effective t/s, and passed the reliability gate 12/12 on PiBench-owned repeated fixtures. It superseded the exception coordinate after meeting the default score and throughput thresholds.
 
 ## Local and cloud execution
 
@@ -88,11 +88,11 @@ Cloud and local scores are therefore comparable as **observed end-to-end profile
 
 ## Versioned extension profile: antigravity-v1
 
-Protocol v4 refuses extension-provided models by default because an extension can modify the effective prompt after attestation. The `antigravity-v1` profile is an explicit, versioned exception for the user-maintained `pi-antigravity` extension (Google Cloud Code Assist, free-tier capable):
+The canonical runner refuses extension-provided models by default because an extension can modify the effective prompt after attestation. The `antigravity-v1` profile is an explicit, versioned exception for the user-maintained `pi-antigravity` extension (Google Cloud Code Assist, free-tier capable):
 
 - `--extension-profile antigravity-v1` (with `--allow-extensions`) pins `pi-antigravity` **0.3.1** and refuses any other version.
 - Before running, the bench attests that the installed extension source still contains the exact three system-instruction parts it injects before the canonical prompt (injection sha256 `1416c1c4f53afd8e28d425d22076354cf72af24e4c58eb75f98d633486eb9b39`) and the four-part `systemInstruction` construction. Any drift aborts the run. Attestation follows Pi's `PI_CODING_AGENT_DIR` override when set, allowing the pinned profile to run from an isolated immutable agent directory without replacing a user's newer extension installation; the override must be absolute.
-- The canonical Pi effective prompt is still attested exactly as in protocol v4; the full wire prompt is therefore **canonical prompt + fixed injection**, frozen and hash-recorded per run (`benchmark_input_profile=pi-agent-v4-fixed-cwd+antigravity-v1`, `antigravity_injection_sha256` in run metadata).
+- The canonical Pi effective prompt is still attested exactly; the full wire prompt is therefore **canonical prompt + fixed injection**, frozen and hash-recorded per run (`benchmark_input_profile=pi-agent-fixed-cwd+antigravity-v1`, `antigravity_injection_sha256` in run metadata).
 - Comparability: antigravity-v1 results are comparable **within the profile** (across antigravity models and dates) and are listed in the combined ranking, but they are not byte-identical to the pure canonical prompt input of the OpenAI/local profiles. The injected parts are constant strings (not date- or task-dependent), so the only input difference is the fixed prefix.
 - If the extension is updated or its injection changes, the profile must be re-attested and re-versioned (e.g. `antigravity-v2`) before new runs; old results remain valid for their recorded profile.
 
@@ -100,7 +100,7 @@ Protocol v4 refuses extension-provided models by default because an extension ca
 
 PiBench uses the following terms deliberately:
 
-- **Input-identical:** protocol version, effective-prompt hash, tasks, and request-visible profile settings match.
+- **Input-identical:** score protocol, effective-prompt hash, tasks, and request-visible profile settings match.
 - **Stack-replayable:** model artifact, runtime, libraries, arguments, and hardware-relevant configuration are retained well enough to replay. This is usually achievable locally and usually impossible for a managed cloud service.
 - **Score-stable:** repeated complete runs receive the same weighted score. This does not imply the generated text is the same.
 - **Output-deterministic:** repeated complete runs produce byte-identical task output on all 24 tasks. This is the strongest observed repeatability claim and applies only to the tested stack.
@@ -121,8 +121,8 @@ Weight precision, KV-cache precision, attention/GEMM kernels, tensor parallelism
 
 For current curated tables:
 
-- V4 and v5 pure-canonical runs share the `pi-agent-24/65` ranking after the compatibility bridge, while retaining measured revision metadata.
-- Pre-v4 and extension-modified prompt profiles remain separate inputs; the fixed Antigravity variant is visible only with an explicit label.
+- Bridge-qualified Pi 0.84.1 and 0.84.3 pure-canonical runs share the `pi-agent-24/65` ranking while retaining their measured Pi version and prompt hash.
+- Date-injected and extension-modified prompt profiles remain separate inputs; the fixed Antigravity variant is visible only with an explicit label.
 - A repeated profile is rerun as a complete 24-task invocation, not assembled by selecting its best task attempts.
 - Repeated local and managed-cloud profiles are shown using the arithmetic mean and min–max range of complete equivalent runs; the best run is never used alone as the ranking value.
 - A single local run is shown as `n=1` with its range marked not measured. It must not be described as verified deterministic.
@@ -143,11 +143,11 @@ Scoring is deterministic: retry behavior 35 points, service correctness/hardenin
 
 `pi-ops-v1` measures three structured, convergent tasks; it does not establish reliability on ambiguous open-ended investigation. A model can pass this profile yet repeatedly call equivalent tools or fail to terminate on a less constrained request. Interpret its score together with observed interactive reliability.
 
-## Versioned reliability gates
+## Agent reliability gate
 
-`pi_agent_reliability_bench.py` preserves the Pi 0.84.1 `pi-agent-reliability-v1` screen. `pi_agent_reliability_v2.py` pins Pi 0.84.3, uses versioned fixture paths and prompt attestation, and includes the production Peregrine loop guard. Both keep loop and termination qualification separate from canonical PiBench and `pi-ops-v1`. This preserves historical profiles while the new scenarios and thresholds accumulate validation evidence. It is a strict pass/fail gate, not a weighted score.
+`pi_agent_reliability_bench.py` is the sole current runner. It pins Pi 0.84.3, attests the prompt and fixture paths, and includes the production Peregrine loop guard. Historical runner revisions remain in Git history and historical evidence keeps its original Pi version and hashes. Loop and termination qualification remains separate from the scored suite and `pi-ops-v1`; it is a strict pass/fail gate, not a weighted score.
 
-The profile runs four synthetic read-only repositories: a browser-state defect with sufficient evidence, an incident whose decisive rotated log and metrics are deliberately absent, a simple deployment mismatch after a large deterministic irrelevant-context preamble, and a deterministic polling trap that tests whether the agent stops instead of searching Pi's harness internals for unavailable evidence. Each scenario uses a fresh session and runs twice by default. Only `read` and `bash` are available; the fixture itself is mounted read-only inside Bubblewrap. Pi 0.84.1, fixed cwd, the scenario and preamble hashes, and the complete effective system-prompt hash are recorded.
+The gate runs four synthetic read-only repositories: a browser-state defect with sufficient evidence, an incident whose decisive rotated log and metrics are deliberately absent, a simple deployment mismatch after a large deterministic irrelevant-context preamble, and a deterministic polling trap that tests whether the agent stops instead of searching Pi's harness internals for unavailable evidence. Each scenario uses a fresh session and runs twice by default. Only `read` and `bash` are available; the fixture itself is mounted read-only inside Bubblewrap. Pi 0.84.3, fixed cwd, the scenario and preamble hashes, and the complete effective system-prompt hash are recorded.
 
 Configured providers are accepted only at loopback HTTP endpoints. Built-in cloud providers are also supported through an existing provider-scoped `auth.json` credential. The harness copies only the selected provider entry, stages it with mode 0600 for one Pi process, proves that a source-pinned tool-scope guard loaded before the agent turn, and deletes the staged credential in a `finally` block. The guard blocks `read` outside the fixture and blocks shell access to agent/session/output mounts, parent traversal, environment enumeration, interpreters, and network clients. Cloud inference still requires the shared network namespace. The guard prevents the enabled tools from reading the staged credential and blocks common direct network clients and interpreter escape paths; this is defense in depth rather than a claim of network-namespace isolation. The guard source hash is recorded with each result.
 
@@ -209,8 +209,8 @@ Regenerate the public export after adding reviewed runs:
 - Local and cloud reasoning controls are not equivalent, and output ceilings must be read as part of the profile.
 - Quantization and speculative decoding are part of the tested configuration, not transparent acceleration layers.
 - OOM, malformed-artifact, infrastructure, authentication, quota, and incomplete runs are excluded rather than scored as model failures.
-- Results are compared within the `pi-agent-24/65` score protocol and compatible effective-prompt family. V5 is the current execution revision; v4 remains measured historical evidence, while older date-injected profiles remain separate.
-- Current cloud aggregates use complete-run means and ranges. Some explicitly historical cloud rows combined the latest valid task result across partial invocations; those rows are not protocol-v4 ranking inputs.
+- Results are compared within the `pi-agent-24/65` score protocol and compatible effective-prompt family. Bridge-qualified Pi upgrades retain their exact environment metadata; date-injected profiles remain separate.
+- Current cloud aggregates use complete-run means and ranges. Some explicitly historical cloud rows combined the latest valid task result across partial invocations; those rows are not current ranking inputs.
 - The public CSV contains individual run/task observations. Curated aggregate means, ranges, repeatability labels, and deployment decisions are documented in `README.md` and `RESULTS.md` rather than replacing raw observations.
 - Static configuration checks verify requested content, not a live deployment.
 

@@ -29,17 +29,18 @@ from pathlib import Path
 from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent
-PROFILE = "pi-agent-reliability-v1"
-REQUIRED_PI_VERSION = "0.84.1"
-WORKSPACE = Path("/tmp/pibench-reliability-cwd-v1")
-AGENT_DIR = Path("/tmp/pibench-reliability-agent-v1")
-SESSION_DIR = Path("/tmp/pibench-reliability-sessions-v1")
-OUTPUT_DIR = Path("/tmp/pibench-reliability-output-v1")
-LOCK_PATH = Path("/tmp/pibench-reliability-v1.lock")
+PROFILE = "pi-agent-reliability"
+REQUIRED_PI_VERSION = "0.84.3"
+WORKSPACE = Path("/tmp/pibench-reliability-cwd-v2")
+AGENT_DIR = Path("/tmp/pibench-reliability-agent")
+SESSION_DIR = Path("/tmp/pibench-reliability-sessions")
+OUTPUT_DIR = Path("/tmp/pibench-reliability-output")
+LOCK_PATH = Path("/tmp/pibench-reliability.lock")
 ATTESTOR = ROOT / "scripts" / "ops_prompt_attestor.ts"
 SCOPE_GUARD = ROOT / "scripts" / "reliability_scope_guard.ts"
+LOOP_GUARD_NAME = "peregrine-loop-guard.ts"
 TOOLS = "read,bash"
-EXPECTED_SYSTEM_PROMPT_SHA256 = "ff3ea23421c72a5483e411cf92d2e7b0ca1d1a82dfb5dc9c1cadf9d3dcf1262d"
+EXPECTED_SYSTEM_PROMPT_SHA256 = "c79cb174bdb890c0d66393b9dad567f30c07f610f9aa20ad382dfbf042f369fd"
 
 MAX_TOOL_CALLS = 20
 MAX_ASSISTANT_MESSAGES = 21
@@ -91,6 +92,10 @@ def source_agent_dir() -> Path:
     return Path(configured).expanduser() if configured else Path.home() / ".pi" / "agent"
 
 
+def loop_guard_path() -> Path:
+    return source_agent_dir() / "extensions" / LOOP_GUARD_NAME
+
+
 def write_isolated_agent(model_arg: str) -> dict[str, Any]:
     provider, model_id, _ = parse_model_arg(model_arg)
     source_dir = source_agent_dir()
@@ -132,6 +137,7 @@ def write_isolated_agent(model_arg: str) -> dict[str, Any]:
     (AGENT_DIR / "auth.json").write_text("{}\n")
     shutil.copyfile(ATTESTOR, AGENT_DIR / "prompt_attestor.ts")
     shutil.copyfile(SCOPE_GUARD, AGENT_DIR / "scope_guard.ts")
+    shutil.copyfile(loop_guard_path(), AGENT_DIR / "loop_guard.ts")
     for path in AGENT_DIR.iterdir():
         os.chmod(path, 0o400 if path.suffix == ".ts" else 0o600)
     return auth_payload
@@ -367,6 +373,7 @@ def bwrap_command(pi_executable: Path, model_arg: str, session_id: str, prompt: 
         "--no-extensions",
         "--extension", "/agent/prompt_attestor.ts",
         "--extension", "/agent/scope_guard.ts",
+        "--extension", "/agent/loop_guard.ts",
         "--offline", "--mode", "json", "--print", prompt,
     ]
     return command
@@ -556,6 +563,9 @@ def run_invocation(
         ),
         "tool-scope guard": (
             AGENT_DIR / "scope_guard.ts", SCOPE_GUARD
+        ),
+        "Peregrine loop guard": (
+            AGENT_DIR / "loop_guard.ts", loop_guard_path()
         ),
     }
     for label, (isolated, source) in source_hashes.items():
