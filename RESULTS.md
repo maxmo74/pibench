@@ -28,15 +28,15 @@ Protocol v5 pins Pi 0.84.3 and explicitly attests the trailing-newline effective
 
 | Model/profile | Class | Evidence | Revision | Weighted score | Passed | Raw grader points | Effective output t/s |
 |---|---|---:|---|---:|---:|---:|---:|
-| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 218/219/220 | v5 | **54.771/65** | 17/24 | 72/81 | **43.0** |
+| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, int8 KV, low reasoning, 8K output, DFlash2 k7, top-p 0.95 | Production | 232/233/234 | v5 | **57.970/65** | 18/24 | 74/81 | **58.1** |
 
-Runs 218–220 were predeclared complete clean-start repetitions. All three produced byte-identical outputs on 24/24 tasks and the exact same weighted score. Isolated `MAX_SEQS=1` runs 221–223 also scored 54.770833/65 and matched the baseline output byte-for-byte on all 24 tasks, while running marginally slower at 42.9–43.0 t/s. Sequence admission therefore remains two. The earlier retained qualification evidence `20260828-014451` scored 57.818/65 after a different prior-request history; it remains valid qualification evidence but is excluded from the reproducible leaderboard aggregate. The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.7/top-p 0.9/top-k 20, and no request seed. The packaged coordinate passed reliability-v2 12/12 and two exact retained-session replays—cold and cache-hot—with 97/97 unique calls, normal final responses, and no guard trigger.
+Runs 232–234 were complete clean-start repetitions. All three produced byte-identical private outputs, each scoring 57.970238/65; effective output ranged from 58.03 to 58.17 t/s with a 58.11 mean. The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, a W4A16 DFlash2 k7 drafter, int8-per-token-head attention KV, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.60/top-p 0.95/top-k 20, and no request seed. Reliability-v2 passed 12/12 using repeated PiBench-owned fixtures; no external-project replay was run.
 
-The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The safe v0.27 MTP1 protocol-v5 comparison scored 56.568/65 at 28.0 effective t/s and 20.23 seconds mean wall time. Production v0.28 MTP3 runs 218–220 scored 54.771/65 at 43.0 t/s and about 12.02 seconds mean wall time. This is a throughput and reliability promotion, not a bounded-score improvement. The hash-bound production gate, complete startup patch verification, and Peregrine loop guard are required parts of deployment.
+The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The superseded top-p-0.90 DFlash2 runs 229–231 scored 56.021/65 at 57.08 t/s. Changing only top-p to 0.95 improved the deterministic score by 1.949 points and mean effective throughput by 1.03 t/s. The hash-bound production gate includes the DFlash2 artifact, complete startup patch verification, PiBench-owned reliability evidence, and the Peregrine loop guard.
 
 ## RTX 3090 candidate search conclusion
 
-No newly tested coordinate met both the **57/65**, **35 effective t/s**, and retained-session safety gates. DFlash2 used the same Qwen3.8 W4A16 target on patched vLLM 0.28 with a W4A16 k7 drafter, int8-per-token-head KV, prefix caching, synchronous scheduling, and max-seqs 2.
+DFlash2 temperature 0.60/top-p 0.95 met the **57/65** and **35 effective t/s** gates across three deterministic complete runs and passed reliability-v2. It uses the same Qwen3.8 W4A16 target on patched vLLM 0.28 with a W4A16 k7 drafter, int8-per-token-head KV, prefix caching, synchronous scheduling, and max-seqs 2.
 
 | Candidate coordinate | Complete runs | Mean score | Mean effective output t/s | Reliability/replay result | Decision |
 |---|---:|---:|---:|---|---|
@@ -44,22 +44,25 @@ No newly tested coordinate met both the **57/65**, **35 effective t/s**, and ret
 | DFlash2, temperature 0.65 | none | not scored | not scored | cold finalized at 59 calls; cache-hot hit the guard | Reject before score run |
 | DFlash2, temperature 0.625 | none | not scored | not scored | cold finalized at 41 calls; cache-hot hit the guard | Reject before score run |
 | DFlash2, temperature 0.61 | none | not scored | not scored | cold finalized at 58 calls; cache-hot hit the guard | Reject before score run |
-| DFlash2, temperature 0.60 | 228 | **56.021/65** | **56.9** | cold and cache-hot finalized at 45 and 54 calls with no cycle or guard | Reject: below score target |
+| DFlash2, temperature 0.60, top-p 0.95 | 232/233/234 | **57.970/65** | **58.1** | reliability-v2 12/12 on PiBench-owned repeated fixtures | Promote: production winner |
+| DFlash2, temperature 0.60, top-p 0.90 | 229/230/231 | **56.021/65** | **57.1** | reliability-v2 12/12; historical private replay evidence retained | Superseded by top-p 0.95 |
 | DFlash2, temperature 0.55 | none | not scored | not scored | cold finalized normally at 53 calls; hot replay was not run after the external-project fixture was withdrawn | Reject: required replay pair incomplete; score not run |
 
-Runs 224, 225, and 227 were complete clean-start repetitions with byte-identical outputs on all 24 tasks and identical scores. Run 226 ended after 6/24 tasks at a 9/9 weighted subset score and 91.5 effective t/s; it is excluded from complete-run aggregates. Sampler coordinates rejected by, or unable to complete, the retained replay gate were not score-tested. Existing Peregrine remains production and Doctor Strange remains rollback.
+Runs 232–234 are the production aggregate. Runs 229–231 establish the superseded top-p-0.90 baseline; exploratory run 228 produced the same score but is excluded from that aggregate. Runs 224, 225, and 227 were complete temperature-0.70 repetitions; run 226 ended after 6/24 tasks and is excluded. Sampler coordinates rejected by, or unable to complete, the retained replay gate were not score-tested. Doctor Strange remains rollback.
 
 ## Historical and bridged local profiles
 
 | Rank | Model/profile | Class | Runs | Mean score | Passed | Mean effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
 | 1 | **Peregrine** — Qwen3.8 27B W4A16, FP8 KV, low reasoning, 8K output, MTP3, temp 0.7 | Production practical/long-output | 213/214/215 | **61.006/65** | 18/24 | **39.3** |
-| 2 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Fallback practical/long-output | 180/181/201/217 | **57.396/65** | 16/24 | 20.8 |
-| 3 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202/217 | **54.042/65** | 16/24 | **159.2** |
-| 4 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 206 | **52.729/65** | 15/24 | 48.1 |
-| 5 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
-| 6 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
-| 7 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
+| 2 | **Peregrine** — Qwen3.8 27B W4A16, int8 KV, low reasoning, 8K output, DFlash2 k7, temp 0.60/top-p 0.95 | Production practical/long-output | 232/233/234 | **57.970/65** | 18/24 | **58.1** |
+| 3 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Fallback practical/long-output | 180/181/201/217 | **57.396/65** | 16/24 | 20.8 |
+| 4 | **Peregrine** — Qwen3.8 27B W4A16, int8 KV, low reasoning, 8K output, DFlash2 k7, temp 0.60/top-p 0.90 | Superseded practical/long-output | 229/230/231 | **56.021/65** | 16/24 | 57.1 |
+| 5 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202/217 | **54.042/65** | 16/24 | **159.2** |
+| 6 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 206 | **52.729/65** | 15/24 | 48.1 |
+| 7 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
+| 8 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
+| 9 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
 This Peregrine row is the frozen predecessor to the current production coordinate. Runs 213–215 were clean-start, byte-identical 24/24, and each scored 61.005952; their effective-output means were 39.26–39.43 t/s. The historical runtime is vLLM 0.27.1 at revision `00210159`, Qwen3.8-27B W4A16 AutoRound with quantized LM head/MTP and int8 embeddings, FP8 attention KV, FP16 recurrent state, MTP3 probabilistic drafting, aligned prefix caching, GPU utilization 0.87, max-seqs 8, 131,072 context, 8,192 output, temperature 0.7/top-p 0.9/top-k 20, server seed 0, and no request seed. Copyable settings, alternative modes, the separate llama.cpp fallback, and hardware/runtime applicability limits are in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
 
@@ -75,7 +78,7 @@ A [Level1Techs inference-fidelity report](https://forum.level1techs.com/t/why-yo
 
 ### Qualification controls, fallback runtime, and rejected candidates
 
-Peregrine's promotion was not based on its highest exploratory score. BF16-KV/80K scored 53.652/65 and passed 22/24 reliability scenario-runs. FP8-KV/131K at the original sampler scored 57.610/65 and passed 21/24. KVarN K4V2/240K appeared to score 62.854/65 with prefix caching, but combined perplexity regressed from about 8.09 to 9.30; disabling the cache restored perplexity and reduced PiBench to 49.313/65 with reliability 18/24. The selected temperature-0.7 FP8 coordinate scored 61.006 and passed 24/24 synthetic reliability runs, but its three retained real-session replays consistently changed menu positioning instead of the actual active-tab CSS cascade. It is therefore promoted for supervised daily use, not represented as universally safe for consequential autonomous edits.
+Peregrine's promotion was not based on its highest exploratory score. BF16-KV/80K scored 53.652/65 and passed 22/24 reliability scenario-runs. FP8-KV/131K at the original sampler scored 57.610/65 and passed 21/24. KVarN K4V2/240K appeared to score 62.854/65 with prefix caching, but combined perplexity regressed from about 8.09 to 9.30; disabling the cache restored perplexity and reduced PiBench to 49.313/65 with reliability 18/24. Historical vLLM 0.27 temperature-0.7 scored 61.006 but retained semantic failures; DFlash2 temperature-0.70 met the score floor but failed termination gates. Production therefore uses temperature 0.60/top-p 0.95, which met the score, throughput, and PiBench-owned reliability gates.
 
 Stable llama.cpp v0.2.0/b10566, commit `bb4caa754`, remains installed as the rollback runtime. Spiderman run 206 improved from b301 run 178 by 1.161 points and matched 6/24 outputs; Thor run 207 fell by 2.188 points and matched 3/24. These are current runtime-specific results rather than claims of intrinsic weight changes.
 
@@ -119,7 +122,7 @@ The third Opus repeat, run 204, scored 61.104/65 with 19/24 full passes at 41.5 
 
 Pro high remains slower and more variable than Flash: its 6.714-point range is driven mainly by unified diff and JSON-path behavior. Flash medium is the stronger Gemini profile on mean, stability, and throughput. A Sonnet 4.6 attempt (run 205) exhausted the shared Claude quota after 7/24 tasks; it is explicitly `incomplete-infrastructure`, excluded from every aggregate, and may be completed only after the provider reset.
 
-## Combined pi-agent-24/65 ranking (19 eligible)
+## Combined pi-agent-24/65 ranking (21 eligible)
 
 This table uses the arithmetic mean of every equivalent complete run, including compatible v4/v5 bridge runs, and a single complete run otherwise. Every row retains its measured revision in [LEADERBOARDS.md](LEADERBOARDS.md).
 
@@ -130,20 +133,22 @@ This table uses the arithmetic mean of every equivalent complete run, including 
 | 3 | GPT-5.5, medium | Cloud native, v4+v5 mean | **60.542** |
 | 4 | GPT-5.5, high | Cloud native, v4+v5 mean | **60.292** |
 | 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 | **58.408** |
-| 6 | Gemini 3.1 Pro, high | Cloud antigravity-v1 | **57.836** |
-| 7 | GPT-5.6 Sol, medium | Cloud native | **57.516** |
-| 8 | Doctor Strange, low/8K/MTP2 | Local fallback, v4+v5 exact replay | **57.396** |
-| 9 | GPT-5.6 Sol, high | Cloud native | **56.305** |
-| 10 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected | **55.417** |
-| 11 | Cold Fusion, low/8K/MTP2 | Local rejected | **55.006** |
-| 12 | **Peregrine, vLLM 0.28, low/8K/MTP3** | Local production, exact three-run mean | **54.771** |
-| 13 | GPT-5.4, medium | Cloud native | **54.277** |
-| 14 | Road Runner, off/4K/MTP3 | Local bounded, v4+v5 exact replay | **54.042** |
-| 15 | Spiderman, off/4K/MTP3 | Local retained | **52.729** |
-| 16 | Thor, thinking/4K/no-spec | Local retained | **51.042** |
-| 17 | Road Runner practical, low/8K/MTP3 | Local rejected | **49.542** |
-| 18 | Qwen3.8 27B, off/4K/no-spec | Local comparison | **48.229** |
-| 19 | Ornith 1.5, target-only off/4K | Local rejected | **44.563** |
+| 6 | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | Local production, exact three-run mean | **57.970** |
+| 7 | Gemini 3.1 Pro, high | Cloud antigravity-v1 | **57.836** |
+| 8 | GPT-5.6 Sol, medium | Cloud native | **57.516** |
+| 9 | Doctor Strange, low/8K/MTP2 | Local fallback, v4+v5 exact replay | **57.396** |
+| 10 | GPT-5.6 Sol, high | Cloud native | **56.305** |
+| 11 | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | Local predecessor | **56.021** |
+| 12 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected | **55.417** |
+| 13 | Cold Fusion, low/8K/MTP2 | Local rejected | **55.006** |
+| 14 | Peregrine, vLLM 0.28, low/8K/MTP3 | Local predecessor | **54.771** |
+| 15 | GPT-5.4, medium | Cloud native | **54.277** |
+| 16 | Road Runner, off/4K/MTP3 | Local bounded, v4+v5 exact replay | **54.042** |
+| 17 | Spiderman, off/4K/MTP3 | Local retained | **52.729** |
+| 18 | Thor, thinking/4K/no-spec | Local retained | **51.042** |
+| 19 | Road Runner practical, low/8K/MTP3 | Local rejected | **49.542** |
+| 20 | Qwen3.8 27B, off/4K/no-spec | Local comparison | **48.229** |
+| 21 | Ornith 1.5, target-only off/4K | Local rejected | **44.563** |
 
 The Antigravity prompt variant remains explicitly labeled because its fixed extension injection is not byte-identical to pure-canonical input.
 

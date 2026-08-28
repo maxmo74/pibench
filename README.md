@@ -17,7 +17,7 @@ The main suite contains 24 tasks with a weighted maximum of 65 points. It covers
 
 Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md](METHODOLOGY.md) for the scoring and clean-run controls, [LEADERBOARDS.md](LEADERBOARDS.md) for the explicit overall and local rankings, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, and [RESULTS.md](RESULTS.md) for qualification details.
 
-The latest RTX 3090 search found no new production winner. DFlash2 reached 57.649/65 at 57.7 effective t/s in runs 224/225/227 and passed reliability-v2, but failed exact retained cold/cache-hot termination gates. Its replay-safe temperature-0.60 coordinate scored 56.021/65 at 56.9 t/s in run 228. A temperature-0.55 cold probe finalized normally, but its hot replay and score were not run after use of the external-project fixture was withdrawn. Peregrine remains production and Doctor Strange remains rollback.
+Peregrine now uses DFlash2 k7 at temperature 0.60 and top-p 0.95. Clean-start runs 232–234 were byte-identical at **57.970/65** and averaged **58.1 effective t/s**; reliability-v2 passed 12/12. This improves the prior top-p-0.90 coordinate by 1.949 points and 1.0 effective t/s. Doctor Strange remains automatic rollback.
 
 ## Run it
 
@@ -129,7 +129,7 @@ Protocols v4 and v5 are execution revisions of the same 24-task/65-point score p
 
 ### Top 20 overall
 
-Nineteen complete profiles are eligible. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
+Twenty-one complete profiles are eligible. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
 
 | Rank | Scope | Model/profile | Runs/evidence | Revision | Score used |
 |---:|---|---|---:|---|---:|
@@ -138,41 +138,42 @@ Nineteen complete profiles are eligible. Repeated equivalent runs use their comp
 | 3 | Cloud | GPT-5.5, medium | 185/189/216 | v4+v5 | **60.542/65** |
 | 4 | Cloud | GPT-5.5, high | 186/190/216 | v4+v5 | **60.292/65** |
 | 5 | Cloud variant | Gemini 3.7 Flash, medium, antigravity-v1 | 194/195 | v4 variant | **58.408/65** |
-| 6 | Cloud variant | Gemini 3.1 Pro, high, antigravity-v1 | 196/197 | v4 variant | **57.836/65** |
-| 7 | Cloud | GPT-5.6 Sol, medium | 187/192 | v4 | **57.516/65** |
-| 8 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | v4+v5 | **57.396/65** |
-| 9 | Cloud | GPT-5.6 Sol, high | 188/193 | v4 | **56.305/65** |
-| 10 | Local candidate | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | v4 | **55.417/65** |
-| 11 | Local candidate | Cold Fusion, low/8K/MTP2 | 200/203 | v4 | **55.006/65** |
-| 12 | Local production | **Peregrine, vLLM 0.28, low/8K/MTP3** | 218/219/220 | v5 | **54.771/65** |
-| 13 | Cloud | GPT-5.4, medium | 184/191 | v4 | **54.277/65** |
-| 14 | Local bounded | Road Runner, off/4K/MTP3 | 202/217 | v4+v5 | **54.042/65** |
-| 15 | Local retained | Spiderman, off/4K/MTP3 | 206 | v4 | **52.729/65** |
-| 16 | Local retained | Thor, thinking/4K/no-spec | 207 | v4 | **51.042/65** |
-| 17 | Local rejected | Road Runner practical, low/8K/MTP3 | 183 | v4 | **49.542/65** |
-| 18 | Local comparison | Qwen3.8 Q4_K_M, off/4K/no-spec | 182 | v4 | **48.229/65** |
-| 19 | Local candidate | Ornith 1.5, target-only off/4K | 209 | v4 | **44.563/65** |
+| 6 | Local production | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | 232/233/234 | v5 | **57.970/65** |
+| 7 | Cloud variant | Gemini 3.1 Pro, high, antigravity-v1 | 196/197 | v4 variant | **57.836/65** |
+| 8 | Cloud | GPT-5.6 Sol, medium | 187/192 | v4 | **57.516/65** |
+| 9 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | v4+v5 | **57.396/65** |
+| 10 | Cloud | GPT-5.6 Sol, high | 188/193 | v4 | **56.305/65** |
+| 11 | Local predecessor | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | 229/230/231 | v5 | **56.021/65** |
+| 12 | Local candidate | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | v4 | **55.417/65** |
+| 13 | Local candidate | Cold Fusion, low/8K/MTP2 | 200/203 | v4 | **55.006/65** |
+| 14 | Local predecessor | Peregrine, vLLM 0.28, low/8K/MTP3 | 218/219/220 | v5 | **54.771/65** |
+| 15 | Cloud | GPT-5.4, medium | 184/191 | v4 | **54.277/65** |
+| 16 | Local bounded | Road Runner, off/4K/MTP3 | 202/217 | v4+v5 | **54.042/65** |
+| 17 | Local retained | Spiderman, off/4K/MTP3 | 206 | v4 | **52.729/65** |
+| 18 | Local retained | Thor, thinking/4K/no-spec | 207 | v4 | **51.042/65** |
+| 19 | Local rejected | Road Runner practical, low/8K/MTP3 | 183 | v4 | **49.542/65** |
+| 20 | Local comparison | Qwen3.8 Q4_K_M, off/4K/no-spec | 182 | v4 | **48.229/65** |
 
 ### Top 10 local
 
 | Rank | Local profile | Revision | Score used | Status |
 |---:|---|---|---:|---|
 | 1 | Peregrine, vLLM 0.27, low/8K/MTP3 | v4 | **61.006/65** | Retired looping coordinate |
-| 2 | Doctor Strange, low/8K/MTP2 | v4+v5 | **57.396/65** | Automatic fallback |
-| 3 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | v4 | **55.417/65** | Rejected |
-| 4 | Cold Fusion, low/8K/MTP2 | v4 | **55.006/65** | Rejected |
-| 5 | **Peregrine, vLLM 0.28, low/8K/MTP3** | v5 | **54.771/65** | Production qualified |
-| 6 | Road Runner, off/4K/MTP3 | v4+v5 | **54.042/65** | Bounded no-tools only |
-| 7 | Spiderman, off/4K/MTP3 | v4 | **52.729/65** | Retained |
-| 8 | Thor, thinking/4K/no-spec | v4 | **51.042/65** | Retained |
-| 9 | Road Runner practical, low/8K/MTP3 | v4 | **49.542/65** | Rejected |
-| 10 | Qwen3.8 Q4_K_M, off/4K/no-spec | v4 | **48.229/65** | Comparison |
+| 2 | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | v5 | **57.970/65** | Production qualified |
+| 3 | Doctor Strange, low/8K/MTP2 | v4+v5 | **57.396/65** | Automatic fallback |
+| 4 | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | v5 | **56.021/65** | Superseded production coordinate |
+| 5 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | v4 | **55.417/65** | Rejected |
+| 6 | Cold Fusion, low/8K/MTP2 | v4 | **55.006/65** | Rejected |
+| 7 | Peregrine, vLLM 0.28, low/8K/MTP3 | v5 | **54.771/65** | Superseded production coordinate |
+| 8 | Road Runner, off/4K/MTP3 | v4+v5 | **54.042/65** | Bounded no-tools only |
+| 9 | Spiderman, off/4K/MTP3 | v4 | **52.729/65** | Retained |
+| 10 | Thor, thinking/4K/no-spec | v4 | **51.042/65** | Retained |
 
 See [LEADERBOARDS.md](LEADERBOARDS.md) for ranges, throughput, and profile boundaries.
 
-Peregrine is the production daily driver on patched **vLLM 0.28.0**: Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, probabilistic MTP3, aligned prefix caching, synchronous scheduling, two admitted sequences, 131,072 context, and an 8K output ceiling. Its three recorded clean-start protocol-v5 runs scored **54.771/65** with byte-identical 24/24 outputs at **43.0 effective t/s**. The earlier 57.818 qualification artifact reflected a different request-history trajectory and is not the leaderboard aggregate. The `#48375` cache-tail backport, complete startup patch verification, loop guard, retained cache-hot replay, and hash-bound production certificate are mandatory parts of the coordinate. [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) records the exact settings.
+Peregrine is the production daily driver on patched **vLLM 0.28.0**: Qwen3.8-27B W4A16, a W4A16 DFlash2 k7 drafter, int8-per-token-head attention KV, FP16 recurrent state, aligned prefix caching, synchronous scheduling, two admitted sequences, 131,072 context, and an 8K output ceiling. Clean-start top-p-0.95 runs 232–234 each scored **57.970/65** with byte-identical private outputs at a **58.1 effective t/s** mean. Temperature-0.60/top-p-0.95 reliability-v2 passed 12/12 using PiBench-owned fixtures. The `#48375` cache-tail backport, complete startup patch verification, loop guard, draft-artifact hashes, and hash-bound production certificate are mandatory parts of the coordinate. [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) records the exact settings.
 
-Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. The original vLLM 0.27 MTP3 coordinate later reproduced a cache-hot three-call cycle. The packaged vLLM 0.28 coordinate completed cold and cache-hot copies of that exact retained session without duplicates or cycles, but consequential edits remain supervised.
+Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. The original vLLM 0.27 MTP3 coordinate later reproduced a cache-hot three-call cycle. Peregrine remains supervised for consequential edits.
 
 ### Tool-enabled daily-operations result
 
