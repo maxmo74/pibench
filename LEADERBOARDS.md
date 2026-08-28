@@ -12,7 +12,7 @@ The Antigravity rows use the frozen `antigravity-v1` prompt variant—canonical 
 
 There are **19 eligible complete profiles**. The table stops at 19 rather than padding it with historical, incomplete, or private qualification runs.
 
-| Rank | Model/profile | Class | Runs | Revision | Mean score | Observed range | Effective output t/s |
+| Rank | Model/profile | Class | Runs/evidence | Revision | Mean score | Observed range | Effective output t/s |
 |---:|---|---|---:|---|---:|---:|---:|
 | 1 | Claude Opus 4.6 | Cloud antigravity-v1 | 198/199/204 | v4 variant | **61.506** | 60.810–62.604 | 40.5 |
 | 2 | Peregrine — Qwen3.8 27B W4A16, vLLM 0.27, FP8-KV/131K, low/8K/MTP3 | Local retired coordinate | 213/214/215 | v4 | **61.006** | 61.006–61.006 | 39.3 |
@@ -20,7 +20,7 @@ There are **19 eligible complete profiles**. The table stops at 19 rather than p
 | 4 | GPT-5.5, high | Cloud native | 186/190/216 | v4+v5 | **60.292** | 58.375–63.250 | 15.9 |
 | 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 | 194/195 | v4 variant | **58.408** | 58.372–58.443 | 58.0 |
 | 6 | Gemini 3.1 Pro, high | Cloud antigravity-v1 | 196/197 | v4 variant | **57.836** | 54.479–61.193 | 13.8 |
-| 7 | **Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3** | Local production | 1 | v5 | **57.818** | not measured (n=1) | **42.7** |
+| 7 | **Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3** | Local production | 20260828-014451 | v5 | **57.818** | not measured (n=1) | **42.7** |
 | 8 | GPT-5.6 Sol, medium | Cloud native | 187/192 | v4 | **57.516** | 57.443–57.589 | 18.8 |
 | 9 | Doctor Strange — Qwen3.8 27B Q4_K_M, low/8K/MTP2 | Local fallback | 180/181/201/217 | v4+v5 | **57.396** | 57.396–57.396 | 20.8 |
 | 10 | GPT-5.6 Sol, high | Cloud native | 188/193 | v4 | **56.305** | 55.318–57.292 | 17.5 |
@@ -38,10 +38,10 @@ There are **19 eligible complete profiles**. The table stops at 19 rather than p
 
 This is strict score order, not a deployment recommendation. Critical reliability or retained-session failures can disqualify a high-scoring profile from unattended use.
 
-| Rank | Local profile | Runs | Revision | Score used | Effective output t/s | Deployment status |
+| Rank | Local profile | Runs/evidence | Revision | Score used | Effective output t/s | Deployment status |
 |---:|---|---:|---|---:|---:|---|
 | 1 | Peregrine — Qwen3.8 27B W4A16, **vLLM 0.27**, FP8-KV/131K, low/8K/MTP3 | 213/214/215 | v4 | **61.006/65** | 39.3 | Retired runtime coordinate |
-| 2 | **Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3** | 1 | v5 | **57.818/65** | **42.7** | Production qualified; Doctor Strange rollback |
+| 2 | **Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3** | 20260828-014451 | v5 | **57.818/65** | **42.7** | Production qualified; Doctor Strange rollback |
 | 3 | **Doctor Strange — Qwen3.8 27B Q4_K_M, low/8K/MTP2** | 180/181/201/217 | v4+v5 | **57.396/65** | 20.8 | Automatic fallback |
 | 4 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | v4 | **55.417/65** | 20.2 | Rejected candidate |
 | 5 | Cold Fusion, low/8K/MTP2 | 200/203 | v4 | **55.006/65** | 19.8 | Rejected candidate |

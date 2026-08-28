@@ -26,11 +26,11 @@ Protocol v5 pins Pi 0.84.3 and explicitly attests the trailing-newline effective
 
 ## Current production profile
 
-| Model/profile | Class | Runs | Revision | Weighted score | Passed | Raw grader points | Effective output t/s |
+| Model/profile | Class | Evidence | Revision | Weighted score | Passed | Raw grader points | Effective output t/s |
 |---|---|---:|---|---:|---:|---:|---:|
-| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 1 | v5 | **57.818/65** | 17/24 | 74/81 | **42.7** |
+| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 20260828-014451 | v5 | **57.818/65** | 17/24 | 74/81 | **42.7** |
 
-The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.7/top-p 0.9/top-k 20, and no request seed. The packaged coordinate passed reliability-v2 12/12 and two exact retained-session replays—cold and cache-hot—with 97/97 unique calls, normal final responses, and no guard trigger.
+`20260828-014451` is the retained qualification evidence identifier, not a SQLite run ID; only its sanitized aggregate is published. The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.7/top-p 0.9/top-k 20, and no request seed. The packaged coordinate passed reliability-v2 12/12 and two exact retained-session replays—cold and cache-hot—with 97/97 unique calls, normal final responses, and no guard trigger.
 
 The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The safe v0.27 MTP1 protocol-v5 comparison scored 56.568/65 at 28.0 effective t/s and 20.23 seconds mean wall time; v0.28 MTP3 improved this to 57.818/65, 42.7 t/s, and 14.80 seconds. The hash-bound production gate, complete startup patch verification, and Peregrine loop guard are required parts of deployment.
 

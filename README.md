@@ -129,7 +129,7 @@ Protocols v4 and v5 are execution revisions of the same 24-task/65-point score p
 
 Nineteen complete profiles are eligible. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
 
-| Rank | Scope | Model/profile | Runs | Revision | Score used |
+| Rank | Scope | Model/profile | Runs/evidence | Revision | Score used |
 |---:|---|---|---:|---|---:|
 | 1 | Cloud variant | Claude Opus 4.6, antigravity-v1 | 198/199/204 | v4 variant | **61.506/65** |
 | 2 | Local retired | Peregrine, vLLM 0.27, low/8K/MTP3 | 213/214/215 | v4 | **61.006/65** |
@@ -137,7 +137,7 @@ Nineteen complete profiles are eligible. Repeated equivalent runs use their comp
 | 4 | Cloud | GPT-5.5, high | 186/190/216 | v4+v5 | **60.292/65** |
 | 5 | Cloud variant | Gemini 3.7 Flash, medium, antigravity-v1 | 194/195 | v4 variant | **58.408/65** |
 | 6 | Cloud variant | Gemini 3.1 Pro, high, antigravity-v1 | 196/197 | v4 variant | **57.836/65** |
-| 7 | Local production | **Peregrine, vLLM 0.28, low/8K/MTP3** | 1 | v5 | **57.818/65** |
+| 7 | Local production | **Peregrine, vLLM 0.28, low/8K/MTP3** | 20260828-014451 | v5 | **57.818/65** |
 | 8 | Cloud | GPT-5.6 Sol, medium | 187/192 | v4 | **57.516/65** |
 | 9 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | v4+v5 | **57.396/65** |
 | 10 | Cloud | GPT-5.6 Sol, high | 188/193 | v4 | **56.305/65** |
