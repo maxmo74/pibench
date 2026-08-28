@@ -153,6 +153,12 @@ class PublicExportSafetyTests(unittest.TestCase):
         self.assertTrue(public_release_audit.check_public_path("weights/model.gguf"))
         self.assertFalse(public_release_audit.check_public_path("RESULTS.csv"))
 
+    def test_public_blob_rejects_bearer_and_npm_tokens(self) -> None:
+        bearer = b"Authorization: " + b"Bearer " + b"a" * 32
+        npm = b"npm" + b"_" + b"b" * 36
+        self.assertTrue(public_release_audit.check_blob("example.txt", bearer))
+        self.assertTrue(public_release_audit.check_blob("example.txt", npm))
+
     def test_database_reexport_uses_row_connection(self) -> None:
         csv_path = Path(__file__).resolve().parents[1] / "RESULTS.csv"
         with tempfile.TemporaryDirectory() as tmp:

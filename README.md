@@ -85,6 +85,8 @@ The tracked [RESULTS.csv](RESULTS.csv) contains the complete sanitized task-leve
 
 The exporter uses a strict field allowlist: scores, timings, model/runtime identifiers, and reproducibility metadata are included; prompts, output, errors, notes, command lines, private paths, and arbitrary JSON are excluded. Incomplete infrastructure runs are explicitly marked.
 
+Before any push, `python3 scripts/repository_audit.py --history` must pass. It scans the current tree and all reachable Git history; deleting a sensitive file in a later commit is not sufficient. See [SECURITY.md](SECURITY.md).
+
 An OpenAI-compatible endpoint can also be tested directly without Pi:
 
 ```bash

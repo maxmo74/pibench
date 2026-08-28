@@ -25,6 +25,8 @@ SECRET_PATTERNS = (
     ("AWS access ID", re.compile(rb"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
     ("Google API key", re.compile(rb"\bAIza[0-9A-Za-z_-]{30,}\b")),
     ("Slack token", re.compile(rb"\bxox[baprs]-[A-Za-z0-9-]{20,}\b")),
+    ("npm token", re.compile(rb"\bnpm_[A-Za-z0-9]{30,}\b")),
+    ("bearer token", re.compile(rb"(?i)\bauthorization\s*:\s*bearer\s+[A-Za-z0-9._~+/=-]{20,}")),
     ("JWT", re.compile(rb"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")),
     ("credential URL", re.compile(rb"(?i)https?://[^\s/:@]+:[^\s/@]+@[^\s]+")),
 )
