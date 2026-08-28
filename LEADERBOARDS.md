@@ -62,7 +62,7 @@ The retired vLLM 0.27 Peregrine profile remains first by bounded-suite score but
 | Qwen3.8 W4A16 + DFlash2 k7, temperature 0.60, top-p 0.95 | 232/233/234 | 0.84.3 | **57.970/65** | **58.1** | Production: reliability 12/12; hash-qualified |
 | Qwen3.8 W4A16 + DFlash2 k7, temperature 0.60, top-p 0.90 | 229/230/231 | 0.84.3 | **56.021/65** | **57.1** | Superseded by top-p 0.95 |
 | Qwen3.8 W4A16 + DFlash2 k7, temperature 0.55 | none | 0.84.3 | not scored | not scored | Cold replay finalized at 53 calls; hot replay and score not run after the external-project fixture was withdrawn |
-| Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | 0.84.3 | **52.318/65** | **32.9** | Reject: misses the 58.47 quality and 35 t/s challenger gates |
+| Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | 0.84.3 | **52.318/65** | **32.9** | Reject: misses quality/speed gates; reliability not qualified at 9/12 |
 
 DFlash2 temperatures 0.65, 0.625, and 0.61 were rejected by cache-hot retained replay before score testing. Run 226 ended after 6/24 tasks at a 9/9 weighted subset score and 91.5 effective t/s; it is excluded from the temperature-0.70 complete-run mean. Production uses temperature 0.60/top-p 0.95; Doctor Strange remains rollback.
 

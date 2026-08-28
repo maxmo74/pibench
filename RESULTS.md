@@ -44,7 +44,7 @@ Opus Distill v2 Q4_K_M was the sole pre-screen winner. Its pinned artifact match
 |---|---:|---:|---:|---|
 | Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | **52.318/65** | **32.9** | Reject: 6.152 points below the quality gate and 2.1 t/s below the speed floor |
 
-No challenger qualified. Reliability repeats were not run after the complete screen missed both primary gates. Peregrine remains production unchanged with its existing reliability 12/12, hash-bound certificate, healthy loopback router, and Doctor Strange rollback.
+No challenger qualified. Opus Distill v2 also failed reliability qualification at 9/12: the three context-recovery setup phases used tools instead of returning the exact readiness final and made out-of-scope calls. Score repeats were not run after the complete screen missed both primary gates. Peregrine remains production unchanged with its existing reliability 12/12, hash-bound certificate, healthy loopback router, and Doctor Strange rollback.
 
 ## DFlash sampler qualification
 
@@ -99,7 +99,7 @@ Stable llama.cpp v0.2.0/b10566, commit `bb4caa754`, remains installed as the rol
 |---|---:|---:|---:|---:|---|
 | Qwen3.8 + Sharp chat template v22.3.1, low/8K/MTP2 | 208 | **55.417/65** | 18/24 | 20.2 | Reject: below Doctor Strange and 19% slower end-to-end despite 21% less visible output |
 | Cold Fusion GAIN V1.1, low/8K/MTP2 | 200/203 | **55.006/65** | 17/24 | 19.8 | Reject: exact score/runtime replay but below Doctor Strange and far slower than Road Runner |
-| Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | **52.318/65** | 16/24 | 32.9 | Reject: misses both the 58.47 quality gate and 35 t/s floor |
+| Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | **52.318/65** | 16/24 | 32.9 | Reject: misses both primary gates; reliability not qualified at 9/12 |
 | Ornith 1.5 35B-A3B AD-Q4 target-only, off/4K | 209 | **44.563/65** | 15/24 | 92.7 | Reject: lower quality and lower throughput than Road Runner; no MTP/thinking follow-up |
 
 Road Runner low/8K on b10434 (run 183) scored **49.542/65 at 24.2 t/s**. Qwen3.6 maps low and medium to the same boolean thinking mode; the larger allowance mostly increased hidden reasoning, and JSON path plus semver produced effectively empty finals. That practical profile remains rejected.
