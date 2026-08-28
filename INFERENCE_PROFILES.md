@@ -1,12 +1,12 @@
 # Local inference profiles and recommended settings
 
-Snapshot: **2026-08-25**
+Snapshot: **2026-08-28**
 
 This guide records the currently recommended local inference coordinates, the Pi configuration needed to select them, and the alternatives that were tested but not promoted. It is intentionally named by purpose rather than by a model codename: future leaders should be added as new versioned profile sections without renaming the document.
 
 | Role | Current profile | Runtime | Guidance |
 |---|---|---|---|
-| Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16** | patched vLLM 0.27.1 | Best measured quality/context/throughput balance; supervise consequential edits |
+| Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16** | patched vLLM 0.28.0 | Protocol-v5 leader; retained cache-hot replay qualified |
 | Autonomous fallback | **Doctor Strange — Qwen3.8-27B Q4_K_M** | llama.cpp v0.2.0/b10566 | Lower throughput and score, but retained as the reliability-qualified fallback |
 
 A published score is a property of the complete profile—not just the weights. Changing the runtime, artifact, KV format, context, sampler, speculation, startup request history, or Pi prompt creates a different coordinate that must be measured separately.
@@ -21,25 +21,26 @@ The exact Peregrine coordinate was tested on:
 - one NVIDIA RTX 3090 with 24 GB VRAM (Ampere, SM86), with no tensor parallelism
 - NVIDIA 595.91.07, GSP firmware disabled, and a 280 W power limit
 - AMD Ryzen 9 7900 and 128 GB system RAM
-- the pinned patched vLLM 0.27.1 source and exact W4A16 artifact listed below
+- the pinned patched vLLM 0.28.0 source and exact W4A16 artifact listed below
 
 The local-runtime evidence in this repository covers **llama.cpp and patched vLLM only**. Peregrine itself is a vLLM profile. The llama.cpp/GGUF profiles—such as Doctor Strange—were qualified separately on the same Debian/RTX 3090 host and must not inherit Peregrine's vLLM flags, cache format, speculative configuration, or throughput claims. Ollama, SGLang, TGI, TensorRT-LLM, Windows/WSL, other Linux distributions, AMD GPUs, newer NVIDIA architectures, multi-GPU systems, and different VRAM capacities were not qualified as this exact profile.
 
-The general principles are portable: freeze the complete inference coordinate, reserve answer space, map reasoning controls explicitly, keep hidden monitoring from generating text, test quality as well as speed, and report complete-run means and ranges. Numeric settings such as `GPU_UTIL=0.87`, `MAX_SEQS=8`, MTP3, FP8 KV, 131K context, driver/GSP choices, and allocator headroom are **validated starting points for this setup only**. Re-run context, quality, concurrency, reliability, and allocator gates before carrying them to another runtime, OS, GPU, or driver.
+The general principles are portable: freeze the complete inference coordinate, reserve answer space, map reasoning controls explicitly, keep hidden monitoring from generating text, test quality as well as speed, and report complete-run means and ranges. Numeric settings such as `GPU_UTIL=0.87`, `MAX_SEQS=2`, MTP3, FP8 KV, 131K context, driver/GSP choices, and allocator headroom are **validated starting points for this setup only**. Re-run context, quality, concurrency, reliability, and allocator gates before carrying them to another runtime, OS, GPU, or driver.
 
 ## Current vLLM profile: Peregrine
 
 | Component | Recommended setting |
 |---|---|
 | Model artifact | `syvai/qwen3.8-27b-3090-fast-variant` at revision `124c14e7e8c7d2f5402933b9af368e772a9fcf0c` |
-| Runtime | Patched vLLM 0.27.1 from `syv-ai/qwen38-27b-rtx3090` at `00210159df4366704b98b178258b3f618005611a` |
+| Runtime | vLLM 0.28.0 from RTX-3090 port head `55a5a99b124e48ffd0767ece295a355a6f1d988c`, plus local `#48375` backport commit `e78773d` |
 | Target weights | W4A16 AutoRound; GPTQ-int4 LM head and MTP; int8 embedding |
 | Context/output | 131,072 total context; 8,192 maximum output |
 | Attention KV | FP8 through FlashInfer |
 | Recurrent state | FP16 |
 | Speculation | MTP, 3 probabilistic draft tokens |
-| Prefix cache | Enabled with aligned recurrent-state pages |
-| Parallel admission | `max-num-seqs=8` |
+| Prefix cache | Enabled with aligned recurrent-state pages and speculative-tail block dropping |
+| Scheduling | Synchronous; async scheduling disabled |
+| Parallel admission | `max-num-seqs=2` |
 | GPU utilization | `0.87` |
 | Sampling | temperature `0.7`, top-p `0.9`, top-k `20`, min-p `0`, presence penalty `0`, repeat penalty `1` |
 | Reasoning | Pi `low`; thinking enabled and preserved; `reasoning_effort=low` |
@@ -49,9 +50,9 @@ The general principles are portable: freeze the complete inference coordinate, r
 | Network | Loopback only |
 | Reference host | RTX 3090 24 GB; NVIDIA 595.91.07; GSP off; 280 W |
 
-Three clean-start protocol-v4 runs scored **61.005952/65** each and were byte-identical on all 24 tasks. The profile also passed 24/24 synthetic reliability scenario-runs, an additional 8/8 packaged-production suite, `pi-ops-v1` at 100/100, a 129,040-token near-limit gate, two concurrent 50K prompts, and four concurrent 16K prompts.
+The current protocol-v5 run scored **57.818/65**, passed 17/24 complete tasks, and delivered 42.7 effective output t/s at 14.80 seconds mean wall time. Packaged reliability-v2 passed 12/12. Cold and cache-hot replays of the exact prior looping session completed with 97/97 unique calls, two normal finals, and no guard trigger.
 
-This remains a **supervised production** profile. Three realistic retained-session replays stayed scoped and terminated normally but all selected the same wrong CSS fix. Supervise consequential edits; Doctor Strange remains the fallback for autonomous work.
+This remains a **supervised production** profile. The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot loop; the current coordinate requires the `#48375` cache-tail backport, async-off scheduling, max-seqs 2, loop guard, full patch preflight, and hash-bound promotion certificate. Doctor Strange remains automatic rollback.
 
 ## Launcher settings
 
@@ -67,7 +68,8 @@ PREFIX_CACHE=1
 TOOLS=1
 VISION=0
 GPU_UTIL=0.87
-MAX_SEQS=8
+MAX_SEQS=2
+ASYNC_SCHED=0
 MAX_LEN=131072
 VLLM_API_KEY=pibench-local
 EXTRA_ARGS="--host 127.0.0.1"
@@ -82,14 +84,14 @@ The effective launch includes these important vLLM behaviors:
 - `--kv-cache-dtype fp8`
 - `--mamba-ssm-cache-dtype float16`
 - `--max-num-batched-tokens 2048`
-- `--async-scheduling`
+- synchronous scheduling (`--async-scheduling` absent)
 - probabilistic MTP3
 - `--enable-prefix-caching --mamba-cache-mode align`
 - `--reasoning-parser qwen3`
 - `--enable-auto-tool-choice --tool-call-parser qwen3_coder`
 - `--language-model-only`
 
-Do not treat this as a stock-vLLM recipe. The pinned source contains model, quantization, speculative-decoding, sampler, and hybrid-cache patches required by the artifact and tested profile. Requalify after any runtime or patch change.
+Do not treat this as a stock-vLLM recipe. Startup verifies every project patch plus the `#48375` speculative Mamba cache-tail fix. The production certificate is bound to runtime, model, service, environment, preflight, Pi catalog, guard, and harness hashes. Any drift requires requalification.
 
 ## Pi model configuration
 
@@ -187,7 +189,7 @@ Launch explicitly with:
 pi --model local-peregrine/qwen3.8-27b:low
 ```
 
-The published protocol-v4 score used immutable Pi 0.84.1 and its attested prompt. A newer daily Pi can use the same provider configuration, but it is not an exact protocol-v4 prompt replay.
+The current published score uses protocol v5's immutable Pi 0.84.3 runner and attested prompt. Use the separate Pi 0.84.1 runner only to reproduce protocol-v4 history.
 
 ## Thinking level
 
@@ -212,7 +214,7 @@ For replayable startup:
 3. Do not make another hidden inference before a benchmark coordinate begins.
 4. Use vLLM's `/health` engine RPC and authenticated `/v1/models` for periodic monitoring; do not use a generation canary.
 
-Normal user requests naturally advance the unseeded trajectory. The rule above exists to prevent invisible monitoring from changing a supposedly clean benchmark or replay.
+Normal user requests naturally advance the unseeded trajectory. The rule above exists to prevent invisible monitoring from changing a supposedly clean benchmark or replay. Backend boot verification depends only on the router, driver, power, patch preflight, and non-inference health checks; an optional UI service must not trigger model rollback.
 
 ## Choosing another mode
 
@@ -267,14 +269,14 @@ Do not transfer vLLM settings such as FP8 KV, `GPU_UTIL`, `MAX_SEQS`, aligned hy
 
 ## Minimum validation after a change
 
-1. Verify every model artifact hash and the pinned runtime revision.
+1. Verify every model artifact hash, pinned runtime revision, and complete patch-stack preflight.
 2. Start from a genuinely free GPU and record the exposed KV-token pool.
 3. Run perplexity plus an executable quality battery—not throughput alone.
 4. Exercise true-low wire formatting and tool calls.
 5. Reserve the full 8K answer at the intended prompt length.
 6. Test staggered concurrency and inspect minimum free VRAM.
-7. Run the complete 24-task PiBench profile at least three times.
-8. Run the reliability suite and a retained realistic tool session.
+7. Run the complete versioned 24-task PiBench profile; retain n=1 as provisional and use complete repeats before determinism claims.
+8. Run reliability-v2 plus cold and cache-hot retained realistic tool sessions.
 9. Record arithmetic means and observed ranges; never publish only the best run.
 
-See [RESULTS.md](RESULTS.md) for the measured evidence, [METHODOLOGY.md](METHODOLOGY.md) for coordinate and repeatability rules, [LEADERBOARDS.md](LEADERBOARDS.md) for the current ranking, and the pinned [Qwen3.8 RTX 3090 vLLM repository](https://github.com/syv-ai/qwen38-27b-rtx3090/tree/00210159df4366704b98b178258b3f618005611a) for its patch, optimization, long-context, quality, and gotcha documentation.
+See [RESULTS.md](RESULTS.md) for the measured evidence, [METHODOLOGY.md](METHODOLOGY.md) for coordinate and repeatability rules, [LEADERBOARDS.md](LEADERBOARDS.md) for the current ranking, and the [Qwen3.8 RTX 3090 vLLM 0.28 port](https://github.com/syv-ai/qwen38-27b-rtx3090/pull/43) for its patch, optimization, long-context, quality, and gotcha documentation.

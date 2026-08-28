@@ -1,6 +1,6 @@
 # Methodology
 
-PiBench is a practical coding and agent benchmark. The main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. Protocol v4 refuses extension-provided models because an extension could change the effective prompt after attestation; such providers require a separate versioned runner.
+PiBench is a practical coding and agent benchmark. The main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. Protocol v4 is frozen on Pi 0.84.1; protocol v5 is current on Pi 0.84.3. Both refuse unversioned extension-provided inputs because an extension could change the effective prompt after attestation.
 
 ## Scoring
 
@@ -21,7 +21,7 @@ The suite has 24 tasks and a maximum score of 65. Binary tasks receive zero or t
 | Changelog | 2.0 | GitHub issue triage | 2.5 |
 | Architecture decision | 3.5 | Design review | 3.5 |
 
-The prompts and checks in `pi_agent_bench.py` are the canonical task definitions.
+The prompts, checks, weights, and sandbox behavior in `pi_agent_bench.py` and `pi_agent_bench_v5.py` are identical. The version split records Pi/effective-prompt drift, not a task or grader change.
 
 ## Clean Pi invocation
 
@@ -39,11 +39,13 @@ Each task uses:
 
 Protocol v4 pins Pi 0.84.1, uses a fixed system prompt, and launches Pi from `/tmp/pibench-pi-agent-cwd-v1`. Before recording a run, the harness verifies the Pi version, invokes that installation's system-prompt builder, and requires the complete effective prompt to equal the protocol definition. It records SHA-256 hashes of both the supplied and effective system prompts and refuses to run if Pi adds or changes content. Custom prompts and extension-enabled runs are not accepted by this runner because they cannot share the canonical effective-prompt attestation. Pi 0.84.2 is intentionally rejected because it added a trailing newline to the effective prompt.
 
+Protocol v5 pins Pi 0.84.3, launches from the same fixed cwd, and attests the new effective prompt including its trailing newline (SHA-256 `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`). Its results start a separate ranking. A v5 result must never be inserted into a v4 rank merely because tasks and weights match.
+
 Pi versions through 0.80.6 silently appended `Current date: YYYY-MM-DD` to custom system prompts. Pi 0.82.0 removed that line. Consequently, historical pre-0.82 Pi-agent runs used a `legacy-date-injected` input profile and are not strictly comparable across dates or with date-free runs. They remain valid evidence for their exact effective prompt, and historical inputs can reproduce them, but curated current rankings use protocol-v4 results only. Direct endpoint benchmarks were unaffected.
 
-## What protocol v4 does—and does not—normalize
+## What protocols v4 and v5 do—and do not—normalize
 
-Protocol v4 normalizes the benchmark **input and evaluation path**:
+Within each version, the protocol normalizes the benchmark **input and evaluation path**:
 
 - exact Pi version and complete effective system prompt
 - fixed working-directory text
@@ -100,6 +102,8 @@ Weight precision, KV-cache precision, attention/GEMM kernels, tensor parallelism
 
 For current curated tables:
 
+- Rankings are partitioned by protocol and effective-prompt profile. Protocol v5 tables grow gradually while protocol v4 remains frozen.
+
 - A repeated profile is rerun as a complete 24-task invocation, not assembled by selecting its best task attempts.
 - Repeated local and managed-cloud profiles are shown using the arithmetic mean and min–max range of complete equivalent runs; the best run is never used alone as the ranking value.
 - A single local run is shown as `n=1` with its range marked not measured. It must not be described as verified deterministic.
@@ -120,9 +124,9 @@ Scoring is deterministic: retry behavior 35 points, service correctness/hardenin
 
 `pi-ops-v1` measures three structured, convergent tasks; it does not establish reliability on ambiguous open-ended investigation. A model can pass this profile yet repeatedly call equivalent tools or fail to terminate on a less constrained request. Interpret its score together with observed interactive reliability.
 
-## Experimental reliability gate: pi-agent-reliability-v1
+## Versioned reliability gates
 
-`pi_agent_reliability_bench.py` initially keeps loop and termination qualification separate from both canonical PiBench and `pi-ops-v1`. This preserves historical profiles while the new scenarios and thresholds accumulate validation evidence. It is a strict pass/fail gate, not a weighted score.
+`pi_agent_reliability_bench.py` preserves the Pi 0.84.1 `pi-agent-reliability-v1` screen. `pi_agent_reliability_v2.py` pins Pi 0.84.3, uses versioned fixture paths and prompt attestation, and includes the production Peregrine loop guard. Both keep loop and termination qualification separate from canonical PiBench and `pi-ops-v1`. This preserves historical profiles while the new scenarios and thresholds accumulate validation evidence. It is a strict pass/fail gate, not a weighted score.
 
 The profile runs four synthetic read-only repositories: a browser-state defect with sufficient evidence, an incident whose decisive rotated log and metrics are deliberately absent, a simple deployment mismatch after a large deterministic irrelevant-context preamble, and a deterministic polling trap that tests whether the agent stops instead of searching Pi's harness internals for unavailable evidence. Each scenario uses a fresh session and runs twice by default. Only `read` and `bash` are available; the fixture itself is mounted read-only inside Bubblewrap. Pi 0.84.1, fixed cwd, the scenario and preamble hashes, and the complete effective system-prompt hash are recorded.
 
@@ -186,7 +190,7 @@ Regenerate the public export after adding reviewed runs:
 - Local and cloud reasoning controls are not equivalent, and output ceilings must be read as part of the profile.
 - Quantization and speculative decoding are part of the tested configuration, not transparent acceleration layers.
 - OOM, malformed-artifact, infrastructure, authentication, quota, and incomplete runs are excluded rather than scored as model failures.
-- Results are compared only within the same benchmark protocol and effective-prompt profile. Protocol v4 is the current canonical Pi-agent input; older date-injected and date-free working-directory profiles are historical evidence.
+- Results are compared only within the same benchmark protocol and effective-prompt profile. Protocol v5 is current; protocol v4 and older date-injected/date-free profiles remain frozen evidence.
 - Current cloud aggregates use complete-run means and ranges. Some explicitly historical cloud rows combined the latest valid task result across partial invocations; those rows are not protocol-v4 ranking inputs.
 - The public CSV contains individual run/task observations. Curated aggregate means, ranges, repeatability labels, and deployment decisions are documented in `README.md` and `RESULTS.md` rather than replacing raw observations.
 - Static configuration checks verify requested content, not a live deployment.

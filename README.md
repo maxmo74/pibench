@@ -23,7 +23,7 @@ Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md
 
 - Linux or WSL
 - Python 3.11+
-- [Pi](https://github.com/earendil-works/pi-coding-agent) 0.84.1 with at least one configured model (protocol v4 pins this exact version)
+- [Pi](https://github.com/earendil-works/pi-coding-agent) 0.84.1 for protocol v4 or 0.84.3 for protocol v5, with at least one configured model
 - [Bubblewrap](https://github.com/containers/bubblewrap) for safely checking generated Python
 
 No particular GPU is required. PiBench itself has no Python package dependencies.
@@ -32,12 +32,12 @@ On Debian or Ubuntu:
 
 ```bash
 sudo apt install bubblewrap
-npm install -g @earendil-works/pi-coding-agent@0.84.1
+npm install -g @earendil-works/pi-coding-agent@0.84.3
 git clone https://github.com/maxmo74/pibench.git
 cd pibench
 ```
 
-Pi 0.84.2 changed the effective custom system prompt by adding a trailing newline. PiBench rejects it rather than silently mixing benchmark inputs. An immutable local 0.84.1 installation can be placed first on `PATH` if the system-wide Pi must remain current.
+Protocol v4 remains frozen on Pi 0.84.1. Pi 0.84.2 added a trailing newline to the effective custom prompt, so protocol v5 explicitly pins Pi 0.84.3 and attests that new prompt instead of silently mixing inputs. Keep an immutable 0.84.1 installation on `PATH` for v4 replays; use the current `pi_agent_bench_v5.py` runner for new v5 results.
 
 List the models available to Pi:
 
@@ -48,21 +48,21 @@ pi --list-models
 Run all 24 tasks against one model:
 
 ```bash
-./pi_agent_bench.py 'provider/model:off'
+./pi_agent_bench_v5.py 'provider/model:off'
 ```
 
 For a fully local provider:
 
 ```bash
-./pi_agent_bench.py --offline 'local-llama/your-model:off'
+./pi_agent_bench_v5.py --offline 'local-llama/your-model:off'
 ```
 
-Pass several model IDs to compare them in one run, and use `--task TASK_NAME` for a shorter test. Protocol v4 deliberately refuses extension-enabled runs because an extension can modify the effective system prompt after attestation; use a separately versioned runner for those providers.
+Pass several model IDs to compare them in one run, and use `--task TASK_NAME` for a shorter test. `pi_agent_bench.py` is the immutable Pi 0.84.1/protocol-v4 runner; `pi_agent_bench_v5.py` is the Pi 0.84.3/protocol-v5 runner. Never combine their scores into one rank. Both refuse unversioned extension-modified inputs.
 
 PiBench records CPU, memory, detected accelerators, Pi version, and model configuration automatically. For a CPU-only run or a backend that cannot be discovered through Pi, add explicit metadata:
 
 ```bash
-./pi_agent_bench.py 'ollama/model:off' \
+./pi_agent_bench_v5.py 'ollama/model:off' \
   --compute-mode cpu \
   --backend Ollama --backend-version 0.12.3 \
   --model-format GGUF --quantization Q5_K_M \
@@ -106,25 +106,40 @@ PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
 
 That profile gives Pi only `read`, `bash`, `edit`, and `write` inside a disposable Bubblewrap filesystem, uses three sequential turns in one session, hashes its effective tool-enabled system prompt, and scores the resulting code, service unit, documentation, test preservation, and change scope. Its 100-point score is a separate daily-operations diagnostic and is never mixed into the canonical 65-point no-tools ranking. Raw sessions and output remain under ignored local paths.
 
-For initial loop/termination qualification, use the separate experimental `pi-agent-reliability-v1` gate:
+For current loop/termination qualification, use the Pi 0.84.3 `pi-agent-reliability-v2` gate:
 
 ```bash
-PATH=/opt/pibench-pi-0.84.1/node_modules/.bin:$PATH \
-  ./pi_agent_reliability_bench.py \
-  'local-llama/Doctor Strange:low' \
-  'local-llama/Road Runner:off' \
-  'openai-codex/gpt-5.6-sol:medium'
+./pi_agent_reliability_v2.py --repeats 3 \
+  'local-peregrine/qwen3.8-27b:low'
 ```
+
+The immutable Pi 0.84.1 `pi_agent_reliability_bench.py` runner remains available for protocol-v1 reliability history.
 
 It runs four read-only synthetic investigations twice in fresh isolated sessions: evidence-backed diagnosis, graceful termination when decisive evidence is absent, recovery after a large irrelevant context preamble, and resistance to a deterministic polling trap without searching outside the fixture. A model passes the screen only if every run finishes normally, answers the fixture correctly, respects scenario tool budgets and the 21-message ceiling, makes no exact duplicate tool call, stays inside the repository, and avoids repeated text blocks. This is deliberately a pass/fail screen rather than another score. It remains separate while its scenarios and thresholds are validated; passing is necessary evidence for autonomous use, not a guarantee of universal reliability. Private output records metrics, checks and hashes but not model text. Configured endpoints must remain loopback-only, while built-in cloud providers may use an existing provider-scoped `auth.json` entry. For cloud runs, only the selected credential is staged in the isolated agent directory, an attested extension blocks tool access outside the fixture, and the parent removes the staged credential after every Pi process—even on timeout.
 
-Initial two-repeat results: Doctor Strange, Spiderman, and **GPT-5.6 Sol medium** passed all **8/8** scenario-runs. Peregrine's selected FP8/131K profile later passed **24/24** across three complete suites, plus an **8/8** check on the packaged production stack. Sol high and xhigh each passed 7/8; Road Runner and Thor each passed 6/8. Peregrine still made the same incorrect CSS/menu fix in three retained real-session replays, so its promotion is explicitly a **supervised daily-driver** decision rather than a claim of universal autonomous reliability. Doctor Strange remains the automatic rollback backend, and Road Runner remains bounded-throughput only.
+Protocol-v4 reliability-v1 results remain historical qualification evidence. The current vLLM 0.28 Peregrine coordinate uses the persistent Pi 0.84.3 `pi-agent-reliability-v2` gate and passed **12/12** after packaging. It also completed cold and cache-hot replays of the exact prior looping session with 97/97 unique calls, normal finals, and no guard trigger. Passing is still necessary evidence rather than proof of universal autonomy; the Peregrine-only loop guard remains mandatory and Doctor Strange remains automatic rollback.
 
 ## Reference results
 
-### Top 20 overall (18 eligible current profiles)
+### Protocol-v5 Top 20 overall (1 eligible profile)
 
-Current rankings use the fixed, attested protocol-v4 input. Eighteen complete current profiles are eligible, so the Top-20 table presently has 18 rows rather than padding it with historical or incomplete runs. Repeated profiles use the arithmetic mean of every equivalent complete run; ranges are observed minima and maxima, not confidence intervals. See [LEADERBOARDS.md](LEADERBOARDS.md) for this full ranking plus the explicit Top 10 local table.
+Protocol v5 pins Pi 0.84.3 and its trailing-newline effective prompt. It starts a new ranking rather than rewriting protocol-v4 history. New profiles will be added gradually when a complete 24-task v5 run exists.
+
+| Rank | Scope | Alias / real model and profile | Runs | Score used | Effective output t/s |
+|---:|---|---|---:|---:|---:|
+| 1 | Local production | **Peregrine** — Qwen3.8-27B W4A16, vLLM 0.28, FP8 KV, low/8K/MTP3 | 1 | **57.818/65** | **42.7** |
+
+Raw grader points were 74/81 with 17/24 full-task passes; the leaderboard uses the documented weighted partial-credit score. One run establishes a current result, not a range or determinism claim.
+
+### Protocol-v5 Top 10 local
+
+| Rank | Local profile | Score used | Deployment status |
+|---:|---|---:|---|
+| 1 | **Peregrine** — Qwen3.8-27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3 | **57.818/65** | Production qualified; Doctor Strange rollback |
+
+### Protocol-v4 Top 20 overall (18 frozen profiles)
+
+The following ranking remains frozen on Pi 0.84.1. It is retained for history and gradual v5 migration, not combined with the v5 table. Eighteen complete profiles are eligible, so the table stops at 18. See [LEADERBOARDS.md](LEADERBOARDS.md) for protocol-separated overall and local rankings.
 
 | Rank | Scope | Alias / real model and profile | Runs | Score used | Observed range | Effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
@@ -147,7 +162,7 @@ Current rankings use the fixed, attested protocol-v4 input. Eighteen complete cu
 | 17 | Local comparison | Qwen3.8-27B Q4_K_M, off/4K/no-spec | 182 | **48.229/65** | not measured (n=1) | 28.1 |
 | 18 | Local rejected candidate | Ornith 1.5 35B-A3B AD-Q4, target-only off/4K | 209 | **44.563/65** | not measured (n=1) | 92.7 |
 
-### Top 10 local
+### Protocol-v4 Top 10 local
 
 | Rank | Local profile | Score used | Deployment status |
 |---:|---|---:|---|
@@ -164,9 +179,9 @@ Current rankings use the fixed, attested protocol-v4 input. Eighteen complete cu
 
 The antigravity rows were previously summarized with binary pass-weight totals rather than PiBench's documented partial-credit formula. The table now uses the same canonical weighted calculation as `RESULTS.csv` and every other profile; no raw result was changed. Antigravity-v1 still has a distinct canonical-plus-fixed-injection input, so its combined position must be read with that boundary in mind.
 
-Peregrine is now the production daily driver: vLLM 0.27.1, Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, MTP3, prefix-cache alignment, 131,072 context, 8K output, temperature 0.7/top-p 0.9/top-k 20, and no request seed. Three clean-start protocol-v4 runs were byte-identical at **61.006/65** and averaged **39.3 visible t/s**. The packaged NVIDIA 595.91.07 stack produced a reproducible 160,620-token KV pool, passed the 129,040-token near-limit gate, two concurrent 50K prompts, four concurrent 16K prompts, and `pi-ops-v1` at 100/100. Periodic health uses vLLM's engine RPC without an inference request because an inference-based probe changes an unseeded request-history coordinate. The exact vLLM and Pi settings, llama.cpp fallback coordinate, alternatives, and setup-specific portability boundary are documented in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
+Peregrine is the production daily driver on patched **vLLM 0.28.0**: Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, probabilistic MTP3, aligned prefix caching, synchronous scheduling, two admitted sequences, 131,072 context, and an 8K output ceiling. Its protocol-v5 run scored **57.818/65** at **42.7 effective t/s**, up from the safe v0.27 MTP1 coordinate's 56.568/65 at 28.0 t/s. The `#48375` cache-tail backport, complete startup patch verification, loop guard, retained cache-hot replay, and hash-bound production certificate are mandatory parts of the coordinate. [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) records the exact settings.
 
-Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. Peregrine's three repeated retained-session CSS replays stayed scoped and terminated, but all changed menu positioning instead of the actual active-tab cascade. Consequential autonomous edits therefore still require supervision despite the strong canonical and synthetic-reliability results.
+Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. The original vLLM 0.27 MTP3 coordinate later reproduced a cache-hot three-call cycle. The packaged vLLM 0.28 coordinate completed cold and cache-hot copies of that exact retained session without duplicates or cycles, but consequential edits remain supervised.
 
 ### Tool-enabled daily-operations result
 
@@ -209,7 +224,7 @@ The reference local runs were made on this machine:
 | NVIDIA driver | 595.91.07 (current Peregrine production); earlier local runs used 550.163.01 |
 | CUDA toolkit | 12.4.131 |
 
-Most final local comparisons used a 131,072-token context, quantized KV cache, full GPU offload, and flash attention. Peregrine admits eight sequences but its 160,620-token KV pool provides 1.23× maximum-length concurrency; the llama.cpp fallback uses one parallel slot. Exact settings are part of each result profile.
+Most final local comparisons used a 131,072-token context, quantized KV cache, full GPU offload, and flash attention. Current Peregrine admits two sequences to reduce recurrent-state and scheduler exposure; the llama.cpp fallback uses one parallel slot. Exact settings are part of each result profile.
 
 ## Contributing results
 

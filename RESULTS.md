@@ -3,8 +3,8 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-08-25
-- Current benchmark input: Pi-agent protocol v4
+- Snapshot: 2026-08-28
+- Current benchmark input: Pi-agent protocol v5; protocol v4 retained as a frozen historical ranking
 - Effective system-prompt SHA-256: `33367c8eccc8213267c551069af9e5c781122b08fe36b5f1f736d29e5269f711`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
 - RAM: 128 GB
@@ -13,9 +13,19 @@ These runs were made on one reference workstation. They show observed model/prof
 - NVIDIA driver: 595.91.07 for current Peregrine production; earlier local results used 550.163.01
 - CUDA toolkit: 12.4.131
 
-Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete effective system prompt before a run, records its hash, and aborts if Pi changes the prompt. Pi 0.84.2 is rejected because it adds a trailing newline. Current local results generally use 131,072-token context, quantized KV cache, and full GPU offload; parallelism, sampler, seed, output allowance, runtime, and request history remain named profile coordinates. Peregrine omits the request seed and uses server seed 0. Cloud profiles use their request-visible provider settings, listed separately below.
+Protocol v5 pins Pi 0.84.3 and explicitly attests the trailing-newline effective prompt introduced after v4. Protocol v4 remains immutable on Pi 0.84.1. Scores are ranked only within their protocol; gradual v5 migration does not erase or silently merge v4 evidence. Runtime, parallelism, sampler, seed, output allowance, and request history remain named profile coordinates.
 
-## Current protocol-v4 local profiles
+## Current protocol-v5 profiles
+
+| Rank | Model/profile | Class | Runs | Weighted score | Passed | Raw grader points | Effective output t/s |
+|---:|---|---|---:|---:|---:|---:|---:|
+| 1 | **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 1 | **57.818/65** | 17/24 | 74/81 | **42.7** |
+
+The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.7/top-p 0.9/top-k 20, and no request seed. The packaged coordinate passed reliability-v2 12/12 and two exact retained-session replays—cold and cache-hot—with 97/97 unique calls, normal final responses, and no guard trigger.
+
+The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The safe v0.27 MTP1 protocol-v5 comparison scored 56.568/65 at 28.0 effective t/s and 20.23 seconds mean wall time; v0.28 MTP3 improved this to 57.818/65, 42.7 t/s, and 14.80 seconds. The hash-bound production gate, complete startup patch verification, and Peregrine loop guard are required parts of deployment.
+
+## Frozen protocol-v4 local profiles
 
 | Rank | Model/profile | Class | Runs | Mean score | Passed | Mean effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
@@ -27,7 +37,7 @@ Protocol v4 pins Pi 0.84.1, fixes Pi's working directory, verifies the complete 
 | 6 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
 | 7 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
-Peregrine is a separate practical profile and the new supervised production daily driver. Runs 213–215 were clean-start, byte-identical 24/24, and each scored 61.005952; their effective-output means were 39.26–39.43 t/s. The exact runtime is vLLM 0.27.1 at revision `00210159`, Qwen3.8-27B W4A16 AutoRound with quantized LM head/MTP and int8 embeddings, FP8 attention KV, FP16 recurrent state, MTP3 probabilistic drafting, aligned prefix caching, GPU utilization 0.87, max-seqs 8, 131,072 context, 8,192 output, temperature 0.7/top-p 0.9/top-k 20, server seed 0, and no request seed. Copyable settings, alternative modes, the separate llama.cpp fallback, and hardware/runtime applicability limits are in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
+This Peregrine row is the frozen predecessor to the current production coordinate. Runs 213–215 were clean-start, byte-identical 24/24, and each scored 61.005952; their effective-output means were 39.26–39.43 t/s. The historical runtime is vLLM 0.27.1 at revision `00210159`, Qwen3.8-27B W4A16 AutoRound with quantized LM head/MTP and int8 embeddings, FP8 attention KV, FP16 recurrent state, MTP3 probabilistic drafting, aligned prefix caching, GPU utilization 0.87, max-seqs 8, 131,072 context, 8,192 output, temperature 0.7/top-p 0.9/top-k 20, server seed 0, and no request seed. Copyable settings, alternative modes, the separate llama.cpp fallback, and hardware/runtime applicability limits are in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
 
 The official NVIDIA 595.91.07 packaged DKMS stack produced the same 160,620-token KV pool on three clean starts. A production context gate passed at 121,879 prompt tokens with an 8K answer reservation, at 129,040 tokens near the limit, and on a true-low 121,902-token request; cached follow-up was 62.78× faster. Two simultaneous 50K prompts and four simultaneous 16K prompts also passed. Minimum observed free VRAM was 2,039 MiB in the near-limit gate and 1,979 MiB in the concurrency gate at the retained 280 W limit.
 
@@ -53,7 +63,7 @@ Stable llama.cpp v0.2.0/b10566, commit `bb4caa754`, remains installed as the rol
 
 Road Runner low/8K on b10434 (run 183) scored **49.542/65 at 24.2 t/s**. Qwen3.6 maps low and medium to the same boolean thinking mode; the larger allowance mostly increased hidden reasoning, and JSON path plus semver produced effectively empty finals. That practical profile remains rejected.
 
-## Current protocol-v4 OpenAI profiles
+## Frozen protocol-v4 OpenAI profiles
 
 Each retained OpenAI profile received two complete runs through the OpenAI Codex Responses API. The table ranks the two-run mean and exposes the range because the service does not provide a seed-attested deterministic path.
 
@@ -67,7 +77,7 @@ Each retained OpenAI profile received two complete runs through the OpenAI Codex
 
 All used protocol v4's pinned Pi 0.84.1, fixed cwd, effective-prompt hash, clean no-tools/no-context invocation, 272K registered context, and the provider-native 128K output ceiling. GPT-5.5 had unusually large 4.8-point ranges: JSON path and CSV inference changed outcomes between medium runs, while JSON path changed between high runs. GPT-5.4 repeated its score exactly but only 3/24 outputs were byte-identical, and GPT-5.6 Sol medium differed by only 0.146 point. Equal score is therefore described as score stability, not output determinism.
 
-## Current protocol-v4 Antigravity profiles
+## Frozen protocol-v4 Antigravity profiles
 
 Antigravity (Google Cloud Code Assist) results run under the **antigravity-v1** versioned extension profile: the `pi-antigravity` 0.3.1 extension is pinned, and its fixed three-part system-instruction injection (sha256 `1416c1c4…eb9b39`) is attested against the installed source before every run. The full effective prompt sent to the model is therefore frozen as canonical prompt + fixed injection, but it is **not byte-identical to the pure canonical prompt** used by the OpenAI profiles; antigravity-v1 scores are comparable within the profile and across antigravity models, but sit on a different prompt variant.
 
@@ -85,7 +95,7 @@ The third Opus repeat, run 204, scored 61.104/65 with 19/24 full passes at 41.5 
 
 Pro high remains slower and more variable than Flash: its 6.714-point range is driven mainly by unified diff and JSON-path behavior. Flash medium is the stronger Gemini profile on mean, stability, and throughput. A Sonnet 4.6 attempt (run 205) exhausted the shared Claude quota after 7/24 tasks; it is explicitly `incomplete-infrastructure`, excluded from every aggregate, and may be completed only after the provider reset.
 
-## Top 20 combined protocol-v4 ranking (18 eligible)
+## Frozen Top 20 combined protocol-v4 ranking (18 eligible)
 
 This table uses the arithmetic mean of every equivalent complete run where repeats exist and a single complete run otherwise. Output allowances and reasoning controls remain part of each named profile; incomplete infrastructure runs are excluded. Eighteen current profiles qualify for inclusion, so the table stops at 18 rather than mixing in historical or incomplete runs. See [LEADERBOARDS.md](LEADERBOARDS.md) for this overall ranking and the explicit Top 10 local view.
 
@@ -128,9 +138,9 @@ All profiles passed every hidden retry check, every service/hardening check, pre
 
 These three structured, convergent turns do not test open-ended exploration or guaranteed termination. The Road Runner loop audit demonstrates that its 95/100 result must not be generalized to unattended ambiguous work. The separate experimental reliability gate below begins testing that missing dimension without changing this historical profile.
 
-## Experimental agent-reliability gate
+## Versioned agent-reliability gates
 
-`pi-agent-reliability-v1` is a separate pass/fail screen, not part of either scored ranking. Four read-only scenarios run twice: evidence-backed diagnosis, missing-evidence termination, recovery after a large irrelevant preamble, and a deterministic polling trap with repository-scope enforcement.
+`pi-agent-reliability-v1` is the frozen Pi 0.84.1 pass/fail screen, not part of either scored ranking. `pi-agent-reliability-v2` pins Pi 0.84.3, retains the four scenario classes, loads the production loop guard, and is mandatory for current Peregrine promotion. Packaged vLLM 0.28 Peregrine passed 12/12. The v1 evidence below remains protocol-specific history. Four read-only scenarios run twice: evidence-backed diagnosis, missing-evidence termination, recovery after a large irrelevant preamble, and a deterministic polling trap with repository-scope enforcement.
 
 | Model | Screen result | Scenario-runs | Tools | Wall time including context setup | Failure |
 |---|---|---:|---:|---:|---|
