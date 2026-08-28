@@ -37,7 +37,7 @@ git clone https://github.com/maxmo74/pibench.git
 cd pibench
 ```
 
-Protocol v4 remains frozen on Pi 0.84.1. Pi 0.84.2 added a trailing newline to the effective custom prompt, so protocol v5 explicitly pins Pi 0.84.3 and attests that new prompt instead of silently mixing inputs. Keep an immutable 0.84.1 installation on `PATH` for v4 replays; use the current `pi_agent_bench_v5.py` runner for new v5 results.
+Protocol v4 remains replayable on Pi 0.84.1. Pi 0.84.2 added a trailing newline to the effective custom prompt, so protocol v5 pins Pi 0.84.3 and attests that revision. A four-profile bridge found no material score effect, so v4 and v5 are measured execution revisions of the same `pi-agent-24/65` score protocol. Keep an immutable 0.84.1 installation on `PATH` for v4 replays; use the current `pi_agent_bench_v5.py` runner for new results.
 
 List the models available to Pi:
 
@@ -57,7 +57,7 @@ For a fully local provider:
 ./pi_agent_bench_v5.py --offline 'local-llama/your-model:off'
 ```
 
-Pass several model IDs to compare them in one run, and use `--task TASK_NAME` for a shorter test. `pi_agent_bench.py` is the immutable Pi 0.84.1/protocol-v4 runner; `pi_agent_bench_v5.py` is the Pi 0.84.3/protocol-v5 runner. Never combine their scores into one rank. Both refuse unversioned extension-modified inputs.
+Pass several model IDs to compare them in one run, and use `--task TASK_NAME` for a shorter test. `pi_agent_bench.py` is the immutable Pi 0.84.1/v4 runner; `pi_agent_bench_v5.py` is the Pi 0.84.3/v5 runner. Combined rankings retain the measured revision on every row. Both refuse unversioned extension-modified inputs.
 
 PiBench records CPU, memory, detected accelerators, Pi version, and model configuration automatically. For a CPU-only run or a backend that cannot be discovered through Pi, add explicit metadata:
 
@@ -123,63 +123,50 @@ Protocol-v4 reliability-v1 results remain historical qualification evidence. The
 
 ## Reference results
 
-### Protocol-v5 Top 20 overall (1 eligible profile)
+Protocols v4 and v5 are execution revisions of the same 24-task/65-point score protocol. They use identical tasks, prompts, graders, weights, sandbox, fixed cwd, and clean invocation. A four-profile bridge found exact 24/24 task and output reproduction for Doctor Strange and Road Runner; GPT-5.5 medium and high remained within ordinary managed-service variation. The combined tables retain the revision actually measured on every row. Historical v4 runs are never relabeled v5.
 
-Protocol v5 pins Pi 0.84.3 and its trailing-newline effective prompt. It starts a new ranking rather than rewriting protocol-v4 history. New profiles will be added gradually when a complete 24-task v5 run exists.
+### Top 20 overall
 
-| Rank | Scope | Alias / real model and profile | Runs | Score used | Effective output t/s |
-|---:|---|---|---:|---:|---:|
-| 1 | Local production | **Peregrine** — Qwen3.8-27B W4A16, vLLM 0.28, FP8 KV, low/8K/MTP3 | 1 | **57.818/65** | **42.7** |
+Nineteen complete profiles are eligible. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
 
-Raw grader points were 74/81 with 17/24 full-task passes; the leaderboard uses the documented weighted partial-credit score. One run establishes a current result, not a range or determinism claim.
+| Rank | Scope | Model/profile | Runs | Revision | Score used |
+|---:|---|---|---:|---|---:|
+| 1 | Cloud variant | Claude Opus 4.6, antigravity-v1 | 198/199/204 | v4 variant | **61.506/65** |
+| 2 | Local retired | Peregrine, vLLM 0.27, low/8K/MTP3 | 213/214/215 | v4 | **61.006/65** |
+| 3 | Cloud | GPT-5.5, medium | 185/189/216 | v4+v5 | **60.542/65** |
+| 4 | Cloud | GPT-5.5, high | 186/190/216 | v4+v5 | **60.292/65** |
+| 5 | Cloud variant | Gemini 3.7 Flash, medium, antigravity-v1 | 194/195 | v4 variant | **58.408/65** |
+| 6 | Cloud variant | Gemini 3.1 Pro, high, antigravity-v1 | 196/197 | v4 variant | **57.836/65** |
+| 7 | Local production | **Peregrine, vLLM 0.28, low/8K/MTP3** | 1 | v5 | **57.818/65** |
+| 8 | Cloud | GPT-5.6 Sol, medium | 187/192 | v4 | **57.516/65** |
+| 9 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | v4+v5 | **57.396/65** |
+| 10 | Cloud | GPT-5.6 Sol, high | 188/193 | v4 | **56.305/65** |
+| 11 | Local candidate | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | v4 | **55.417/65** |
+| 12 | Local candidate | Cold Fusion, low/8K/MTP2 | 200/203 | v4 | **55.006/65** |
+| 13 | Cloud | GPT-5.4, medium | 184/191 | v4 | **54.277/65** |
+| 14 | Local bounded | Road Runner, off/4K/MTP3 | 202/217 | v4+v5 | **54.042/65** |
+| 15 | Local retained | Spiderman, off/4K/MTP3 | 206 | v4 | **52.729/65** |
+| 16 | Local retained | Thor, thinking/4K/no-spec | 207 | v4 | **51.042/65** |
+| 17 | Local rejected | Road Runner practical, low/8K/MTP3 | 183 | v4 | **49.542/65** |
+| 18 | Local comparison | Qwen3.8 Q4_K_M, off/4K/no-spec | 182 | v4 | **48.229/65** |
+| 19 | Local candidate | Ornith 1.5, target-only off/4K | 209 | v4 | **44.563/65** |
 
-### Protocol-v5 Top 10 local
+### Top 10 local
 
-| Rank | Local profile | Score used | Deployment status |
-|---:|---|---:|---|
-| 1 | **Peregrine** — Qwen3.8-27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3 | **57.818/65** | Production qualified; Doctor Strange rollback |
+| Rank | Local profile | Revision | Score used | Status |
+|---:|---|---|---:|---|
+| 1 | Peregrine, vLLM 0.27, low/8K/MTP3 | v4 | **61.006/65** | Retired looping coordinate |
+| 2 | **Peregrine, vLLM 0.28, low/8K/MTP3** | v5 | **57.818/65** | Production qualified |
+| 3 | Doctor Strange, low/8K/MTP2 | v4+v5 | **57.396/65** | Automatic fallback |
+| 4 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | v4 | **55.417/65** | Rejected |
+| 5 | Cold Fusion, low/8K/MTP2 | v4 | **55.006/65** | Rejected |
+| 6 | Road Runner, off/4K/MTP3 | v4+v5 | **54.042/65** | Bounded no-tools only |
+| 7 | Spiderman, off/4K/MTP3 | v4 | **52.729/65** | Retained |
+| 8 | Thor, thinking/4K/no-spec | v4 | **51.042/65** | Retained |
+| 9 | Road Runner practical, low/8K/MTP3 | v4 | **49.542/65** | Rejected |
+| 10 | Qwen3.8 Q4_K_M, off/4K/no-spec | v4 | **48.229/65** | Comparison |
 
-### Protocol-v4 Top 20 overall (18 frozen profiles)
-
-The following ranking remains frozen on Pi 0.84.1. It is retained for history and gradual v5 migration, not combined with the v5 table. Eighteen complete profiles are eligible, so the table stops at 18. See [LEADERBOARDS.md](LEADERBOARDS.md) for protocol-separated overall and local rankings.
-
-| Rank | Scope | Alias / real model and profile | Runs | Score used | Observed range | Effective output t/s |
-|---:|---|---|---:|---:|---:|---:|
-| 1 | Cloud variant | **Claude Opus 4.6** (antigravity-v1) | 198/199/204 | **61.506/65** | 60.810–62.604 | 40.5 |
-| 2 | Local production | **Peregrine** — Qwen3.8-27B W4A16, FP8 KV, low/8K/MTP3, temp 0.7 | 213/214/215 | **61.006/65** | 61.006–61.006 | 39.3 |
-| 3 | Cloud | OpenAI **GPT-5.5**, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
-| 4 | Cloud | OpenAI **GPT-5.5**, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
-| 5 | Cloud variant | **Gemini 3.7 Flash**, medium (antigravity-v1) | 194/195 | **58.408/65** | 58.372–58.443 | 58.0 |
-| 6 | Cloud variant | **Gemini 3.1 Pro**, high (antigravity-v1) | 196/197 | **57.836/65** | 54.479–61.193 | 13.8 |
-| 7 | Cloud | OpenAI **GPT-5.6 Sol**, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
-| 8 | Local fallback | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | 180/181/201 | **57.396/65** | 57.396–57.396 | 20.7 |
-| 9 | Cloud | OpenAI **GPT-5.6 Sol**, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
-| 10 | Local candidate | Qwen3.8-27B + **Sharp v22.3.1**, low/8K/MTP2 | 208 | **55.417/65** | not measured (n=1) | 20.2 |
-| 11 | Local candidate | **Cold Fusion** Qwen3.8-27B, low/8K/MTP2 | 200/203 | **55.006/65** | 55.006–55.006 | 19.8 |
-| 12 | Cloud | OpenAI **GPT-5.4**, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
-| 13 | Local bounded | **Road Runner** — Qwen3.6-35B-A3B UD-Q4_K_M, off/4K/MTP3 | 202 | **54.042/65** | not measured (n=1) | **148.2** |
-| 14 | Local retained | **Spiderman** — Tmax 27B Q5, off/4K/MTP3 | 206 | **52.729/65** | not measured (n=1) | 48.1 |
-| 15 | Local retained | **Thor** — DSV4Pro 27B Q4, thinking/4K/no-spec | 207 | **51.042/65** | not measured (n=1) | 10.0 |
-| 16 | Local rejected practical | Road Runner, low/8K/MTP3 | 183 | **49.542/65** | not measured (n=1) | 24.2 |
-| 17 | Local comparison | Qwen3.8-27B Q4_K_M, off/4K/no-spec | 182 | **48.229/65** | not measured (n=1) | 28.1 |
-| 18 | Local rejected candidate | Ornith 1.5 35B-A3B AD-Q4, target-only off/4K | 209 | **44.563/65** | not measured (n=1) | 92.7 |
-
-### Protocol-v4 Top 10 local
-
-| Rank | Local profile | Score used | Deployment status |
-|---:|---|---:|---|
-| 1 | **Peregrine** — Qwen3.8-27B W4A16, FP8-KV/131K, low/8K/MTP3 | **61.006/65** | Production; supervise consequential edits |
-| 2 | **Doctor Strange** — Qwen3.8-27B Q4_K_M, low/8K/MTP2 | **57.396/65** | Automatic fallback and autonomous default |
-| 3 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | **55.417/65** | Rejected candidate |
-| 4 | Cold Fusion, low/8K/MTP2 | **55.006/65** | Rejected candidate |
-| 5 | **Road Runner** — Qwen3.6-35B-A3B, off/4K/MTP3 | **54.042/65** | Bounded no-tools throughput specialist |
-| 6 | **Spiderman** — Tmax 27B, off/4K/MTP3 | **52.729/65** | Retained local profile |
-| 7 | **Thor** — DSV4Pro 27B, thinking/4K/no-spec | **51.042/65** | Retained local profile |
-| 8 | Road Runner practical, low/8K/MTP3 | **49.542/65** | Rejected practical profile |
-| 9 | Qwen3.8-27B Q4_K_M, off/4K/no-spec | **48.229/65** | Comparison profile |
-| 10 | Ornith 1.5 35B-A3B AD-Q4, target-only off/4K | **44.563/65** | Rejected candidate |
-
-The antigravity rows were previously summarized with binary pass-weight totals rather than PiBench's documented partial-credit formula. The table now uses the same canonical weighted calculation as `RESULTS.csv` and every other profile; no raw result was changed. Antigravity-v1 still has a distinct canonical-plus-fixed-injection input, so its combined position must be read with that boundary in mind.
+See [LEADERBOARDS.md](LEADERBOARDS.md) for ranges, throughput, and profile boundaries.
 
 Peregrine is the production daily driver on patched **vLLM 0.28.0**: Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, probabilistic MTP3, aligned prefix caching, synchronous scheduling, two admitted sequences, 131,072 context, and an 8K output ceiling. Its protocol-v5 run scored **57.818/65** at **42.7 effective t/s**, up from the safe v0.27 MTP1 coordinate's 56.568/65 at 28.0 t/s. The `#48375` cache-tail backport, complete startup patch verification, loop guard, retained cache-hot replay, and hash-bound production certificate are mandatory parts of the coordinate. [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) records the exact settings.
 
@@ -203,7 +190,7 @@ A subsequent adversarial replay exposed a limitation that `pi-ops-v1` does not m
 
 ### Cloud versus local results
 
-Protocol v4 makes the **benchmark input** identical: pinned Pi 0.84.1, the same effective-system-prompt hash, fixed cwd, task prompts and graders, and no tools, context files, skills, themes, templates, or extensions. The one documented exception is the **antigravity-v1** profile (Google Cloud Code Assist via the pinned `pi-antigravity` 0.3.1 extension), whose fixed three-part system-instruction injection is version-pinned and attested; those runs sit on canonical prompt + fixed injection rather than the pure canonical prompt. It does not make the execution environments equivalent:
+Each execution revision fixes the **benchmark input**: pinned Pi version, attested effective-system-prompt hash, fixed cwd, task prompts and graders, and no tools, context files, skills, themes, templates, or extensions. V4/v5 differ only by the pinned Pi revision and attested trailing newline covered by the compatibility bridge. The one documented exception is the **antigravity-v1** profile (Google Cloud Code Assist via the pinned `pi-antigravity` 0.3.1 extension), whose fixed three-part system-instruction injection is version-pinned and attested; those runs sit on canonical prompt + fixed injection rather than the pure canonical prompt. It does not make the execution environments equivalent:
 
 - Local runs can attest the GGUF hash, quantization, llama.cpp commit, server arguments, KV cache, sampler, speculation, and hardware. Seeded local generation can be reproducible, but quantized speculative decoding and runtime changes can still alter output.
 - Cloud runs attest the provider/model identifier and request profile, but not weights, backend build, routing, sampler implementation, or service updates. The API does not provide a seed-attested deterministic path, so repeated cloud runs are summarized by mean and range rather than their best score.
@@ -211,7 +198,7 @@ Protocol v4 makes the **benchmark input** identical: pinned Pi 0.84.1, the same 
 - Effective output t/s is end-to-end visible-output speed. Local figures primarily reflect the reference machine; cloud figures also include network, queueing, and opaque provider execution.
 - Output ceilings and reasoning controls are profile properties: local canonical runs use 4K, Peregrine and Doctor Strange use 8K, and these OpenAI catalog entries expose a provider-native 128K ceiling. Local and cloud reasoning levels are not assumed equivalent.
 
-Pre-v4 results remain in `RESULTS.csv` as historical evidence but are not mixed into this ranking. See [RESULTS.md](RESULTS.md) and [METHODOLOGY.md](METHODOLOGY.md) for detailed interpretation rules.
+Pre-v4 results remain in `RESULTS.csv` as historical evidence but are not mixed into the `pi-agent-24/65` ranking. See [RESULTS.md](RESULTS.md) and [METHODOLOGY.md](METHODOLOGY.md) for detailed interpretation rules.
 
 ### Reference system
 

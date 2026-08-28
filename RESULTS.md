@@ -4,8 +4,8 @@ These runs were made on one reference workstation. They show observed model/prof
 
 - Suite: 24 tasks, 65 weighted points
 - Snapshot: 2026-08-28
-- Current benchmark input: Pi-agent protocol v5; protocol v4 retained as a frozen historical ranking
-- Effective system-prompt SHA-256: `33367c8eccc8213267c551069af9e5c781122b08fe36b5f1f736d29e5269f711`
+- Score protocol: pi-agent-24/65; v5 current and v4 retained as a measured execution revision
+- Current v5 effective system-prompt SHA-256: `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
 - RAM: 128 GB
 - GPU: NVIDIA GeForce RTX 3090, 24 GB
@@ -13,25 +13,34 @@ These runs were made on one reference workstation. They show observed model/prof
 - NVIDIA driver: 595.91.07 for current Peregrine production; earlier local results used 550.163.01
 - CUDA toolkit: 12.4.131
 
-Protocol v5 pins Pi 0.84.3 and explicitly attests the trailing-newline effective prompt introduced after v4. Protocol v4 remains immutable on Pi 0.84.1. Scores are ranked only within their protocol; gradual v5 migration does not erase or silently merge v4 evidence. Runtime, parallelism, sampler, seed, output allowance, and request history remain named profile coordinates.
+Protocol v5 pins Pi 0.84.3 and explicitly attests the trailing-newline effective prompt introduced after v4. Protocol v4 remains immutable on Pi 0.84.1. Because tasks, prompts, graders, weights, sandbox, and clean invocation are unchanged, four complete bridge runs tested score compatibility. Both local profiles reproduced all task outcomes and private outputs byte-for-byte; both GPT-5.5 profiles stayed within ordinary cloud variation. V4 and v5 are therefore execution revisions of the `pi-agent-24/65` score protocol. Every result retains its measured revision. Runtime, parallelism, sampler, seed, output allowance, and request history remain named profile coordinates.
 
-## Current protocol-v5 profiles
+## V4/v5 compatibility bridge
 
-| Rank | Model/profile | Class | Runs | Weighted score | Passed | Raw grader points | Effective output t/s |
-|---:|---|---|---:|---:|---:|---:|---:|
-| 1 | **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 1 | **57.818/65** | 17/24 | 74/81 | **42.7** |
+| Profile | V4 score evidence | V5 score | V5 passed | V5 raw points | Interpretation |
+|---|---:|---:|---:|---:|---|
+| GPT-5.5, medium | 57.208, 62.042 | **62.375/65** | 21/24 | 78/81 | Managed-service variation; one task differs from closest v4 run |
+| GPT-5.5, high | 58.375, 63.250 | **59.250/65** | 21/24 | 79/81 | Inside v4 range; one task differs from each v4 run |
+| Doctor Strange, low | 57.396 | **57.396/65** | 16/24 | 71/81 | 24/24 outcomes and outputs byte-identical |
+| Road Runner, off | 54.042 | **54.042/65** | 16/24 | 72/81 | 24/24 outcomes and outputs byte-identical |
+
+## Current production profile
+
+| Model/profile | Class | Runs | Revision | Weighted score | Passed | Raw grader points | Effective output t/s |
+|---|---|---:|---|---:|---:|---:|---:|
+| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 1 | v5 | **57.818/65** | 17/24 | 74/81 | **42.7** |
 
 The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.7/top-p 0.9/top-k 20, and no request seed. The packaged coordinate passed reliability-v2 12/12 and two exact retained-session replays—cold and cache-hot—with 97/97 unique calls, normal final responses, and no guard trigger.
 
 The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The safe v0.27 MTP1 protocol-v5 comparison scored 56.568/65 at 28.0 effective t/s and 20.23 seconds mean wall time; v0.28 MTP3 improved this to 57.818/65, 42.7 t/s, and 14.80 seconds. The hash-bound production gate, complete startup patch verification, and Peregrine loop guard are required parts of deployment.
 
-## Frozen protocol-v4 local profiles
+## Historical and bridged local profiles
 
 | Rank | Model/profile | Class | Runs | Mean score | Passed | Mean effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
 | 1 | **Peregrine** — Qwen3.8 27B W4A16, FP8 KV, low reasoning, 8K output, MTP3, temp 0.7 | Production practical/long-output | 213/214/215 | **61.006/65** | 18/24 | **39.3** |
-| 2 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Fallback practical/long-output | 201 | **57.396/65** | 16/24 | 20.7 |
-| 3 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202 | **54.042/65** | 16/24 | **148.2** |
+| 2 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Fallback practical/long-output | 180/181/201/217 | **57.396/65** | 16/24 | 20.8 |
+| 3 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202/217 | **54.042/65** | 16/24 | **159.2** |
 | 4 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 206 | **52.729/65** | 15/24 | 48.1 |
 | 5 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
 | 6 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
@@ -63,19 +72,19 @@ Stable llama.cpp v0.2.0/b10566, commit `bb4caa754`, remains installed as the rol
 
 Road Runner low/8K on b10434 (run 183) scored **49.542/65 at 24.2 t/s**. Qwen3.6 maps low and medium to the same boolean thinking mode; the larger allowance mostly increased hidden reasoning, and JSON path plus semver produced effectively empty finals. That practical profile remains rejected.
 
-## Frozen protocol-v4 OpenAI profiles
+## OpenAI profiles
 
-Each retained OpenAI profile received two complete runs through the OpenAI Codex Responses API. The table ranks the two-run mean and exposes the range because the service does not provide a seed-attested deterministic path.
+Each retained OpenAI profile received complete runs through the OpenAI Codex Responses API. GPT-5.5 includes one v5 bridge run in addition to two v4 runs. The table ranks the complete-run mean and exposes the range because the service does not provide a seed-attested deterministic path.
 
 | Rank | Model/profile | Runs | Mean score | Range | Mean effective output t/s |
 |---:|---|---:|---:|---:|---:|
-| 1 | GPT-5.5, high | 186/190 | **60.813/65** | 58.375–63.250 | 16.2 |
-| 2 | GPT-5.5, medium | 185/189 | **59.625/65** | 57.208–62.042 | 19.7 |
+| 1 | GPT-5.5, medium | 185/189/216 | **60.542/65** | 57.208–62.375 | 19.8 |
+| 2 | GPT-5.5, high | 186/190/216 | **60.292/65** | 58.375–63.250 | 15.9 |
 | 3 | GPT-5.6 Sol, medium | 187/192 | **57.516/65** | 57.443–57.589 | 18.8 |
 | 4 | GPT-5.6 Sol, high | 188/193 | **56.305/65** | 55.318–57.292 | 17.5 |
 | 5 | GPT-5.4, medium | 184/191 | **54.277/65** | 54.277–54.277 | 23.1 |
 
-All used protocol v4's pinned Pi 0.84.1, fixed cwd, effective-prompt hash, clean no-tools/no-context invocation, 272K registered context, and the provider-native 128K output ceiling. GPT-5.5 had unusually large 4.8-point ranges: JSON path and CSV inference changed outcomes between medium runs, while JSON path changed between high runs. GPT-5.4 repeated its score exactly but only 3/24 outputs were byte-identical, and GPT-5.6 Sol medium differed by only 0.146 point. Equal score is therefore described as score stability, not output determinism.
+The original runs used v4's pinned Pi 0.84.1; run 216 used v5's pinned Pi 0.84.3. All used the fixed cwd, attested effective-prompt revision, clean no-tools/no-context invocation, 272K registered context, and provider-native 128K output ceiling. GPT-5.5 had unusually large 4.8-point ranges: JSON path and CSV inference changed outcomes between medium runs, while JSON path changed between high runs. GPT-5.4 repeated its score exactly but only 3/24 outputs were byte-identical, and GPT-5.6 Sol medium differed by only 0.146 point. Equal score is therefore described as score stability, not output determinism.
 
 ## Frozen protocol-v4 Antigravity profiles
 
@@ -95,32 +104,33 @@ The third Opus repeat, run 204, scored 61.104/65 with 19/24 full passes at 41.5 
 
 Pro high remains slower and more variable than Flash: its 6.714-point range is driven mainly by unified diff and JSON-path behavior. Flash medium is the stronger Gemini profile on mean, stability, and throughput. A Sonnet 4.6 attempt (run 205) exhausted the shared Claude quota after 7/24 tasks; it is explicitly `incomplete-infrastructure`, excluded from every aggregate, and may be completed only after the provider reset.
 
-## Frozen Top 20 combined protocol-v4 ranking (18 eligible)
+## Combined pi-agent-24/65 ranking (19 eligible)
 
-This table uses the arithmetic mean of every equivalent complete run where repeats exist and a single complete run otherwise. Output allowances and reasoning controls remain part of each named profile; incomplete infrastructure runs are excluded. Eighteen current profiles qualify for inclusion, so the table stops at 18 rather than mixing in historical or incomplete runs. See [LEADERBOARDS.md](LEADERBOARDS.md) for this overall ranking and the explicit Top 10 local view.
+This table uses the arithmetic mean of every equivalent complete run, including compatible v4/v5 bridge runs, and a single complete run otherwise. Every row retains its measured revision in [LEADERBOARDS.md](LEADERBOARDS.md).
 
 | Rank | Model/profile | Class | Score used |
 |---:|---|---|---:|
-| 1 | Claude Opus 4.6 | Cloud antigravity-v1, three-run mean | **61.506** |
-| 2 | **Peregrine — Qwen3.8 27B W4A16, FP8-KV/131K, low/8K/MTP3** | Local production, exact three-run mean | **61.006** |
-| 3 | GPT-5.5, high | Cloud native, two-run mean | **60.813** |
-| 4 | GPT-5.5, medium | Cloud native, two-run mean | **59.625** |
-| 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1, two-run mean | **58.408** |
-| 6 | Gemini 3.1 Pro, high | Cloud antigravity-v1, two-run mean | **57.836** |
-| 7 | GPT-5.6 Sol, medium | Cloud native, two-run mean | **57.516** |
-| 8 | Doctor Strange — Qwen3.8 27B, low/8K/MTP2 | Local fallback, exact runtime replay | **57.396** |
-| 9 | GPT-5.6 Sol, high | Cloud native, two-run mean | **56.305** |
-| 10 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected template A/B | **55.417** |
-| 11 | Cold Fusion, low/8K/MTP2 | Local rejected, exact two-run mean | **55.006** |
-| 12 | GPT-5.4, medium | Cloud native, exact two-run mean | **54.277** |
-| 13 | Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3 | Local canonical | **54.042** |
-| 14 | Spiderman — Tmax 27B, off/4K/MTP3 | Local canonical | **52.729** |
-| 15 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local canonical | **51.042** |
-| 16 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | **49.542** |
-| 17 | Qwen3.8 27B, off/4K/no-spec | Local canonical | **48.229** |
-| 18 | Ornith 1.5 35B-A3B, target-only off/4K | Local rejected candidate | **44.563** |
+| 1 | Claude Opus 4.6 | Cloud antigravity-v1 | **61.506** |
+| 2 | Peregrine, vLLM 0.27, low/8K/MTP3 | Local retired | **61.006** |
+| 3 | GPT-5.5, medium | Cloud native, v4+v5 mean | **60.542** |
+| 4 | GPT-5.5, high | Cloud native, v4+v5 mean | **60.292** |
+| 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 | **58.408** |
+| 6 | Gemini 3.1 Pro, high | Cloud antigravity-v1 | **57.836** |
+| 7 | **Peregrine, vLLM 0.28, low/8K/MTP3** | Local production | **57.818** |
+| 8 | GPT-5.6 Sol, medium | Cloud native | **57.516** |
+| 9 | Doctor Strange, low/8K/MTP2 | Local fallback, v4+v5 exact replay | **57.396** |
+| 10 | GPT-5.6 Sol, high | Cloud native | **56.305** |
+| 11 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected | **55.417** |
+| 12 | Cold Fusion, low/8K/MTP2 | Local rejected | **55.006** |
+| 13 | GPT-5.4, medium | Cloud native | **54.277** |
+| 14 | Road Runner, off/4K/MTP3 | Local bounded, v4+v5 exact replay | **54.042** |
+| 15 | Spiderman, off/4K/MTP3 | Local retained | **52.729** |
+| 16 | Thor, thinking/4K/no-spec | Local retained | **51.042** |
+| 17 | Road Runner practical, low/8K/MTP3 | Local rejected | **49.542** |
+| 18 | Qwen3.8 27B, off/4K/no-spec | Local comparison | **48.229** |
+| 19 | Ornith 1.5, target-only off/4K | Local rejected | **44.563** |
 
-The antigravity-v1 profiles' prompt variant (canonical + fixed extension injection) differs from the pure canonical input of the other profiles. Their corrected scores are shown in the combined ordering, but that boundary prevents a claim of byte-identical input equivalence.
+The Antigravity prompt variant remains explicitly labeled because its fixed extension injection is not byte-identical to pure-canonical input.
 
 ## Tool-enabled multi-turn daily operations
 
