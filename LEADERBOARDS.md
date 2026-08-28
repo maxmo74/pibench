@@ -59,7 +59,8 @@ The retired vLLM 0.27 Peregrine profile remains first by bounded-suite score but
 |---|---:|---|---:|---:|---|
 | Qwen3.8 W4A16 + DFlash2 k7, temperature 0.70 | 224/225/227 | v5 | **57.649/65** | **57.7** | Reject: both retained replays reached the mandatory guard without a final |
 | Qwen3.8 W4A16 + DFlash2 k7, temperature 0.60 | 228 | v5 | **56.021/65** | **56.9** | Reject: replay-safe but below 57/65 |
+| Qwen3.8 W4A16 + DFlash2 k7, temperature 0.55 | none | v5 | not scored | not scored | Cold replay finalized at 53 calls; hot replay and score not run after the external-project fixture was withdrawn |
 
-DFlash2 temperatures 0.65, 0.625, and 0.61 were rejected by cache-hot retained replay before score testing. No new coordinate met all quality, throughput, and loop-safety gates, so production and rollback remain unchanged.
+DFlash2 temperatures 0.65, 0.625, and 0.61 were rejected by cache-hot retained replay before score testing. Run 226 ended after 6/24 tasks at a 9/9 weighted subset score and 91.5 effective t/s; it is excluded from the temperature-0.70 complete-run mean. No new coordinate met all quality, throughput, and loop-safety gates, so production and rollback remain unchanged.
 
 See [RESULTS.md](RESULTS.md) for bridge and qualification evidence, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, [METHODOLOGY.md](METHODOLOGY.md) for ranking rules, and [RESULTS.csv](RESULTS.csv) for sanitized task-level records.

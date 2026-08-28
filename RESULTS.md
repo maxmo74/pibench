@@ -45,8 +45,9 @@ No newly tested coordinate met both the **57/65**, **35 effective t/s**, and ret
 | DFlash2, temperature 0.625 | none | not scored | not scored | cold finalized at 41 calls; cache-hot hit the guard | Reject before score run |
 | DFlash2, temperature 0.61 | none | not scored | not scored | cold finalized at 58 calls; cache-hot hit the guard | Reject before score run |
 | DFlash2, temperature 0.60 | 228 | **56.021/65** | **56.9** | cold and cache-hot finalized at 45 and 54 calls with no cycle or guard | Reject: below score target |
+| DFlash2, temperature 0.55 | none | not scored | not scored | cold finalized normally at 53 calls; hot replay was not run after the external-project fixture was withdrawn | Reject: required replay pair incomplete; score not run |
 
-Runs 224, 225, and 227 were complete clean-start repetitions with byte-identical outputs on all 24 tasks and identical scores; incomplete run 226 is excluded. Sampler coordinates rejected by the retained replay were not score-tested. Existing Peregrine remains production and Doctor Strange remains rollback.
+Runs 224, 225, and 227 were complete clean-start repetitions with byte-identical outputs on all 24 tasks and identical scores. Run 226 ended after 6/24 tasks at a 9/9 weighted subset score and 91.5 effective t/s; it is excluded from complete-run aggregates. Sampler coordinates rejected by, or unable to complete, the retained replay gate were not score-tested. Existing Peregrine remains production and Doctor Strange remains rollback.
 
 ## Historical and bridged local profiles
 

@@ -17,7 +17,7 @@ The main suite contains 24 tasks with a weighted maximum of 65 points. It covers
 
 Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md](METHODOLOGY.md) for the scoring and clean-run controls, [LEADERBOARDS.md](LEADERBOARDS.md) for the explicit overall and local rankings, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, and [RESULTS.md](RESULTS.md) for qualification details.
 
-The latest RTX 3090 search found no new production winner. DFlash2 reached 57.649/65 at 57.7 effective t/s in runs 224/225/227 and passed reliability-v2, but failed exact retained cold/cache-hot termination gates. Its replay-safe temperature-0.60 coordinate scored 56.021/65 at 56.9 t/s in run 228. Peregrine remains production and Doctor Strange remains rollback.
+The latest RTX 3090 search found no new production winner. DFlash2 reached 57.649/65 at 57.7 effective t/s in runs 224/225/227 and passed reliability-v2, but failed exact retained cold/cache-hot termination gates. Its replay-safe temperature-0.60 coordinate scored 56.021/65 at 56.9 t/s in run 228. A temperature-0.55 cold probe finalized normally, but its hot replay and score were not run after use of the external-project fixture was withdrawn. Peregrine remains production and Doctor Strange remains rollback.
 
 ## Run it
 

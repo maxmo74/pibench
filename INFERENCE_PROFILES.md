@@ -56,7 +56,7 @@ This remains a **supervised production** profile. The original vLLM 0.27 MTP3 co
 
 ### Rejected DFlash2 coordinate
 
-A W4A16 DFlash2 k7 drafter with int8-per-token-head KV increased effective output to 57.7 t/s. Temperature-0.70 runs 224/225/227 were byte-identical and scored 57.649/65; reliability-v2 passed 12/12. The exact retained cold and cache-hot sessions both exhausted the 60-call limit without a final, so the coordinate is unsafe for promotion. Temperatures 0.65, 0.625, and 0.61 also failed cache-hot replay. Temperature 0.60 finalized both replays, but run 228 scored 56.021/65 at 56.9 t/s. DFlash2 is therefore not a production setting.
+A W4A16 DFlash2 k7 drafter with int8-per-token-head KV increased effective output to 57.7 t/s. Temperature-0.70 runs 224/225/227 were byte-identical and scored 57.649/65; reliability-v2 passed 12/12. The exact retained cold and cache-hot sessions both exhausted the 60-call limit without a final, so the coordinate is unsafe for promotion. Temperatures 0.65, 0.625, and 0.61 also failed cache-hot replay. Temperature 0.60 finalized both replays, but run 228 scored 56.021/65 at 56.9 t/s. A temperature-0.55 cold probe finalized normally at 53 calls; its hot replay and score were not run after the external-project fixture was withdrawn. DFlash2 is therefore not a production setting.
 
 ## Launcher settings
 
@@ -267,7 +267,7 @@ Doctor Strange is a separate GGUF/llama.cpp coordinate, not a way to run the Per
 | Context handling | Fit disabled; context shifting disabled |
 | Reference host | The same Debian/RTX 3090 system; 280 W |
 
-This profile scored **57.395833/65**, passed 8/8 reliability scenario-runs, and scored 100/100 on `pi-ops-v1`. It remains the autonomous fallback because Peregrine's higher score and synthetic reliability did not eliminate its retained-session semantic failure.
+This profile scored **57.395833/65**, passed 8/8 reliability scenario-runs, and scored 100/100 on `pi-ops-v1`. It remains the autonomous fallback because Doctor Strange has the higher bounded score and stronger retained reliability evidence; Peregrine remains supervised after its retained-session semantic failure.
 
 Do not transfer vLLM settings such as FP8 KV, `GPU_UTIL`, `MAX_SEQS`, aligned hybrid prefix caching, or probabilistic MTP configuration to llama.cpp. Conversely, llama.cpp's GGUF cache types, sidecar drafting, fixed seed, and context-shift controls do not describe the vLLM coordinate. Compare them only as separately named end-to-end profiles.
 
