@@ -137,12 +137,12 @@ Nineteen complete profiles are eligible. Repeated equivalent runs use their comp
 | 4 | Cloud | GPT-5.5, high | 186/190/216 | v4+v5 | **60.292/65** |
 | 5 | Cloud variant | Gemini 3.7 Flash, medium, antigravity-v1 | 194/195 | v4 variant | **58.408/65** |
 | 6 | Cloud variant | Gemini 3.1 Pro, high, antigravity-v1 | 196/197 | v4 variant | **57.836/65** |
-| 7 | Local production | **Peregrine, vLLM 0.28, low/8K/MTP3** | 20260828-014451 | v5 | **57.818/65** |
-| 8 | Cloud | GPT-5.6 Sol, medium | 187/192 | v4 | **57.516/65** |
-| 9 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | v4+v5 | **57.396/65** |
-| 10 | Cloud | GPT-5.6 Sol, high | 188/193 | v4 | **56.305/65** |
-| 11 | Local candidate | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | v4 | **55.417/65** |
-| 12 | Local candidate | Cold Fusion, low/8K/MTP2 | 200/203 | v4 | **55.006/65** |
+| 7 | Cloud | GPT-5.6 Sol, medium | 187/192 | v4 | **57.516/65** |
+| 8 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | v4+v5 | **57.396/65** |
+| 9 | Cloud | GPT-5.6 Sol, high | 188/193 | v4 | **56.305/65** |
+| 10 | Local candidate | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | v4 | **55.417/65** |
+| 11 | Local candidate | Cold Fusion, low/8K/MTP2 | 200/203 | v4 | **55.006/65** |
+| 12 | Local production | **Peregrine, vLLM 0.28, low/8K/MTP3** | 218/219/220 | v5 | **54.771/65** |
 | 13 | Cloud | GPT-5.4, medium | 184/191 | v4 | **54.277/65** |
 | 14 | Local bounded | Road Runner, off/4K/MTP3 | 202/217 | v4+v5 | **54.042/65** |
 | 15 | Local retained | Spiderman, off/4K/MTP3 | 206 | v4 | **52.729/65** |
@@ -156,10 +156,10 @@ Nineteen complete profiles are eligible. Repeated equivalent runs use their comp
 | Rank | Local profile | Revision | Score used | Status |
 |---:|---|---|---:|---|
 | 1 | Peregrine, vLLM 0.27, low/8K/MTP3 | v4 | **61.006/65** | Retired looping coordinate |
-| 2 | **Peregrine, vLLM 0.28, low/8K/MTP3** | v5 | **57.818/65** | Production qualified |
-| 3 | Doctor Strange, low/8K/MTP2 | v4+v5 | **57.396/65** | Automatic fallback |
-| 4 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | v4 | **55.417/65** | Rejected |
-| 5 | Cold Fusion, low/8K/MTP2 | v4 | **55.006/65** | Rejected |
+| 2 | Doctor Strange, low/8K/MTP2 | v4+v5 | **57.396/65** | Automatic fallback |
+| 3 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | v4 | **55.417/65** | Rejected |
+| 4 | Cold Fusion, low/8K/MTP2 | v4 | **55.006/65** | Rejected |
+| 5 | **Peregrine, vLLM 0.28, low/8K/MTP3** | v5 | **54.771/65** | Production qualified |
 | 6 | Road Runner, off/4K/MTP3 | v4+v5 | **54.042/65** | Bounded no-tools only |
 | 7 | Spiderman, off/4K/MTP3 | v4 | **52.729/65** | Retained |
 | 8 | Thor, thinking/4K/no-spec | v4 | **51.042/65** | Retained |
@@ -168,7 +168,7 @@ Nineteen complete profiles are eligible. Repeated equivalent runs use their comp
 
 See [LEADERBOARDS.md](LEADERBOARDS.md) for ranges, throughput, and profile boundaries.
 
-Peregrine is the production daily driver on patched **vLLM 0.28.0**: Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, probabilistic MTP3, aligned prefix caching, synchronous scheduling, two admitted sequences, 131,072 context, and an 8K output ceiling. Its protocol-v5 run scored **57.818/65** at **42.7 effective t/s**, up from the safe v0.27 MTP1 coordinate's 56.568/65 at 28.0 t/s. The `#48375` cache-tail backport, complete startup patch verification, loop guard, retained cache-hot replay, and hash-bound production certificate are mandatory parts of the coordinate. [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) records the exact settings.
+Peregrine is the production daily driver on patched **vLLM 0.28.0**: Qwen3.8-27B W4A16, FP8 attention KV, FP16 recurrent state, probabilistic MTP3, aligned prefix caching, synchronous scheduling, two admitted sequences, 131,072 context, and an 8K output ceiling. Its three recorded clean-start protocol-v5 runs scored **54.771/65** with byte-identical 24/24 outputs at **43.0 effective t/s**. The earlier 57.818 qualification artifact reflected a different request-history trajectory and is not the leaderboard aggregate. The `#48375` cache-tail backport, complete startup patch verification, loop guard, retained cache-hot replay, and hash-bound production certificate are mandatory parts of the coordinate. [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) records the exact settings.
 
 Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. The original vLLM 0.27 MTP3 coordinate later reproduced a cache-hot three-call cycle. The packaged vLLM 0.28 coordinate completed cold and cache-hot copies of that exact retained session without duplicates or cycles, but consequential edits remain supervised.
 

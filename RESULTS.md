@@ -28,11 +28,11 @@ Protocol v5 pins Pi 0.84.3 and explicitly attests the trailing-newline effective
 
 | Model/profile | Class | Evidence | Revision | Weighted score | Passed | Raw grader points | Effective output t/s |
 |---|---|---:|---|---:|---:|---:|---:|
-| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 20260828-014451 | v5 | **57.818/65** | 17/24 | 74/81 | **42.7** |
+| **Peregrine** — Qwen3.8 27B W4A16, vLLM 0.28, FP8 KV, low reasoning, 8K output, MTP3 | Production | 218/219/220 | v5 | **54.771/65** | 17/24 | 72/81 | **43.0** |
 
-`20260828-014451` is the retained qualification evidence identifier, not a SQLite run ID; only its sanitized aggregate is published. The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.7/top-p 0.9/top-k 20, and no request seed. The packaged coordinate passed reliability-v2 12/12 and two exact retained-session replays—cold and cache-hot—with 97/97 unique calls, normal final responses, and no guard trigger.
+Runs 218–220 were predeclared complete clean-start repetitions. All three produced byte-identical outputs on 24/24 tasks and the exact same weighted score. The earlier retained qualification evidence `20260828-014451` scored 57.818/65 after a different prior-request history; it remains valid qualification evidence but is excluded from the reproducible leaderboard aggregate. The production coordinate is patched vLLM 0.28.0 at project PR head `55a5a99b` plus the `#48375` Mamba cache-tail backport, FP16 recurrent state, aligned prefix caching, synchronous scheduling, max-seqs 2, GPU utilization 0.87, 131,072 context, temperature 0.7/top-p 0.9/top-k 20, and no request seed. The packaged coordinate passed reliability-v2 12/12 and two exact retained-session replays—cold and cache-hot—with 97/97 unique calls, normal final responses, and no guard trigger.
 
-The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The safe v0.27 MTP1 protocol-v5 comparison scored 56.568/65 at 28.0 effective t/s and 20.23 seconds mean wall time; v0.28 MTP3 improved this to 57.818/65, 42.7 t/s, and 14.80 seconds. The hash-bound production gate, complete startup patch verification, and Peregrine loop guard are required parts of deployment.
+The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The safe v0.27 MTP1 protocol-v5 comparison scored 56.568/65 at 28.0 effective t/s and 20.23 seconds mean wall time. Production v0.28 MTP3 runs 218–220 scored 54.771/65 at 43.0 t/s and about 12.02 seconds mean wall time. This is a throughput and reliability promotion, not a bounded-score improvement. The hash-bound production gate, complete startup patch verification, and Peregrine loop guard are required parts of deployment.
 
 ## Historical and bridged local profiles
 
@@ -116,12 +116,12 @@ This table uses the arithmetic mean of every equivalent complete run, including 
 | 4 | GPT-5.5, high | Cloud native, v4+v5 mean | **60.292** |
 | 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 | **58.408** |
 | 6 | Gemini 3.1 Pro, high | Cloud antigravity-v1 | **57.836** |
-| 7 | **Peregrine, vLLM 0.28, low/8K/MTP3** | Local production | **57.818** |
-| 8 | GPT-5.6 Sol, medium | Cloud native | **57.516** |
-| 9 | Doctor Strange, low/8K/MTP2 | Local fallback, v4+v5 exact replay | **57.396** |
-| 10 | GPT-5.6 Sol, high | Cloud native | **56.305** |
-| 11 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected | **55.417** |
-| 12 | Cold Fusion, low/8K/MTP2 | Local rejected | **55.006** |
+| 7 | GPT-5.6 Sol, medium | Cloud native | **57.516** |
+| 8 | Doctor Strange, low/8K/MTP2 | Local fallback, v4+v5 exact replay | **57.396** |
+| 9 | GPT-5.6 Sol, high | Cloud native | **56.305** |
+| 10 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected | **55.417** |
+| 11 | Cold Fusion, low/8K/MTP2 | Local rejected | **55.006** |
+| 12 | **Peregrine, vLLM 0.28, low/8K/MTP3** | Local production, exact three-run mean | **54.771** |
 | 13 | GPT-5.4, medium | Cloud native | **54.277** |
 | 14 | Road Runner, off/4K/MTP3 | Local bounded, v4+v5 exact replay | **54.042** |
 | 15 | Spiderman, off/4K/MTP3 | Local retained | **52.729** |

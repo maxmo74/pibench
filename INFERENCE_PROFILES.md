@@ -6,7 +6,7 @@ This guide records the currently recommended local inference coordinates, the Pi
 
 | Role | Current profile | Runtime | Guidance |
 |---|---|---|---|
-| Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16** | patched vLLM 0.28.0 | Protocol-v5 leader; retained cache-hot replay qualified |
+| Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16** | patched vLLM 0.28.0 | Reliability-qualified; reproducible v5 runs 218–220 |
 | Autonomous fallback | **Doctor Strange — Qwen3.8-27B Q4_K_M** | llama.cpp v0.2.0/b10566 | Lower throughput and score, but retained as the reliability-qualified fallback |
 
 A published score is a property of the complete profile—not just the weights. Changing the runtime, artifact, KV format, context, sampler, speculation, startup request history, or Pi prompt creates a different coordinate that must be measured separately.
@@ -50,7 +50,7 @@ The general principles are portable: freeze the complete inference coordinate, r
 | Network | Loopback only |
 | Reference host | RTX 3090 24 GB; NVIDIA 595.91.07; GSP off; 280 W |
 
-The current protocol-v5 run scored **57.818/65**, passed 17/24 complete tasks, and delivered 42.7 effective output t/s at 14.80 seconds mean wall time. Packaged reliability-v2 passed 12/12. Cold and cache-hot replays of the exact prior looping session completed with 97/97 unique calls, two normal finals, and no guard trigger.
+Recorded clean-start protocol-v5 runs 218–220 each scored **54.771/65**, passed 17/24 complete tasks with 72/81 raw points, and produced byte-identical outputs on 24/24 tasks. Mean effective output was 43.0 t/s at about 12.02 seconds mean wall time. The earlier 57.818 qualification artifact followed a different request history and is not used as the leaderboard aggregate. Packaged reliability-v2 passed 12/12. Cold and cache-hot replays of the exact prior looping session completed with 97/97 unique calls, two normal finals, and no guard trigger.
 
 This remains a **supervised production** profile. The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot loop; the current coordinate requires the `#48375` cache-tail backport, async-off scheduling, max-seqs 2, loop guard, full patch preflight, and hash-bound promotion certificate. Doctor Strange remains automatic rollback.
 
