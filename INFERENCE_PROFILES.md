@@ -1,6 +1,6 @@
 # Local inference profiles and recommended settings
 
-Snapshot: **2026-08-28**
+Snapshot: **2026-08-29**
 
 This guide records the currently recommended local inference coordinates, the Pi configuration needed to select them, and the alternatives that were tested but not promoted. It is intentionally named by purpose rather than by a model codename: future leaders should be added as new versioned profile sections without renaming the document.
 
@@ -8,6 +8,8 @@ This guide records the currently recommended local inference coordinates, the Pi
 |---|---|---|---|
 | Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16 + DFlash2 k7** | patched vLLM 0.28.0 | Reliability-qualified; reproducible Pi 0.84.3 runs 232–234 |
 | Autonomous fallback | **Doctor Strange — Qwen3.8-27B Q4_K_M** | llama.cpp v0.2.0/b10566 | Lower throughput and score; retained as the independently qualified fallback |
+
+The 2026-08-29 [public-model challenger search](MODEL_CANDIDATE_RESEARCH.md) found no replacement. The sole pre-screen winner, Opus Distill v2 Q4_K_M, completed run 235 at 52.318/65 and 32.9 effective t/s, below both challenger gates. Production and rollback coordinates therefore remain unchanged.
 
 A published score is a property of the complete profile—not just the weights. Changing the runtime, artifact, KV format, context, sampler, speculation, startup request history, or Pi prompt creates a different coordinate that must be measured separately.
 

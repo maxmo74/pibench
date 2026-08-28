@@ -3,7 +3,7 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-08-28
+- Snapshot: 2026-08-29
 - Score protocol: pi-agent-24/65
 - Current Pi: 0.84.3; effective system-prompt SHA-256: `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
@@ -34,7 +34,19 @@ Runs 232–234 were complete clean-start repetitions. All three produced byte-id
 
 The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The superseded top-p-0.90 DFlash2 runs 229–231 scored 56.021/65 at 57.08 t/s. Changing only top-p to 0.95 improved the deterministic score by 1.949 points and mean effective throughput by 1.03 t/s. The hash-bound production gate includes the DFlash2 artifact, complete startup patch verification, PiBench-owned reliability evidence, and the Peregrine loop guard.
 
-## RTX 3090 candidate search conclusion
+## 2026-08-29 public-model challenger search
+
+A Firefox Playwright survey covered Hugging Face, Hacker News, Reddit, and inference forums under a stricter replacement gate: three complete runs at least 58.47/65 and 35 effective t/s, or within 0.10 points of Peregrine with at least 10% higher throughput. [MODEL_CANDIDATE_RESEARCH.md](MODEL_CANDIDATE_RESEARCH.md) records the source-linked decision matrix and every pre-screen rejection.
+
+Opus Distill v2 Q4_K_M was the sole pre-screen winner. Its pinned artifact matched the publisher LFS digest before isolated loading. Complete run 235 used llama.cpp b10566, 131,072 context, 8,192 output, q4_0 KV, embedded MTP draft2, and low reasoning.
+
+| Candidate coordinate | Complete runs | Score | Effective output t/s | Decision |
+|---|---:|---:|---:|---|
+| Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | **52.318/65** | **32.9** | Reject: 6.152 points below the quality gate and 2.1 t/s below the speed floor |
+
+No challenger qualified. Reliability repeats were not run after the complete screen missed both primary gates. Peregrine remains production unchanged with its existing reliability 12/12, hash-bound certificate, healthy loopback router, and Doctor Strange rollback.
+
+## DFlash sampler qualification
 
 DFlash2 temperature 0.60/top-p 0.95 met the **57/65** and **35 effective t/s** gates across three deterministic complete runs and passed the reliability gate. It uses the same Qwen3.8 W4A16 target on patched vLLM 0.28 with a W4A16 k7 drafter, int8-per-token-head KV, prefix caching, synchronous scheduling, and max-seqs 2.
 
@@ -60,9 +72,10 @@ Runs 232–234 are the production aggregate. Runs 229–231 establish the supers
 | 4 | **Peregrine** — Qwen3.8 27B W4A16, int8 KV, low reasoning, 8K output, DFlash2 k7, temp 0.60/top-p 0.90 | Superseded practical/long-output | 229/230/231 | **56.021/65** | 16/24 | 57.1 |
 | 5 | **Road Runner** — Qwen3.6 35B-A3B Q4, thinking off, 4K output, MTP draft3 | Canonical 4K | 202/217 | **54.042/65** | 16/24 | **159.2** |
 | 6 | **Spiderman** — Tmax 27B Q5, thinking off, 4K output, MTP draft3 | Canonical 4K | 206 | **52.729/65** | 15/24 | 48.1 |
-| 7 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
-| 8 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
-| 9 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
+| 7 | Qwen3.8-27B Opus Distill v2 Q4_K_M, low reasoning, 8K output, embedded MTP draft2 | Rejected practical | 235 | **52.318/65** | 16/24 | 32.9 |
+| 8 | **Thor** — DSV4Pro 27B Q4, thinking on, 4K output, no speculation | Canonical 4K | 207 | **51.042/65** | 18/24 | 10.0 |
+| 9 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
+| 10 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
 This Peregrine row is the frozen predecessor to the current production coordinate. Runs 213–215 were clean-start, byte-identical 24/24, and each scored 61.005952; their effective-output means were 39.26–39.43 t/s. The historical runtime is vLLM 0.27.1 at revision `00210159`, Qwen3.8-27B W4A16 AutoRound with quantized LM head/MTP and int8 embeddings, FP8 attention KV, FP16 recurrent state, MTP3 probabilistic drafting, aligned prefix caching, GPU utilization 0.87, max-seqs 8, 131,072 context, 8,192 output, temperature 0.7/top-p 0.9/top-k 20, server seed 0, and no request seed. Copyable settings, alternative modes, the separate llama.cpp fallback, and hardware/runtime applicability limits are in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
 
@@ -86,6 +99,7 @@ Stable llama.cpp v0.2.0/b10566, commit `bb4caa754`, remains installed as the rol
 |---|---:|---:|---:|---:|---|
 | Qwen3.8 + Sharp chat template v22.3.1, low/8K/MTP2 | 208 | **55.417/65** | 18/24 | 20.2 | Reject: below Doctor Strange and 19% slower end-to-end despite 21% less visible output |
 | Cold Fusion GAIN V1.1, low/8K/MTP2 | 200/203 | **55.006/65** | 17/24 | 19.8 | Reject: exact score/runtime replay but below Doctor Strange and far slower than Road Runner |
+| Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | **52.318/65** | 16/24 | 32.9 | Reject: misses both the 58.47 quality gate and 35 t/s floor |
 | Ornith 1.5 35B-A3B AD-Q4 target-only, off/4K | 209 | **44.563/65** | 15/24 | 92.7 | Reject: lower quality and lower throughput than Road Runner; no MTP/thinking follow-up |
 
 Road Runner low/8K on b10434 (run 183) scored **49.542/65 at 24.2 t/s**. Qwen3.6 maps low and medium to the same boolean thinking mode; the larger allowance mostly increased hidden reasoning, and JSON path plus semver produced effectively empty finals. That practical profile remains rejected.
@@ -122,7 +136,7 @@ The third Opus repeat, run 204, scored 61.104/65 with 19/24 full passes at 41.5 
 
 Pro high remains slower and more variable than Flash: its 6.714-point range is driven mainly by unified diff and JSON-path behavior. Flash medium is the stronger Gemini profile on mean, stability, and throughput. A Sonnet 4.6 attempt (run 205) exhausted the shared Claude quota after 7/24 tasks; it is explicitly `incomplete-infrastructure`, excluded from every aggregate, and may be completed only after the provider reset.
 
-## Combined pi-agent-24/65 ranking (21 eligible)
+## Combined pi-agent-24/65 ranking (22 eligible)
 
 This table uses the arithmetic mean of every equivalent complete run, including bridge-qualified Pi versions, and a single complete run otherwise. Every run retains its measured Pi version in [RESULTS.csv](RESULTS.csv).
 
@@ -145,10 +159,11 @@ This table uses the arithmetic mean of every equivalent complete run, including 
 | 15 | GPT-5.4, medium | Cloud native | **54.277** |
 | 16 | Road Runner, off/4K/MTP3 | Local bounded, Pi-version exact replay | **54.042** |
 | 17 | Spiderman, off/4K/MTP3 | Local retained | **52.729** |
-| 18 | Thor, thinking/4K/no-spec | Local retained | **51.042** |
-| 19 | Road Runner practical, low/8K/MTP3 | Local rejected | **49.542** |
-| 20 | Qwen3.8 27B, off/4K/no-spec | Local comparison | **48.229** |
-| 21 | Ornith 1.5, target-only off/4K | Local rejected | **44.563** |
+| 18 | Qwen3.8-27B Opus Distill v2, low/8K/MTP2 | Local rejected | **52.318** |
+| 19 | Thor, thinking/4K/no-spec | Local retained | **51.042** |
+| 20 | Road Runner practical, low/8K/MTP3 | Local rejected | **49.542** |
+| 21 | Qwen3.8 27B, off/4K/no-spec | Local comparison | **48.229** |
+| 22 | Ornith 1.5, target-only off/4K | Local rejected | **44.563** |
 
 The Antigravity prompt variant remains explicitly labeled because its fixed extension injection is not byte-identical to pure-canonical input.
 

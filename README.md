@@ -129,49 +129,51 @@ All current rows use the same 24-task/65-point score protocol. Pi 0.84.1 and 0.8
 
 ### Top 20 overall
 
-Twenty-one complete profiles are eligible. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
+Twenty-two complete profiles are eligible. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
 
-| Rank | Scope | Model/profile | Runs/evidence | Pi | Score used |
-|---:|---|---|---:|---|---:|
-| 1 | Cloud variant | Claude Opus 4.6, antigravity-v1 | 198/199/204 | 0.84.1 + Antigravity | **61.506/65** |
-| 2 | Local retired | Peregrine, vLLM 0.27, low/8K/MTP3 | 213/214/215 | 0.84.1 | **61.006/65** |
-| 3 | Cloud | GPT-5.5, medium | 185/189/216 | 0.84.1/0.84.3 | **60.542/65** |
-| 4 | Cloud | GPT-5.5, high | 186/190/216 | 0.84.1/0.84.3 | **60.292/65** |
-| 5 | Cloud variant | Gemini 3.7 Flash, medium, antigravity-v1 | 194/195 | 0.84.1 + Antigravity | **58.408/65** |
-| 6 | Local production | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | 232/233/234 | 0.84.3 | **57.970/65** |
-| 7 | Cloud variant | Gemini 3.1 Pro, high, antigravity-v1 | 196/197 | 0.84.1 + Antigravity | **57.836/65** |
-| 8 | Cloud | GPT-5.6 Sol, medium | 187/192 | 0.84.1 | **57.516/65** |
-| 9 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | 0.84.1/0.84.3 | **57.396/65** |
-| 10 | Cloud | GPT-5.6 Sol, high | 188/193 | 0.84.1 | **56.305/65** |
-| 11 | Local predecessor | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | 229/230/231 | 0.84.3 | **56.021/65** |
-| 12 | Local candidate | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | 0.84.1 | **55.417/65** |
-| 13 | Local candidate | Cold Fusion, low/8K/MTP2 | 200/203 | 0.84.1 | **55.006/65** |
-| 14 | Local predecessor | Peregrine, vLLM 0.28, low/8K/MTP3 | 218/219/220 | 0.84.3 | **54.771/65** |
-| 15 | Cloud | GPT-5.4, medium | 184/191 | 0.84.1 | **54.277/65** |
-| 16 | Local bounded | Road Runner, off/4K/MTP3 | 202/217 | 0.84.1/0.84.3 | **54.042/65** |
-| 17 | Local retained | Spiderman, off/4K/MTP3 | 206 | 0.84.1 | **52.729/65** |
-| 18 | Local retained | Thor, thinking/4K/no-spec | 207 | 0.84.1 | **51.042/65** |
-| 19 | Local rejected | Road Runner practical, low/8K/MTP3 | 183 | 0.84.1 | **49.542/65** |
-| 20 | Local comparison | Qwen3.8 Q4_K_M, off/4K/no-spec | 182 | 0.84.1 | **48.229/65** |
+| Rank | Scope | Model/profile | Runs/evidence | Pi | Score used | Effective output t/s |
+|---:|---|---|---:|---|---:|---:|
+| 1 | Cloud variant | Claude Opus 4.6, antigravity-v1 | 198/199/204 | 0.84.1 + Antigravity | **61.506/65** | 40.5 |
+| 2 | Local retired | Peregrine, vLLM 0.27, low/8K/MTP3 | 213/214/215 | 0.84.1 | **61.006/65** | 39.3 |
+| 3 | Cloud | GPT-5.5, medium | 185/189/216 | 0.84.1/0.84.3 | **60.542/65** | 19.8 |
+| 4 | Cloud | GPT-5.5, high | 186/190/216 | 0.84.1/0.84.3 | **60.292/65** | 15.9 |
+| 5 | Cloud variant | Gemini 3.7 Flash, medium, antigravity-v1 | 194/195 | 0.84.1 + Antigravity | **58.408/65** | 58.0 |
+| 6 | Local production | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | 232/233/234 | 0.84.3 | **57.970/65** | **58.1** |
+| 7 | Cloud variant | Gemini 3.1 Pro, high, antigravity-v1 | 196/197 | 0.84.1 + Antigravity | **57.836/65** | 13.8 |
+| 8 | Cloud | GPT-5.6 Sol, medium | 187/192 | 0.84.1 | **57.516/65** | 18.8 |
+| 9 | Local fallback | Doctor Strange, low/8K/MTP2 | 180/181/201/217 | 0.84.1/0.84.3 | **57.396/65** | 20.8 |
+| 10 | Cloud | GPT-5.6 Sol, high | 188/193 | 0.84.1 | **56.305/65** | 17.5 |
+| 11 | Local predecessor | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | 229/230/231 | 0.84.3 | **56.021/65** | 57.1 |
+| 12 | Local candidate | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | 0.84.1 | **55.417/65** | 20.2 |
+| 13 | Local candidate | Cold Fusion, low/8K/MTP2 | 200/203 | 0.84.1 | **55.006/65** | 19.8 |
+| 14 | Local predecessor | Peregrine, vLLM 0.28, low/8K/MTP3 | 218/219/220 | 0.84.3 | **54.771/65** | 43.0 |
+| 15 | Cloud | GPT-5.4, medium | 184/191 | 0.84.1 | **54.277/65** | 23.1 |
+| 16 | Local bounded | Road Runner, off/4K/MTP3 | 202/217 | 0.84.1/0.84.3 | **54.042/65** | **159.2** |
+| 17 | Local retained | Spiderman, off/4K/MTP3 | 206 | 0.84.1 | **52.729/65** | 48.1 |
+| 18 | Local rejected | Qwen3.8-27B Opus Distill v2, low/8K/MTP2 | 235 | 0.84.3 | **52.318/65** | 32.9 |
+| 19 | Local retained | Thor, thinking/4K/no-spec | 207 | 0.84.1 | **51.042/65** | 10.0 |
+| 20 | Local rejected | Road Runner practical, low/8K/MTP3 | 183 | 0.84.1 | **49.542/65** | 24.2 |
 
 ### Top 10 local
 
-| Rank | Local profile | Pi | Score used | Status |
-|---:|---|---|---:|---|
-| 1 | Peregrine, vLLM 0.27, low/8K/MTP3 | 0.84.1 | **61.006/65** | Retired looping coordinate |
-| 2 | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | 0.84.3 | **57.970/65** | Production qualified |
-| 3 | Doctor Strange, low/8K/MTP2 | 0.84.1/0.84.3 | **57.396/65** | Automatic fallback |
-| 4 | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | 0.84.3 | **56.021/65** | Superseded production coordinate |
-| 5 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 0.84.1 | **55.417/65** | Rejected |
-| 6 | Cold Fusion, low/8K/MTP2 | 0.84.1 | **55.006/65** | Rejected |
-| 7 | Peregrine, vLLM 0.28, low/8K/MTP3 | 0.84.3 | **54.771/65** | Superseded production coordinate |
-| 8 | Road Runner, off/4K/MTP3 | 0.84.1/0.84.3 | **54.042/65** | Bounded no-tools only |
-| 9 | Spiderman, off/4K/MTP3 | 0.84.1 | **52.729/65** | Retained |
-| 10 | Thor, thinking/4K/no-spec | 0.84.1 | **51.042/65** | Retained |
+| Rank | Local profile | Pi | Score used | Effective output t/s | Status |
+|---:|---|---|---:|---:|---|
+| 1 | Peregrine, vLLM 0.27, low/8K/MTP3 | 0.84.1 | **61.006/65** | 39.3 | Retired looping coordinate |
+| 2 | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | 0.84.3 | **57.970/65** | **58.1** | Production qualified |
+| 3 | Doctor Strange, low/8K/MTP2 | 0.84.1/0.84.3 | **57.396/65** | 20.8 | Automatic fallback |
+| 4 | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | 0.84.3 | **56.021/65** | 57.1 | Superseded production coordinate |
+| 5 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 0.84.1 | **55.417/65** | 20.2 | Rejected |
+| 6 | Cold Fusion, low/8K/MTP2 | 0.84.1 | **55.006/65** | 19.8 | Rejected |
+| 7 | Peregrine, vLLM 0.28, low/8K/MTP3 | 0.84.3 | **54.771/65** | 43.0 | Superseded production coordinate |
+| 8 | Road Runner, off/4K/MTP3 | 0.84.1/0.84.3 | **54.042/65** | **159.2** | Bounded no-tools only |
+| 9 | Spiderman, off/4K/MTP3 | 0.84.1 | **52.729/65** | 48.1 | Retained |
+| 10 | Qwen3.8-27B Opus Distill v2, low/8K/MTP2 | 0.84.3 | **52.318/65** | 32.9 | Rejected |
 
 See [LEADERBOARDS.md](LEADERBOARDS.md) for ranges, throughput, and profile boundaries.
 
 Peregrine is the production daily driver on patched **vLLM 0.28.0**: Qwen3.8-27B W4A16, a W4A16 DFlash2 k7 drafter, int8-per-token-head attention KV, FP16 recurrent state, aligned prefix caching, synchronous scheduling, two admitted sequences, 131,072 context, and an 8K output ceiling. Clean-start top-p-0.95 runs 232–234 each scored **57.970/65** with byte-identical private outputs at a **58.1 effective t/s** mean. Temperature-0.60/top-p-0.95 reliability passed 12/12 using PiBench-owned fixtures. The `#48375` cache-tail backport, complete startup patch verification, loop guard, draft-artifact hashes, and hash-bound production certificate are mandatory parts of the coordinate. [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) records the exact settings.
+
+A dated [public-model candidate survey](MODEL_CANDIDATE_RESEARCH.md) screened Hugging Face, Hacker News, Reddit, and inference forums for a stronger one-RTX-3090 replacement. Opus Distill v2 was the sole pre-screen winner. Its pinned Q4_K_M coordinate completed run 235 at **52.318/65** and **32.9 effective t/s**, missing both the 58.47 quality gate and 35 t/s floor. No challenger qualified, so Peregrine remains production unchanged.
 
 Stable llama.cpp v0.2.0/b10566 and all GGUF profiles remain installed as the controlled fallback runtime; Doctor Strange is the automatic rollback backend. The original vLLM 0.27 MTP3 coordinate later reproduced a cache-hot three-call cycle. Peregrine remains supervised for consequential edits.
 
