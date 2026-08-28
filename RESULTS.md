@@ -34,6 +34,20 @@ Runs 218–220 were predeclared complete clean-start repetitions. All three prod
 
 The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot three-call cycle. The safe v0.27 MTP1 protocol-v5 comparison scored 56.568/65 at 28.0 effective t/s and 20.23 seconds mean wall time. Production v0.28 MTP3 runs 218–220 scored 54.771/65 at 43.0 t/s and about 12.02 seconds mean wall time. This is a throughput and reliability promotion, not a bounded-score improvement. The hash-bound production gate, complete startup patch verification, and Peregrine loop guard are required parts of deployment.
 
+## RTX 3090 candidate search conclusion
+
+No newly tested coordinate met both the **57/65**, **35 effective t/s**, and retained-session safety gates. DFlash2 used the same Qwen3.8 W4A16 target on patched vLLM 0.28 with a W4A16 k7 drafter, int8-per-token-head KV, prefix caching, synchronous scheduling, and max-seqs 2.
+
+| Candidate coordinate | Complete runs | Mean score | Mean effective output t/s | Reliability/replay result | Decision |
+|---|---:|---:|---:|---|---|
+| DFlash2, temperature 0.70 | 224/225/227 | **57.649/65** | **57.7** | reliability-v2 12/12; cold and cache-hot each hit the 60-call guard without a final | Reject: retained-session gate |
+| DFlash2, temperature 0.65 | none | not scored | not scored | cold finalized at 59 calls; cache-hot hit the guard | Reject before score run |
+| DFlash2, temperature 0.625 | none | not scored | not scored | cold finalized at 41 calls; cache-hot hit the guard | Reject before score run |
+| DFlash2, temperature 0.61 | none | not scored | not scored | cold finalized at 58 calls; cache-hot hit the guard | Reject before score run |
+| DFlash2, temperature 0.60 | 228 | **56.021/65** | **56.9** | cold and cache-hot finalized at 45 and 54 calls with no cycle or guard | Reject: below score target |
+
+Runs 224, 225, and 227 were complete clean-start repetitions with byte-identical outputs on all 24 tasks and identical scores; incomplete run 226 is excluded. Sampler coordinates rejected by the retained replay were not score-tested. Existing Peregrine remains production and Doctor Strange remains rollback.
+
 ## Historical and bridged local profiles
 
 | Rank | Model/profile | Class | Runs | Mean score | Passed | Mean effective output t/s |

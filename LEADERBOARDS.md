@@ -10,7 +10,7 @@ The Antigravity rows use the frozen `antigravity-v1` prompt variant—canonical 
 
 ## Top 20 overall
 
-There are **19 eligible complete profiles**. The table stops at 19 rather than padding it with historical, incomplete, or private qualification runs.
+There are **19 established complete profiles** in this frozen ranking. Newly screened DFlash2 coordinates remain in the candidate matrix below because neither passed all deployment gates; they are not silently promoted into the established ranking.
 
 | Rank | Model/profile | Class | Runs/evidence | Revision | Mean score | Observed range | Effective output t/s |
 |---:|---|---|---:|---|---:|---:|---:|
@@ -52,5 +52,14 @@ This is strict score order, not a deployment recommendation. Critical reliabilit
 | 10 | Qwen3.8 27B Q4_K_M, off/4K/no-spec | 182 | v4 | **48.229/65** | 28.1 | Comparison profile |
 
 The retired vLLM 0.27 Peregrine profile remains first by bounded-suite score but is not deployable: its MTP3 coordinate reproduced the cache-hot looping incident. Current vLLM 0.28 runs 218–220 were byte-identical on 24/24 tasks and establish the reproducible clean-start score; the earlier qualification artifact's 57.818 was a different request-history trajectory and is excluded from the aggregate. The current profile passed reliability-v2 12/12 and exact cold/cache-hot replays without duplicate calls or cycles. Doctor Strange remains automatic fallback. Road Runner remains restricted to short, externally bounded no-tools work despite its throughput.
+
+## Unpromoted RTX 3090 candidates
+
+| Profile | Runs | Revision | Score | Effective output t/s | Gate result |
+|---|---:|---|---:|---:|---|
+| Qwen3.8 W4A16 + DFlash2 k7, temperature 0.70 | 224/225/227 | v5 | **57.649/65** | **57.7** | Reject: both retained replays reached the mandatory guard without a final |
+| Qwen3.8 W4A16 + DFlash2 k7, temperature 0.60 | 228 | v5 | **56.021/65** | **56.9** | Reject: replay-safe but below 57/65 |
+
+DFlash2 temperatures 0.65, 0.625, and 0.61 were rejected by cache-hot retained replay before score testing. No new coordinate met all quality, throughput, and loop-safety gates, so production and rollback remain unchanged.
 
 See [RESULTS.md](RESULTS.md) for bridge and qualification evidence, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, [METHODOLOGY.md](METHODOLOGY.md) for ranking rules, and [RESULTS.csv](RESULTS.csv) for sanitized task-level records.

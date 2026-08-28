@@ -68,6 +68,8 @@ Across these revisions, the protocol normalizes the benchmark **input and evalua
 
 It does not pretend that all inference profiles are equivalent. Model identity, weights or service identifier, quantization, reasoning mode, context, output ceiling, sampler, speculation, runtime, hardware, and provider are part of the profile. A 4K no-spec local run, an 8K MTP local run, and a provider-native cloud run may share protocol-v4 input while answering under different resource envelopes. Curated tables must name those differences rather than presenting the score as an intrinsic property of model weights alone.
 
+Production selection adds gates beyond the bounded score. A candidate must meet its predeclared score and throughput thresholds across complete equivalent runs, pass reliability-v2, and finalize both exact cold and cache-hot retained-incident replays without duplicate cycles, repeated failed calls, timeout, or guard activation. A high score cannot compensate for a termination failure. Replay-rejected sampler coordinates may be documented with the rejection reason without spending a complete score run.
+
 ## Local and cloud execution
 
 | Property | Local model | Cloud/API model |

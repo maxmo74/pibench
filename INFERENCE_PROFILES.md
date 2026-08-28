@@ -54,6 +54,10 @@ Recorded clean-start protocol-v5 runs 218–220 each scored **54.771/65**, passe
 
 This remains a **supervised production** profile. The original vLLM 0.27 MTP3 coordinate reproduced a cache-hot loop; the current coordinate requires the `#48375` cache-tail backport, async-off scheduling, max-seqs 2, loop guard, full patch preflight, and hash-bound promotion certificate. Doctor Strange remains automatic rollback.
 
+### Rejected DFlash2 coordinate
+
+A W4A16 DFlash2 k7 drafter with int8-per-token-head KV increased effective output to 57.7 t/s. Temperature-0.70 runs 224/225/227 were byte-identical and scored 57.649/65; reliability-v2 passed 12/12. The exact retained cold and cache-hot sessions both exhausted the 60-call limit without a final, so the coordinate is unsafe for promotion. Temperatures 0.65, 0.625, and 0.61 also failed cache-hot replay. Temperature 0.60 finalized both replays, but run 228 scored 56.021/65 at 56.9 t/s. DFlash2 is therefore not a production setting.
+
 ## Launcher settings
 
 These variables match the pinned repository's `single-user/start_qwen.sh`. Replace the model path with your local copy; do not expose the endpoint beyond loopback.
