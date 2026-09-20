@@ -6,6 +6,13 @@ PiBench is hardware-agnostic. It can test models running on CPUs, one or more GP
 
 ## Latest qualification status
 
+The [revised leaderboard](LEADERBOARDS.md) includes 37 selected profiles and
+480 newly published sanitized task records. GPT-6 Astra completed two full runs
+per reasoning level: **56.241/65 medium**, **55.909/65 high** (means).
+Nine valid retired-runtime recovery screens did not meet 60/65 plus 18 effective
+t/s. TypeSafe is parked; no API experiment or private-data upload was performed.
+See the [September update](RESULTS.md#september-20-recovery-and-astra-update).
+
 GPU-5 DFlash2 k7 scored **58.318/65** across three runs, with **22.42–22.44**
 effective output t/s and **12/12** reliability checks. It remains a candidate,
 not Gandalf production. Peregrine remains production.
@@ -13,7 +20,7 @@ not Gandalf production. Peregrine remains production.
 A Pi **0.86.1 exact-prompt pilot** matched 0.84.3 on 36 no-tool spot-check
 invocations. This is limited validation, not a general Pi upgrade: the public
 runner still pins **0.84.3**. See [results and limitations](RESULTS.md#september-gpu-5-candidate-and-pi-bridge)
-and the [leaderboard addendum](LEADERBOARDS.md#september-candidate-addendum).
+and the [revised leaderboard](LEADERBOARDS.md).
 
 An [isolated vLLM 0.29 investigation](RESULTS.md#isolated-vllm-029-investigation)
 now reproduces 131K capacity with Peregrine's existing artifacts after targeted
@@ -143,16 +150,19 @@ Earlier Pi 0.84.1 reliability results remain historical qualification evidence. 
 
 ## Reference results
 
-All current rows use the same 24-task/65-point score protocol. Pi 0.84.1 and 0.84.3 are recorded execution environments, not separate score protocols: the compatibility bridge found exact 24/24 task and output reproduction for Doctor Strange and Road Runner, while GPT-5.5 medium and high remained within ordinary managed-service variation.
+The tables below preserve the August 29 snapshot. For current ranks and
+consistently recomputed aggregate throughput, use [LEADERBOARDS.md](LEADERBOARDS.md).
+
+All snapshot rows use the same 24-task/65-point score protocol. Pi 0.84.1 and 0.84.3 are recorded execution environments, not separate score protocols: the compatibility bridge found exact 24/24 task and output reproduction for Doctor Strange and Road Runner, while GPT-5.5 medium and high remained within ordinary managed-service variation.
 
 ### Top 20 overall
 
-Twenty-two complete profiles are eligible. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
+Twenty-two complete profiles were selected in this historical snapshot. Repeated equivalent runs use their complete-run mean; no best-run or best-task splicing is used.
 
 | Rank | Scope | Model/profile | Runs/evidence | Pi | Score used | Effective output t/s |
 |---:|---|---|---:|---|---:|---:|
 | 1 | Cloud variant | Claude Opus 4.6, antigravity-v1 | 198/199/204 | 0.84.1 + Antigravity | **61.506/65** | 40.5 |
-| 2 | Local retired | Peregrine, vLLM 0.27, low/8K/MTP3 | 213/214/215 | 0.84.1 | **61.006/65** | 39.3 |
+| 2 | Local retired | Peregrine, vLLM 0.27, low/8K/MTP3 | 213/214/215 | 0.84.1 | **61.006/65** | 37.81 |
 | 3 | Cloud | GPT-5.5, medium | 185/189/216 | 0.84.1/0.84.3 | **60.542/65** | 19.8 |
 | 4 | Cloud | GPT-5.5, high | 186/190/216 | 0.84.1/0.84.3 | **60.292/65** | 15.9 |
 | 5 | Cloud variant | Gemini 3.7 Flash, medium, antigravity-v1 | 194/195 | 0.84.1 + Antigravity | **58.408/65** | 58.0 |
@@ -176,7 +186,7 @@ Twenty-two complete profiles are eligible. Repeated equivalent runs use their co
 
 | Rank | Local profile | Pi | Score used | Effective output t/s | Status |
 |---:|---|---|---:|---:|---|
-| 1 | Peregrine, vLLM 0.27, low/8K/MTP3 | 0.84.1 | **61.006/65** | 39.3 | Retired looping coordinate |
+| 1 | Peregrine, vLLM 0.27, low/8K/MTP3 | 0.84.1 | **61.006/65** | 37.81 | Retired looping coordinate |
 | 2 | **Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.95** | 0.84.3 | **57.970/65** | **58.1** | Production qualified |
 | 3 | Doctor Strange, low/8K/MTP2 | 0.84.1/0.84.3 | **57.396/65** | 20.8 | Automatic fallback |
 | 4 | Peregrine, vLLM 0.28, low/8K/DFlash2 k7, top-p 0.90 | 0.84.3 | **56.021/65** | 57.1 | Superseded production coordinate |

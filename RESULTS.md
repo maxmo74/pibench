@@ -3,9 +3,9 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Snapshot: 2026-08-29
+- Updated: 2026-09-20; historical tables retain their original snapshot
 - Score protocol: pi-agent-24/65
-- Current Pi: 0.84.3; effective system-prompt SHA-256: `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`
+- Benchmark Pi pin: 0.84.3; effective system-prompt SHA-256: `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
 - RAM: 128 GB
 - GPU: NVIDIA GeForce RTX 3090, 24 GB
@@ -14,6 +14,75 @@ These runs were made on one reference workstation. They show observed model/prof
 - CUDA toolkit: 12.4.131
 
 Pi 0.84.3 adds a trailing newline to the effective prompt used under Pi 0.84.1. Because tasks, prompts, graders, weights, sandbox, and clean invocation were unchanged, four complete bridge runs tested score compatibility. Both deterministic local profiles reproduced all task outcomes and private outputs byte-for-byte; both GPT-5.5 profiles stayed within ordinary cloud variation. PiBench therefore kept one `pi-agent-24/65` score protocol. Every result retains its exact Pi version and prompt hash. Runtime, parallelism, sampler, seed, output allowance, and request history remain named profile coordinates.
+
+## September 20 recovery and Astra update
+
+[LEADERBOARDS.md](LEADERBOARDS.md) now ranks 37 selected complete profiles.
+RESULTS.csv contains 480 additional task records: 96 new Astra evaluations and
+384 backfilled candidate evaluations. All 4,641 prior rows and their IDs remain
+unchanged. Backfills retain source hashes and original timestamps privately;
+unavailable benchmark-commit provenance is left unknown, not reconstructed.
+
+### GPT-6 Astra
+
+Canonical Pi 0.84.3, unchanged 24-task suite, no tools, 600-second task timeout.
+Runs 236 and 237 each tested both reasoning profiles; all 96 calls completed
+without API errors. These are quality screens, not tool/reliability qualification.
+
+| Reasoning | Run 236 /65 | Run 237 /65 | Mean /65 | Aggregate effective t/s |
+|---|---:|---:|---:|---:|
+| Medium | 57.110 | 55.372 | **56.241** | 21.16 |
+| High | 54.881 | 56.938 | **55.909** | 18.70 |
+
+Neither profile displaced the recorded leaders. Two cloud samples do not
+establish a stable capability ordering; medium/high score ranges overlap.
+
+### Retired 61.006 recovery
+
+A measured 120-minute investigation completed nine valid 24-task screens.
+One infrastructure-only failure run was excluded. All 17 historical target,
+tokenizer and configuration artifacts matched their archived hashes and sizes.
+Installed historical dependencies and kernels were not fully reconstructed.
+
+| Run | Runtime/profile | Score /65 | Effective t/s |
+|---:|---|---:|---:|
+| 248 | v0.27 FP8 MTP3, t0.70/p0.90 | 56.568 | 35.47 |
+| 249 | Same, original Pi 0.84.1 runner and startup probe | 56.568 | 36.86 |
+| 253 | v0.27 FP8 target-only, t0.70/p0.90 | **59.214** | **17.83** |
+| 251 | v0.27 synchronous MTP3 | 55.131 | 32.52 |
+| 250 | v0.27 MTP3, seed 42 | 55.068 | 41.79 |
+| 246 | Patched v0.29 FP8 MTP3 | 57.354 | 40.98 |
+| 247 | v0.29 FP8 target-only | 55.479 | 16.96 |
+| 245 | v0.29 int8 DFlash2, t1.00/p0.95 | 54.318 | 55.43 |
+| 252 | v0.27 FP8 target-only, t0.60/p0.95 | 50.354 | 15.79 |
+
+No tested coordinate reached 60/65 and at least 18 effective t/s. Run 253 passed
+only a preliminary 4/4 reliability screen, not full 12/12 qualification.
+The synchronous variant produced one empty answer. Runs 248 and 249 reproduced
+all outputs across runner versions, but only 3/24 matched the archived outputs.
+The historical score deficit involved JSON-path mutation and a design-review
+check. This does not establish intrinsic model degradation or an upstream cause.
+Production was restored; Peregrine and Doctor Strange remain unchanged.
+
+Retired runs 213–215 still scored **61.006/65**. Their aggregate effective speeds
+were **37.727, 37.903 and 37.815 t/s**. The previously quoted 39.3 was a mean of
+task rates, not aggregate effective throughput. Historical CSV values are intact;
+the revised leaderboard recomputes the aggregate metric consistently.
+
+### Parked research
+
+[TypeSafe/Jev](https://typesafe.ai/) provides structured judgments rather than
+code generation. Routing and verification may help a separate agent workflow,
+but no local single-pass speed or score benefit has been demonstrated here.
+Its published limitations acknowledge judgment errors; typed output is not a
+correctness guarantee. No package was installed, no inference API was called,
+and no private code or outputs were uploaded. Parked, not ranked.
+
+The model-search refresh left GPU-5/newer llama.cpp as a runtime hypothesis and
+Empero's sparse distill as an exploratory model lead, not measured improvements.
+AgentCoder evidence remained insufficient; Flash-Next was not established as a
+24 GB full-GPU fit. No new-model score is claimed. Any follow-up should include
+fresh holdouts rather than seed/sampler selection on these same 24 tasks.
 
 ## Pi 0.84.1 to 0.84.3 compatibility bridge
 
@@ -26,9 +95,9 @@ Pi 0.84.3 adds a trailing newline to the effective prompt used under Pi 0.84.1. 
 
 ## September GPU-5 candidate and Pi bridge
 
-These are aggregate private-run observations, not new database IDs or additions
-to the frozen CSV-backed ranking. Production remains Peregrine; Gandalf has not
-been deployed or fully qualified.
+These preserved complete quality runs are now backfilled as runs 238–242 in
+RESULTS.csv and included in the revised leaderboard. Production remains
+Peregrine; Gandalf has not been deployed or fully qualified.
 
 | GPU-5 profile | Complete runs | Pi | Weighted score /65 | Effective output t/s | Reliability |
 |---|---:|---|---:|---:|---|
@@ -79,8 +148,8 @@ All 24 visible outputs were byte-identical between the two candidate runs.
 The candidate was approximately 12% slower than the historical production
 reference, with a 0.178-point lower score. No fresh paired production control
 was run. Different patch sets and dependency stacks prevent attributing this
-entire difference to an upstream release regression. These are aggregate
-observations, not new CSV/database IDs or additions to the frozen ranking.
+entire difference to an upstream release regression. The preserved complete
+quality runs are now backfilled as 243–244 in RESULTS.csv and the revised ranking.
 
 ### What was required
 
@@ -178,7 +247,7 @@ Runs 232–234 are the production aggregate. Runs 229–231 establish the supers
 
 | Rank | Model/profile | Class | Runs | Mean score | Passed | Mean effective output t/s |
 |---:|---|---|---:|---:|---:|---:|
-| 1 | **Peregrine** — Qwen3.8 27B W4A16, FP8 KV, low reasoning, 8K output, MTP3, temp 0.7 | Production practical/long-output | 213/214/215 | **61.006/65** | 18/24 | **39.3** |
+| 1 | **Peregrine** — Qwen3.8 27B W4A16, FP8 KV, low reasoning, 8K output, MTP3, temp 0.7 | Retired practical/long-output | 213/214/215 | **61.006/65** | 18/24 | **37.81** |
 | 2 | **Peregrine** — Qwen3.8 27B W4A16, int8 KV, low reasoning, 8K output, DFlash2 k7, temp 0.60/top-p 0.95 | Production practical/long-output | 232/233/234 | **57.970/65** | 18/24 | **58.1** |
 | 3 | **Doctor Strange** — Qwen3.8 27B Q4_K_M, low reasoning, 8K output, Q4 MTP draft2 | Fallback practical/long-output | 180/181/201/217 | **57.396/65** | 16/24 | 20.8 |
 | 4 | **Peregrine** — Qwen3.8 27B W4A16, int8 KV, low reasoning, 8K output, DFlash2 k7, temp 0.60/top-p 0.90 | Superseded practical/long-output | 229/230/231 | **56.021/65** | 16/24 | 57.1 |
@@ -189,7 +258,7 @@ Runs 232–234 are the production aggregate. Runs 229–231 establish the supers
 | 9 | Road Runner practical — Qwen3.6 35B-A3B Q4, low, 8K output, MTP draft3 | Rejected practical | 183 | **49.542/65** | 17/24 | 24.2 |
 | 10 | Qwen3.8 27B Q4_K_M, thinking off, 4K output, no speculation | Canonical 4K | 182 | **48.229/65** | 14/24 | 28.1 |
 
-This Peregrine row is the frozen predecessor to the current production coordinate. Runs 213–215 were clean-start, byte-identical 24/24, and each scored 61.005952; their effective-output means were 39.26–39.43 t/s. The historical runtime is vLLM 0.27.1 at revision `00210159`, Qwen3.8-27B W4A16 AutoRound with quantized LM head/MTP and int8 embeddings, FP8 attention KV, FP16 recurrent state, MTP3 probabilistic drafting, aligned prefix caching, GPU utilization 0.87, max-seqs 8, 131,072 context, 8,192 output, temperature 0.7/top-p 0.9/top-k 20, server seed 0, and no request seed. Copyable settings, alternative modes, the separate llama.cpp fallback, and hardware/runtime applicability limits are in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
+This Peregrine row is the frozen predecessor to the current production coordinate. Runs 213–215 were clean-start, byte-identical 24/24, and each scored 61.005952; their aggregate effective-output rates were 37.73–37.90 t/s (39.26–39.43 was the mean of task rates). The historical runtime is vLLM 0.27.1 at revision `00210159`, Qwen3.8-27B W4A16 AutoRound with quantized LM head/MTP and int8 embeddings, FP8 attention KV, FP16 recurrent state, MTP3 probabilistic drafting, aligned prefix caching, GPU utilization 0.87, max-seqs 8, 131,072 context, 8,192 output, temperature 0.7/top-p 0.9/top-k 20, server seed 0, and no request seed. Copyable settings, alternative modes, the separate llama.cpp fallback, and hardware/runtime applicability limits are in [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md).
 
 The official NVIDIA 595.91.07 packaged DKMS stack produced the same 160,620-token KV pool on three clean starts. A production context gate passed at 121,879 prompt tokens with an 8K answer reservation, at 129,040 tokens near the limit, and on a true-low 121,902-token request; cached follow-up was 62.78× faster. Two simultaneous 50K prompts and four simultaneous 16K prompts also passed. Minimum observed free VRAM was 2,039 MiB in the near-limit gate and 1,979 MiB in the concurrency gate at the retained 280 W limit.
 
@@ -248,7 +317,9 @@ The third Opus repeat, run 204, scored 61.104/65 with 19/24 full passes at 41.5 
 
 Pro high remains slower and more variable than Flash: its 6.714-point range is driven mainly by unified diff and JSON-path behavior. Flash medium is the stronger Gemini profile on mean, stability, and throughput. A Sonnet 4.6 attempt (run 205) exhausted the shared Claude quota after 7/24 tasks; it is explicitly `incomplete-infrastructure`, excluded from every aggregate, and may be completed only after the provider reset.
 
-## Combined pi-agent-24/65 ranking (22 eligible)
+## Historical August 29 ranking (22 selected)
+
+For the revised September ranking, see [LEADERBOARDS.md](LEADERBOARDS.md).
 
 This table uses the arithmetic mean of every equivalent complete run, including bridge-qualified Pi versions, and a single complete run otherwise. Every run retains its measured Pi version in [RESULTS.csv](RESULTS.csv).
 

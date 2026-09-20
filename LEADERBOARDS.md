@@ -1,87 +1,127 @@
 # PiBench leaderboards
 
-Snapshot: **2026-08-29** · Score protocol: **pi-agent-24/65** · Current Pi: **0.84.3** · Maximum score: **65**
+Snapshot: **2026-09-20** · Score protocol: **pi-agent-24/65** · Runner pin: **0.84.3**
 
-These are profile rankings, not model-only rankings. Runtime, quantization, context, output allowance, reasoning control, sampler, speculation, and request history are part of a profile. Repeated equivalent runs use their arithmetic mean and observed range; no best-run or best-task splicing is used. Incomplete infrastructure runs are excluded.
+These are selected protocol-compatible **configuration rankings**, not an exhaustive
+ranking of every historical run or a deployment recommendation. The selection
+retains the prior 22 profiles, adds the documented rejected DFlash temperature-0.70
+coordinate, and includes today's complete candidate screens and Astra runs.
+Failed infrastructure runs, incomplete runs and the misconfigured reasoning run
+are excluded. Candidate and retired rows remain visibly unqualified.
 
-Pi 0.84.1 and 0.84.3 runs use identical tasks, prompts, graders, weights, sandbox, fixed cwd, and clean invocation. Pi 0.84.3 adds one trailing newline to the effective prompt. A four-profile bridge found no score-protocol effect: Doctor Strange and Road Runner reproduced all 24 task outcomes and outputs byte-for-byte; GPT-5.5 medium and high remained within ordinary managed-service variation. Every run retains its exact Pi version and effective-prompt hash.
+Scores are arithmetic means of complete runs; no best-task or best-run splicing.
+Effective speed is total approximate visible output tokens divided by total wall
+time across the listed runs, including reasoning latency. It is not raw decode
+speed or a mean of task rates. All speeds here were recomputed from RESULTS.csv;
+older prose may use legacy per-task means. In particular, retired runs 213–215
+have **37.81** aggregate t/s, not the previously labelled 39.3 effective t/s.
 
-The Antigravity rows use the frozen `antigravity-v1` prompt variant—canonical prompt plus an attested fixed injection—not the pure-canonical input used by local and OpenAI profiles. They remain visible in the overall ordering with that boundary disclosed.
+Pi 0.84.1 and 0.84.3 retain their qualified prompt-version boundary and exact
+version labels. Antigravity uses a separate attested injected-prompt variant;
+its rows are displayed together for navigation, not identical-input comparisons.
+The Pi 0.86.1 bridge pilot remains limited to a no-tool subset; it does not change
+the public runner pin. See [methodology](METHODOLOGY.md).
 
-## September candidate addendum
-
-The tables below remain the frozen CSV-backed ranking, not an exhaustive
-ranking of later private experiments. GPU-5 DFlash2 k7 at temperature 0.60
-subsequently scored **58.318/65** in three complete runs at **22.42–22.44**
-effective output t/s and passed reliability **12/12**. Its score exceeds the
-recorded production score, but full deployment qualification is incomplete.
-It is not listed as Gandalf production or assigned invented database IDs.
-
-Pi 0.86.1 exact-prompt spot-checks matched 0.84.3 on the tested no-tool subset;
-this is not blanket suite qualification or an update to the public runner pin.
-See [the candidate and bridge evidence](RESULTS.md#september-gpu-5-candidate-and-pi-bridge).
-
-A later patched vLLM 0.29 candidate using Peregrine's existing artifacts scored
-**57.792/65** twice at **51.04–51.06** effective output t/s, with **12/12**
-reliability passes. It remains outside the frozen ranking and is not promoted.
-See [the investigation and comparison limits](RESULTS.md#isolated-vllm-029-investigation).
+**Production remains Peregrine v0.28. Doctor Strange remains fallback.**
+GPU-5 is labelled **Gandalf candidate**, not promoted. Higher score alone is
+insufficient: cache-hot, retained-session and full-context qualification matter.
 
 ## Top 20 overall
 
-There are **22 established complete profiles** in this frozen ranking. DFlash2 temperature 0.60/top-p 0.95 remains production after meeting the score, throughput, and reliability gates.
-
-| Rank | Model/profile | Class | Runs/evidence | Pi | Mean score | Observed range | Effective output t/s |
-|---:|---|---|---:|---|---:|---:|---:|
-| 1 | Claude Opus 4.6 | Cloud antigravity-v1 | 198/199/204 | 0.84.1 + Antigravity | **61.506** | 60.810–62.604 | 40.5 |
-| 2 | Peregrine — Qwen3.8 27B W4A16, vLLM 0.27, FP8-KV/131K, low/8K/MTP3 | Local retired coordinate | 213/214/215 | 0.84.1 | **61.006** | 61.006–61.006 | 39.3 |
-| 3 | GPT-5.5, medium | Cloud native | 185/189/216 | 0.84.1/0.84.3 | **60.542** | 57.208–62.375 | 19.8 |
-| 4 | GPT-5.5, high | Cloud native | 186/190/216 | 0.84.1/0.84.3 | **60.292** | 58.375–63.250 | 15.9 |
-| 5 | Gemini 3.7 Flash, medium | Cloud antigravity-v1 | 194/195 | 0.84.1 + Antigravity | **58.408** | 58.372–58.443 | 58.0 |
-| 6 | **Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, int8-KV/131K, low/8K/DFlash2 k7, top-p 0.95** | Local production | 232/233/234 | 0.84.3 | **57.970** | 57.970–57.970 | **58.1** |
-| 7 | Gemini 3.1 Pro, high | Cloud antigravity-v1 | 196/197 | 0.84.1 + Antigravity | **57.836** | 54.479–61.193 | 13.8 |
-| 8 | GPT-5.6 Sol, medium | Cloud native | 187/192 | 0.84.1 | **57.516** | 57.443–57.589 | 18.8 |
-| 9 | Doctor Strange — Qwen3.8 27B Q4_K_M, low/8K/MTP2 | Local fallback | 180/181/201/217 | 0.84.1/0.84.3 | **57.396** | 57.396–57.396 | 20.8 |
-| 10 | GPT-5.6 Sol, high | Cloud native | 188/193 | 0.84.1 | **56.305** | 55.318–57.292 | 17.5 |
-| 11 | Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, int8-KV/131K, low/8K/DFlash2 k7, top-p 0.90 | Local predecessor | 229/230/231 | 0.84.3 | **56.021** | 56.021–56.021 | 57.1 |
-| 12 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | Local rejected candidate | 208 | 0.84.1 | **55.417** | not measured (n=1) | 20.2 |
-| 13 | Cold Fusion, low/8K/MTP2 | Local rejected candidate | 200/203 | 0.84.1 | **55.006** | 55.006–55.006 | 19.8 |
-| 14 | Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3 | Local predecessor | 218/219/220 | 0.84.3 | **54.771** | 54.771–54.771 | 43.0 |
-| 15 | GPT-5.4, medium | Cloud native | 184/191 | 0.84.1 | **54.277** | 54.277–54.277 | 23.1 |
-| 16 | Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3 | Local bounded | 202/217 | 0.84.1/0.84.3 | **54.042** | 54.042–54.042 | **159.2** |
-| 17 | Spiderman — Tmax 27B, off/4K/MTP3 | Local retained | 206 | 0.84.1 | **52.729** | not measured (n=1) | 48.1 |
-| 18 | Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | Local rejected candidate | 235 | 0.84.3 | **52.318** | not measured (n=1) | 32.9 |
-| 19 | Thor — DSV4Pro 27B, thinking/4K/no-spec | Local retained | 207 | 0.84.1 | **51.042** | not measured (n=1) | 10.0 |
-| 20 | Road Runner practical — Qwen3.6 35B-A3B, low/8K/MTP3 | Local rejected practical | 183 | 0.84.1 | **49.542** | not measured (n=1) | 24.2 |
+| Rank | Profile | Class/status | Runs | Pi | Mean /65 | Score range | Effective t/s |
+|---:|---|---|---|---|---:|---|---:|
+| 1 | Claude Opus 4.6 | Cloud: Antigravity prompt variant | 198/199/204 | 0.84.1 | **61.506** | 60.810–62.604 | 47.45 |
+| 2 | Peregrine v0.27 MTP3, historical | Local: Retired; termination failures | 213/214/215 | 0.84.1 | **61.006** | 61.006–61.006 | 37.81 |
+| 3 | GPT-5.5 medium | Cloud: Native API | 185/189/216 | 0.84.1/0.84.3 | **60.542** | 57.208–62.375 | 20.91 |
+| 4 | GPT-5.5 high | Cloud: Native API | 186/190/216 | 0.84.1/0.84.3 | **60.292** | 58.375–63.250 | 12.36 |
+| 5 | v0.27 FP8 target-only, t0.70/p0.90 | Local: Near miss; preliminary reliability 4/4 | 253 | 0.84.3 | **59.214** | n=1 | 17.83 |
+| 6 | Gemini 3.7 Flash medium | Cloud: Antigravity prompt variant | 194/195 | 0.84.1 | **58.408** | 58.372–58.443 | 65.50 |
+| 7 | GPU-5 DFlash2 k7, t1.00 | Local: Candidate; unqualified | 241 | 0.84.3 | **58.399** | n=1 | 18.02 |
+| 8 | GPU-5 DFlash2 k7, t0.60 (Gandalf candidate) | Local: Candidate; reliability 12/12 | 238/239/240 | 0.84.3 | **58.318** | 58.318–58.318 | 22.43 |
+| 9 | Peregrine v0.28 DFlash2 k7, t0.60/p0.95 | Local: Production; reliability 12/12 | 232/233/234 | 0.84.3 | **57.970** | 57.970–57.970 | 58.11 |
+| 10 | Gemini 3.1 Pro high | Cloud: Antigravity prompt variant | 196/197 | 0.84.1 | **57.836** | 54.479–61.193 | 12.93 |
+| 11 | Patched v0.29 int8 DFlash2 k7, t0.60 | Local: Candidate; reliability 12/12 | 243/244 | 0.84.3 | **57.792** | 57.792–57.792 | 51.05 |
+| 12 | Peregrine v0.28 DFlash2 k7, t0.70 | Local: Rejected; retained-session failures | 224/225/227 | 0.84.3 | **57.649** | 57.649–57.649 | 57.73 |
+| 13 | GPT-5.6 Sol medium | Cloud: Native API | 187/192 | 0.84.1 | **57.516** | 57.443–57.589 | 21.28 |
+| 14 | Doctor Strange, MTP2 | Local: Fallback | 180/181/201/217 | 0.84.1/0.84.3 | **57.396** | 57.396–57.396 | 21.65 |
+| 15 | Patched v0.29 FP8 MTP3, t0.70 | Local: Below quality gate | 246 | 0.84.3 | **57.354** | n=1 | 40.98 |
+| 16 | v0.27 FP8 MTP3 reconstruction, t0.70 | Local: Not historical reproduction | 248/249 | 0.84.1/0.84.3 | **56.568** | 56.568–56.568 | 36.15 |
+| 17 | GPT-5.6 Sol high | Cloud: Native API | 188/193 | 0.84.1 | **56.305** | 55.318–57.292 | 18.53 |
+| 18 | GPT-6 Astra medium | Cloud: Native API; two runs | 236/237 | 0.84.3 | **56.241** | 55.372–57.110 | 21.16 |
+| 19 | Peregrine v0.28 DFlash2 k7, t0.60/p0.90 | Local: Superseded | 229/230/231 | 0.84.3 | **56.021** | 56.021–56.021 | 57.08 |
+| 20 | GPT-6 Astra high | Cloud: Native API; two runs | 236/237 | 0.84.3 | **55.909** | 54.881–56.938 | 18.70 |
 
 ## Top 10 local
 
-This is strict score order, not a deployment recommendation. Critical reliability or retained-session failures can disqualify a high-scoring profile from unattended use.
+| Rank | Profile | Class/status | Runs | Pi | Mean /65 | Score range | Effective t/s |
+|---:|---|---|---|---|---:|---|---:|
+| 1 | Peregrine v0.27 MTP3, historical | Local: Retired; termination failures | 213/214/215 | 0.84.1 | **61.006** | 61.006–61.006 | 37.81 |
+| 2 | v0.27 FP8 target-only, t0.70/p0.90 | Local: Near miss; preliminary reliability 4/4 | 253 | 0.84.3 | **59.214** | n=1 | 17.83 |
+| 3 | GPU-5 DFlash2 k7, t1.00 | Local: Candidate; unqualified | 241 | 0.84.3 | **58.399** | n=1 | 18.02 |
+| 4 | GPU-5 DFlash2 k7, t0.60 (Gandalf candidate) | Local: Candidate; reliability 12/12 | 238/239/240 | 0.84.3 | **58.318** | 58.318–58.318 | 22.43 |
+| 5 | Peregrine v0.28 DFlash2 k7, t0.60/p0.95 | Local: Production; reliability 12/12 | 232/233/234 | 0.84.3 | **57.970** | 57.970–57.970 | 58.11 |
+| 6 | Patched v0.29 int8 DFlash2 k7, t0.60 | Local: Candidate; reliability 12/12 | 243/244 | 0.84.3 | **57.792** | 57.792–57.792 | 51.05 |
+| 7 | Peregrine v0.28 DFlash2 k7, t0.70 | Local: Rejected; retained-session failures | 224/225/227 | 0.84.3 | **57.649** | 57.649–57.649 | 57.73 |
+| 8 | Doctor Strange, MTP2 | Local: Fallback | 180/181/201/217 | 0.84.1/0.84.3 | **57.396** | 57.396–57.396 | 21.65 |
+| 9 | Patched v0.29 FP8 MTP3, t0.70 | Local: Below quality gate | 246 | 0.84.3 | **57.354** | n=1 | 40.98 |
+| 10 | v0.27 FP8 MTP3 reconstruction, t0.70 | Local: Not historical reproduction | 248/249 | 0.84.1/0.84.3 | **56.568** | 56.568–56.568 | 36.15 |
 
-| Rank | Local profile | Runs/evidence | Pi | Score used | Effective output t/s | Deployment status |
-|---:|---|---:|---|---:|---:|---|
-| 1 | Peregrine — Qwen3.8 27B W4A16, **vLLM 0.27**, FP8-KV/131K, low/8K/MTP3 | 213/214/215 | 0.84.1 | **61.006/65** | 39.3 | Retired runtime coordinate |
-| 2 | **Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, int8-KV/131K, low/8K/DFlash2 k7, top-p 0.95** | 232/233/234 | 0.84.3 | **57.970/65** | **58.1** | Production qualified |
-| 3 | **Doctor Strange — Qwen3.8 27B Q4_K_M, low/8K/MTP2** | 180/181/201/217 | 0.84.1/0.84.3 | **57.396/65** | 20.8 | Automatic fallback |
-| 4 | Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, int8-KV/131K, low/8K/DFlash2 k7, top-p 0.90 | 229/230/231 | 0.84.3 | **56.021/65** | 57.1 | Superseded production coordinate |
-| 5 | Qwen3.8 + Sharp v22.3.1, low/8K/MTP2 | 208 | 0.84.1 | **55.417/65** | 20.2 | Rejected candidate |
-| 6 | Cold Fusion, low/8K/MTP2 | 200/203 | 0.84.1 | **55.006/65** | 19.8 | Rejected candidate |
-| 7 | Peregrine — Qwen3.8 27B W4A16, vLLM 0.28, FP8-KV/131K, low/8K/MTP3 | 218/219/220 | 0.84.3 | **54.771/65** | 43.0 | Superseded production coordinate |
-| 8 | **Road Runner — Qwen3.6 35B-A3B, off/4K/MTP3** | 202/217 | 0.84.1/0.84.3 | **54.042/65** | **159.2** | Bounded no-tools throughput specialist |
-| 9 | **Spiderman — Tmax 27B, off/4K/MTP3** | 206 | 0.84.1 | **52.729/65** | 48.1 | Retained local profile |
-| 10 | Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | 0.84.3 | **52.318/65** | 32.9 | Rejected candidate |
+## All selected profiles
 
-The retired vLLM 0.27 Peregrine profile remains first by bounded-suite score but is not deployable. Production top-p-0.95 DFlash2 runs 232–234 were byte-identical at 57.970/65 and averaged 58.1 effective t/s; the reliability gate passed 12/12 on PiBench-owned fixtures. Doctor Strange remains automatic fallback. Road Runner remains restricted to short, externally bounded no-tools work despite its throughput.
+| Rank | Profile | Class/status | Runs | Pi | Mean /65 | Score range | Effective t/s |
+|---:|---|---|---|---|---:|---|---:|
+| 1 | Claude Opus 4.6 | Cloud: Antigravity prompt variant | 198/199/204 | 0.84.1 | **61.506** | 60.810–62.604 | 47.45 |
+| 2 | Peregrine v0.27 MTP3, historical | Local: Retired; termination failures | 213/214/215 | 0.84.1 | **61.006** | 61.006–61.006 | 37.81 |
+| 3 | GPT-5.5 medium | Cloud: Native API | 185/189/216 | 0.84.1/0.84.3 | **60.542** | 57.208–62.375 | 20.91 |
+| 4 | GPT-5.5 high | Cloud: Native API | 186/190/216 | 0.84.1/0.84.3 | **60.292** | 58.375–63.250 | 12.36 |
+| 5 | v0.27 FP8 target-only, t0.70/p0.90 | Local: Near miss; preliminary reliability 4/4 | 253 | 0.84.3 | **59.214** | n=1 | 17.83 |
+| 6 | Gemini 3.7 Flash medium | Cloud: Antigravity prompt variant | 194/195 | 0.84.1 | **58.408** | 58.372–58.443 | 65.50 |
+| 7 | GPU-5 DFlash2 k7, t1.00 | Local: Candidate; unqualified | 241 | 0.84.3 | **58.399** | n=1 | 18.02 |
+| 8 | GPU-5 DFlash2 k7, t0.60 (Gandalf candidate) | Local: Candidate; reliability 12/12 | 238/239/240 | 0.84.3 | **58.318** | 58.318–58.318 | 22.43 |
+| 9 | Peregrine v0.28 DFlash2 k7, t0.60/p0.95 | Local: Production; reliability 12/12 | 232/233/234 | 0.84.3 | **57.970** | 57.970–57.970 | 58.11 |
+| 10 | Gemini 3.1 Pro high | Cloud: Antigravity prompt variant | 196/197 | 0.84.1 | **57.836** | 54.479–61.193 | 12.93 |
+| 11 | Patched v0.29 int8 DFlash2 k7, t0.60 | Local: Candidate; reliability 12/12 | 243/244 | 0.84.3 | **57.792** | 57.792–57.792 | 51.05 |
+| 12 | Peregrine v0.28 DFlash2 k7, t0.70 | Local: Rejected; retained-session failures | 224/225/227 | 0.84.3 | **57.649** | 57.649–57.649 | 57.73 |
+| 13 | GPT-5.6 Sol medium | Cloud: Native API | 187/192 | 0.84.1 | **57.516** | 57.443–57.589 | 21.28 |
+| 14 | Doctor Strange, MTP2 | Local: Fallback | 180/181/201/217 | 0.84.1/0.84.3 | **57.396** | 57.396–57.396 | 21.65 |
+| 15 | Patched v0.29 FP8 MTP3, t0.70 | Local: Below quality gate | 246 | 0.84.3 | **57.354** | n=1 | 40.98 |
+| 16 | v0.27 FP8 MTP3 reconstruction, t0.70 | Local: Not historical reproduction | 248/249 | 0.84.1/0.84.3 | **56.568** | 56.568–56.568 | 36.15 |
+| 17 | GPT-5.6 Sol high | Cloud: Native API | 188/193 | 0.84.1 | **56.305** | 55.318–57.292 | 18.53 |
+| 18 | GPT-6 Astra medium | Cloud: Native API; two runs | 236/237 | 0.84.3 | **56.241** | 55.372–57.110 | 21.16 |
+| 19 | Peregrine v0.28 DFlash2 k7, t0.60/p0.90 | Local: Superseded | 229/230/231 | 0.84.3 | **56.021** | 56.021–56.021 | 57.08 |
+| 20 | GPT-6 Astra high | Cloud: Native API; two runs | 236/237 | 0.84.3 | **55.909** | 54.881–56.938 | 18.70 |
+| 21 | v0.29 FP8 target-only, t0.70 | Local: Below quality/speed gates | 247 | 0.84.3 | **55.479** | n=1 | 16.96 |
+| 22 | Qwen3.8 + Sharp v22.3.1 | Local: Rejected | 208 | 0.84.1 | **55.417** | n=1 | 14.46 |
+| 23 | v0.27 FP8 MTP3, synchronous | Local: One empty answer | 251 | 0.84.3 | **55.131** | n=1 | 32.52 |
+| 24 | v0.27 FP8 MTP3, seed42 | Local: Below quality gate | 250 | 0.84.3 | **55.068** | n=1 | 41.79 |
+| 25 | Cold Fusion | Local: Rejected | 200/203 | 0.84.1 | **55.006** | 55.006–55.006 | 21.46 |
+| 26 | Peregrine v0.28 FP8 MTP3 | Local: Superseded | 218/219/220 | 0.84.3 | **54.771** | 54.771–54.771 | 45.10 |
+| 27 | GPU-5 MTP3, t1.00 | Local: Below quality gate | 242 | 0.84.3 | **54.443** | n=1 | 24.58 |
+| 28 | Patched v0.29 int8 DFlash2 k7, t1.00 | Local: Below quality gate | 245 | 0.84.3 | **54.318** | n=1 | 55.43 |
+| 29 | GPT-5.4 medium | Cloud: Native API | 184/191 | 0.84.1 | **54.277** | 54.277–54.277 | 27.97 |
+| 30 | Road Runner, off/4K/MTP3 | Local: Bounded only | 202/217 | 0.84.1/0.84.3 | **54.042** | 54.042–54.042 | 182.05 |
+| 31 | Spiderman, off/4K/MTP3 | Local: Retained | 206 | 0.84.1 | **52.729** | n=1 | 54.76 |
+| 32 | Opus Distill v2 | Local: Rejected; reliability 9/12 | 235 | 0.84.3 | **52.318** | n=1 | 32.86 |
+| 33 | Thor, thinking/4K/no-spec | Local: Retained | 207 | 0.84.1 | **51.042** | n=1 | 8.20 |
+| 34 | v0.27 FP8 target-only, t0.60/p0.95 | Local: Below quality/speed gates | 252 | 0.84.3 | **50.354** | n=1 | 15.79 |
+| 35 | Road Runner practical, low/8K | Local: Rejected | 183 | 0.84.1 | **49.542** | n=1 | 21.18 |
+| 36 | Qwen3.8 Q4_K_M, off/4K/no-spec | Local: Comparison | 182 | 0.84.1 | **48.229** | n=1 | 22.78 |
+| 37 | Ornith 1.5, off/4K/no-spec | Local: Rejected | 209 | 0.84.1 | **44.562** | n=1 | 80.59 |
 
-## RTX 3090 candidate decisions
+## Today's evidence and limits
 
-| Profile | Runs | Pi | Score | Effective output t/s | Gate result |
-|---|---:|---|---:|---:|---|
-| Qwen3.8 W4A16 + DFlash2 k7, temperature 0.70 | 224/225/227 | 0.84.3 | **57.649/65** | **57.7** | Reject: both retained replays reached the mandatory guard without a final |
-| Qwen3.8 W4A16 + DFlash2 k7, temperature 0.60, top-p 0.95 | 232/233/234 | 0.84.3 | **57.970/65** | **58.1** | Production: reliability 12/12; hash-qualified |
-| Qwen3.8 W4A16 + DFlash2 k7, temperature 0.60, top-p 0.90 | 229/230/231 | 0.84.3 | **56.021/65** | **57.1** | Superseded by top-p 0.95 |
-| Qwen3.8 W4A16 + DFlash2 k7, temperature 0.55 | none | 0.84.3 | not scored | not scored | Cold replay finalized at 53 calls; hot replay and score not run after the external-project fixture was withdrawn |
-| Qwen3.8-27B Opus Distill v2 Q4_K_M, low/8K/MTP2 | 235 | 0.84.3 | **52.318/65** | **32.9** | Reject: misses quality/speed gates; reliability not qualified at 9/12 |
+- Astra: runs **236–237**, two complete runs each at medium and high. These are
+  cloud results, not local GPU performance. Do not interpret two samples as a
+  stable intrinsic ranking; medium and high overlap in observed score range.
+- Preserved candidate outputs were backfilled as **238–253**, with source hashes,
+  original timestamps, Pi versions and explicit runtime coordinates. Historical
+  IDs and rows are unchanged. Missing historical benchmark commit provenance is
+  left unknown rather than guessed. Raw evidence remains private.
+- The retired-coordinate recovery completed **nine valid full screens**. None
+  reached 60/65 with at least 18 effective t/s. Target-only run 253 came closest
+  at 59.214/65 and 17.83 t/s; its 4/4 reliability check is preliminary, not 12/12.
+- TypeSafe/Jev is parked: useful decision-workflow ideas, but no demonstrated
+  improvement to this local, single-pass benchmark. It was not run or ranked.
 
-DFlash2 temperatures 0.65, 0.625, and 0.61 were rejected by cache-hot retained replay before score testing. Run 226 ended after 6/24 tasks at a 9/9 weighted subset score and 91.5 effective t/s; it is excluded from the temperature-0.70 complete-run mean. Production uses temperature 0.60/top-p 0.95; Doctor Strange remains rollback.
-
-See [MODEL_CANDIDATE_RESEARCH.md](MODEL_CANDIDATE_RESEARCH.md) for the dated public-model survey, [RESULTS.md](RESULTS.md) for bridge and qualification evidence, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, [METHODOLOGY.md](METHODOLOGY.md) for ranking rules, and [RESULTS.csv](RESULTS.csv) for sanitized task-level records.
+See [RESULTS.md](RESULTS.md) for investigations, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md)
+for deployment profiles, and [RESULTS.csv](RESULTS.csv) for sanitized task records.
