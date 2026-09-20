@@ -51,6 +51,26 @@ insufficient: cache-hot, retained-session and full-context qualification matter.
 | 19 | Peregrine v0.28 DFlash2 k7, t0.60/p0.90 | Local: Superseded | 229/230/231 | 0.84.3 | **56.021** | 56.021–56.021 | 57.08 |
 | 20 | GPT-6 Astra high | Cloud: Native API; two runs | 236/237 | 0.84.3 | **55.909** | 54.881–56.938 | 18.70 |
 
+## Top 20 cloud
+
+Ten cloud profiles are currently included in the selected ranking. This table
+lists up to 20 using the same complete-run means and aggregate throughput as
+above. Antigravity's distinct prompt variant remains labelled; incomplete
+infrastructure runs are excluded.
+
+| Rank | Profile | Class/status | Runs | Pi | Mean /65 | Score range | Effective t/s |
+|---:|---|---|---|---|---:|---|---:|
+| 1 | Claude Opus 4.6 | Cloud: Antigravity prompt variant | 198/199/204 | 0.84.1 | **61.506** | 60.810–62.604 | 47.45 |
+| 2 | GPT-5.5 medium | Cloud: Native API | 185/189/216 | 0.84.1/0.84.3 | **60.542** | 57.208–62.375 | 20.91 |
+| 3 | GPT-5.5 high | Cloud: Native API | 186/190/216 | 0.84.1/0.84.3 | **60.292** | 58.375–63.250 | 12.36 |
+| 4 | Gemini 3.7 Flash medium | Cloud: Antigravity prompt variant | 194/195 | 0.84.1 | **58.408** | 58.372–58.443 | 65.50 |
+| 5 | Gemini 3.1 Pro high | Cloud: Antigravity prompt variant | 196/197 | 0.84.1 | **57.836** | 54.479–61.193 | 12.93 |
+| 6 | GPT-5.6 Sol medium | Cloud: Native API | 187/192 | 0.84.1 | **57.516** | 57.443–57.589 | 21.28 |
+| 7 | GPT-5.6 Sol high | Cloud: Native API | 188/193 | 0.84.1 | **56.305** | 55.318–57.292 | 18.53 |
+| 8 | GPT-6 Astra medium | Cloud: Native API; two runs | 236/237 | 0.84.3 | **56.241** | 55.372–57.110 | 21.16 |
+| 9 | GPT-6 Astra high | Cloud: Native API; two runs | 236/237 | 0.84.3 | **55.909** | 54.881–56.938 | 18.70 |
+| 10 | GPT-5.4 medium | Cloud: Native API | 184/191 | 0.84.1 | **54.277** | 54.277–54.277 | 27.97 |
+
 ## Top 10 local
 
 | Rank | Profile | Class/status | Runs | Pi | Mean /65 | Score range | Effective t/s |
