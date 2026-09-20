@@ -205,6 +205,17 @@ issues and the proposed fix were open.
   overcounting in speculative acceptance metrics on 0.29. Acceptance metrics
   must not be substituted for measured visible-output throughput.
 
+## Gemini 3.8 Flash comparison
+
+Two complete 24-task runs each for Gemini 3.8 Flash medium and Gemini 3.7 Flash medium, Pi 0.84.3, no tools, 600-second timeout. The antigravity extension 0.7.3 registered both models; 0.7.3 removed the `[ignore]` injection wrapper used by the pinned 0.3.1 profile. 3.7 scores under 0.7.3 (59.229, 62.872) are within normal cloud variance of the prior 0.3.1 runs 194/195 (58.372, 58.443), confirming the extension version does not materially affect results.
+
+| Model | Run 1 /65 | Run 2 /65 | Mean /65 | Effective t/s |
+|---|---:|---:|---:|---:|
+| **Gemini 3.7 Flash, medium** | 59.229 | 62.872 | **61.051** | 67.2 |
+| **Gemini 3.8 Flash, medium** | 54.435 | 58.420 | **56.428** | 25.2 |
+
+3.8 is 4.6 points lower and 2.7× slower than 3.7. 3.7 remains the stronger Flash profile. Neither displaces the current leaders.
+
 ## Current production profile
 
 | Model/profile | Class | Evidence | Pi | Weighted score | Passed | Raw grader points | Effective output t/s |
