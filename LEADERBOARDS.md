@@ -71,7 +71,7 @@ infrastructure runs are excluded.
 | 9 | GPT-6 Astra high | Cloud: Native API; two runs | 236/237 | 0.84.3 | **55.909** | 54.881–56.938 | 18.70 |
 | 10 | GPT-5.4 medium | Cloud: Native API | 184/191 | 0.84.1 | **54.277** | 54.277–54.277 | 27.97 |
 
-## Top 10 local
+## Top 20 local
 
 | Rank | Profile | Class/status | Runs | Pi | Mean /65 | Score range | Effective t/s |
 |---:|---|---|---|---|---:|---|---:|
@@ -85,6 +85,16 @@ infrastructure runs are excluded.
 | 8 | Doctor Strange, MTP2 | Local: Fallback | 180/181/201/217 | 0.84.1/0.84.3 | **57.396** | 57.396–57.396 | 21.65 |
 | 9 | Patched v0.29 FP8 MTP3, t0.70 | Local: Below quality gate | 246 | 0.84.3 | **57.354** | n=1 | 40.98 |
 | 10 | v0.27 FP8 MTP3 reconstruction, t0.70 | Local: Not historical reproduction | 248/249 | 0.84.1/0.84.3 | **56.568** | 56.568–56.568 | 36.15 |
+| 11 | Peregrine v0.28 DFlash2 k7, t0.60/p0.90 | Local: Superseded | 229/230/231 | 0.84.3 | **56.021** | 56.021–56.021 | 57.08 |
+| 12 | v0.29 FP8 target-only, t0.70 | Local: Below quality/speed gates | 247 | 0.84.3 | **55.479** | n=1 | 16.96 |
+| 13 | Qwen3.8 + Sharp v22.3.1 | Local: Rejected | 208 | 0.84.1 | **55.417** | n=1 | 14.46 |
+| 14 | v0.27 FP8 MTP3, synchronous | Local: One empty answer | 251 | 0.84.3 | **55.131** | n=1 | 32.52 |
+| 15 | v0.27 FP8 MTP3, seed42 | Local: Below quality gate | 250 | 0.84.3 | **55.068** | n=1 | 41.79 |
+| 16 | Cold Fusion | Local: Rejected | 200/203 | 0.84.1 | **55.006** | 55.006–55.006 | 21.46 |
+| 17 | Peregrine v0.28 FP8 MTP3 | Local: Superseded | 218/219/220 | 0.84.3 | **54.771** | 54.771–54.771 | 45.10 |
+| 18 | GPU-5 MTP3, t1.00 | Local: Below quality gate | 242 | 0.84.3 | **54.443** | n=1 | 24.58 |
+| 19 | Patched v0.29 int8 DFlash2 k7, t1.00 | Local: Below quality gate | 245 | 0.84.3 | **54.318** | n=1 | 55.43 |
+| 20 | Road Runner, off/4K/MTP3 | Local: Bounded only | 202/217 | 0.84.1/0.84.3 | **54.042** | 54.042–54.042 | 182.05 |
 
 ## All selected profiles
 

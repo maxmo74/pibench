@@ -8,7 +8,8 @@ PiBench is hardware-agnostic. It can test models running on CPUs, one or more GP
 
 The [revised leaderboard](LEADERBOARDS.md) includes 37 selected profiles and
 480 newly published sanitized task records, with a [cloud-only Top 20](LEADERBOARDS.md#top-20-cloud)
-(currently 10 selected cloud profiles). GPT-6 Astra completed two full runs
+(currently 10 selected cloud profiles) and a [local-only Top 20](LEADERBOARDS.md#top-20-local).
+GPT-6 Astra completed two full runs
 per reasoning level: **56.241/65 medium**, **55.909/65 high** (means).
 Nine valid retired-runtime recovery screens did not meet 60/65 plus 18 effective
 t/s. TypeSafe is parked; no API experiment or private-data upload was performed.
