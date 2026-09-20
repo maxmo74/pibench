@@ -24,6 +24,46 @@ Pi 0.84.3 adds a trailing newline to the effective prompt used under Pi 0.84.1. 
 | Doctor Strange, low | 57.396 | **57.396/65** | 16/24 | 71/81 | 24/24 outcomes and outputs byte-identical |
 | Road Runner, off | 54.042 | **54.042/65** | 16/24 | 72/81 | 24/24 outcomes and outputs byte-identical |
 
+## September GPU-5 candidate and Pi bridge
+
+These are aggregate private-run observations, not new database IDs or additions
+to the frozen CSV-backed ranking. Production remains Peregrine; Gandalf has not
+been deployed or fully qualified.
+
+| GPU-5 profile | Complete runs | Pi | Weighted score /65 | Effective output t/s | Reliability |
+|---|---:|---|---:|---:|---|
+| DFlash2 k7, temperature 0.60 | 3 | 0.84.3 | 58.318 each | 22.42–22.44 | 12/12 |
+| DFlash2 k7, temperature 1.0 | 1 | 0.84.3 | 58.399 | 18.02 | Not qualified |
+| MTP3, temperature 1.0 | 1 | 0.84.3 | 54.443 | 24.58 | Not qualified |
+
+The temperature-0.60 runs each passed 18/24 tasks and earned 75/81 raw points.
+Effective speed is total approximate visible output tokens divided by total
+wall time, not the mean of per-task rates. The target is ByteShape Qwen3.8-27B
+IQ4_XS 3.84 bpw; runtime is llama.cpp b10819, Q8_0 K/V, 131072 context,
+8192 output allowance, low reasoning, top-p 0.95, top-k 20, min-p 0, seed 42,
+one slot. DFlash2 uses the Q4_K_M draft. Full-context, cache-hot and retained
+replay qualification remain outstanding. A 12/12 reliability pass is not a
+production certificate.
+
+A separate six-case Pi comparison used three repeats per version, 36
+invocations total. Unmodified 0.84.3 passed 15/18; unmodified 0.86.1 passed
+12/18. The semver invalid-input check explained the difference. Request capture
+isolated a system-prompt formatting change; six fresh-server controls restored
+the old output exactly when only that system message was normalized.
+
+A fail-closed, hash-pinned private prompt adapter was then tested with another
+36 invocations. Both versions passed 15/18, and all six tasks produced identical
+visible output across versions and repeats, including the shared failing task.
+This validates only the tested no-tool quality profile. It does not qualify
+tool/RPC/reliability suites or proxy throughput. The public runner still pins
+0.84.3; the adapter is not a supported public runner feature. Historical rows,
+version labels and IDs are unchanged. See [METHODOLOGY.md](METHODOLOGY.md).
+
+Public model references:
+[GPU-5 target](https://huggingface.co/byteshape/Qwen3.8-27B-GGUF),
+[DFlash2 draft](https://huggingface.co/incoai/Qwen3.8-27B-DFlash2-GGUF).
+Publisher decode throughput is not PiBench effective throughput.
+
 ## Current production profile
 
 | Model/profile | Class | Evidence | Pi | Weighted score | Passed | Raw grader points | Effective output t/s |

@@ -4,6 +4,17 @@ PiBench is a small, reproducible benchmark for comparing **local and cloud LLMs*
 
 PiBench is hardware-agnostic. It can test models running on CPUs, one or more GPUs in a workstation or server, another machine on the network, or a cloud provider. The results included here are simply the runs made on the reference system described below.
 
+## Latest qualification status
+
+GPU-5 DFlash2 k7 scored **58.318/65** across three runs, with **22.42–22.44**
+effective output t/s and **12/12** reliability checks. It remains a candidate,
+not Gandalf production. Peregrine remains production.
+
+A Pi **0.86.1 exact-prompt pilot** matched 0.84.3 on 36 no-tool spot-check
+invocations. This is limited validation, not a general Pi upgrade: the public
+runner still pins **0.84.3**. See [results and limitations](RESULTS.md#september-gpu-5-candidate-and-pi-bridge)
+and the [leaderboard addendum](LEADERBOARDS.md#september-candidate-addendum).
+
 ## What it tests
 
 The main suite contains 24 tasks with a weighted maximum of 65 points. It covers:

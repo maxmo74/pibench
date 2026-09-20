@@ -56,6 +56,26 @@ Four complete runs tested whether the Pi-version and trailing-newline change mat
 
 The two deterministic local controls reproduced exactly, and the managed-service controls remained within prior variation. PiBench therefore treats both Pi environments as the same `pi-agent-24/65` score protocol. Exact Pi versions and prompt hashes remain recorded. This does not make date-injected history compatible and does not merge the Antigravity prompt variant with pure-canonical input.
 
+## Pi 0.86.1 exact-prompt pilot
+
+An unmodified Pi upgrade is not automatically comparable: 0.86.1 changed the
+working-directory section of the custom system prompt. A repeated six-case
+pilot observed a stable score difference despite matching sampling settings.
+Fresh-server controls isolated the difference to that system message.
+
+A private adapter accepts only the hash-pinned expected prompt and replaces it
+with the exact canonical 0.84.3 message. Unknown or additional system messages
+are rejected; user messages and sampling fields are not changed. A new
+36-invocation comparison reproduced every visible output across both versions
+and three repeats. This is evidence of equivalence for that no-tool subset,
+not a guarantee for all models, tasks or tools.
+
+The public runner remains pinned to 0.84.3. Supporting a public bridge requires
+portable integration and attestation; tool and reliability profiles require
+separate checks. Proxy timing is not qualified for historical throughput
+comparisons. Do not relabel old runs or treat exploratory checks as complete
+suite scores. See [RESULTS.md](RESULTS.md#september-gpu-5-candidate-and-pi-bridge).
+
 ## What the score protocol does—and does not—normalize
 
 The protocol normalizes the benchmark **input and evaluation path**:

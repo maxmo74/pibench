@@ -8,6 +8,19 @@ Pi 0.84.1 and 0.84.3 runs use identical tasks, prompts, graders, weights, sandbo
 
 The Antigravity rows use the frozen `antigravity-v1` prompt variant—canonical prompt plus an attested fixed injection—not the pure-canonical input used by local and OpenAI profiles. They remain visible in the overall ordering with that boundary disclosed.
 
+## September candidate addendum
+
+The tables below remain the frozen CSV-backed ranking, not an exhaustive
+ranking of later private experiments. GPU-5 DFlash2 k7 at temperature 0.60
+subsequently scored **58.318/65** in three complete runs at **22.42–22.44**
+effective output t/s and passed reliability **12/12**. Its score exceeds the
+recorded production score, but full deployment qualification is incomplete.
+It is not listed as Gandalf production or assigned invented database IDs.
+
+Pi 0.86.1 exact-prompt spot-checks matched 0.84.3 on the tested no-tool subset;
+this is not blanket suite qualification or an update to the public runner pin.
+See [the candidate and bridge evidence](RESULTS.md#september-gpu-5-candidate-and-pi-bridge).
+
 ## Top 20 overall
 
 There are **22 established complete profiles** in this frozen ranking. DFlash2 temperature 0.60/top-p 0.95 remains production after meeting the score, throughput, and reliability gates.
