@@ -21,6 +21,11 @@ Pi 0.86.1 exact-prompt spot-checks matched 0.84.3 on the tested no-tool subset;
 this is not blanket suite qualification or an update to the public runner pin.
 See [the candidate and bridge evidence](RESULTS.md#september-gpu-5-candidate-and-pi-bridge).
 
+A later patched vLLM 0.29 candidate using Peregrine's existing artifacts scored
+**57.792/65** twice at **51.04–51.06** effective output t/s, with **12/12**
+reliability passes. It remains outside the frozen ranking and is not promoted.
+See [the investigation and comparison limits](RESULTS.md#isolated-vllm-029-investigation).
+
 ## Top 20 overall
 
 There are **22 established complete profiles** in this frozen ranking. DFlash2 temperature 0.60/top-p 0.95 remains production after meeting the score, throughput, and reliability gates.

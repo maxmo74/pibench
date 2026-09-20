@@ -15,6 +15,13 @@ invocations. This is limited validation, not a general Pi upgrade: the public
 runner still pins **0.84.3**. See [results and limitations](RESULTS.md#september-gpu-5-candidate-and-pi-bridge)
 and the [leaderboard addendum](LEADERBOARDS.md#september-candidate-addendum).
 
+An [isolated vLLM 0.29 investigation](RESULTS.md#isolated-vllm-029-investigation)
+now reproduces 131K capacity with Peregrine's existing artifacts after targeted
+compatibility and memory fixes. Two runs scored **57.792/65** at **51.04–51.06**
+effective output t/s; reliability passed **12/12**. This does not beat the
+historical production reference or establish an upstream release regression.
+Production remains on vLLM 0.28.
+
 ## What it tests
 
 The main suite contains 24 tasks with a weighted maximum of 65 points. It covers:

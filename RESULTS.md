@@ -64,6 +64,78 @@ Public model references:
 [DFlash2 draft](https://huggingface.co/incoai/Qwen3.8-27B-DFlash2-GGUF).
 Publisher decode throughput is not PiBench effective throughput.
 
+## Isolated vLLM 0.29 investigation
+
+A patched vLLM 0.29.0 candidate successfully loaded the existing Peregrine
+W4A16 target and W4A16 DFlash2 draft at 131072 context on the RTX 3090.
+It is not stock vLLM, not GPU-5, and not a production promotion.
+
+| Profile | Complete runs | Pi | Score /65 | Tasks passed | Effective output t/s | Reliability |
+|---|---:|---|---:|---:|---:|---:|
+| Patched vLLM 0.29, DFlash2 k7, low/8K | 2 | 0.84.3 | 57.792 each | 18/24 each | 51.04–51.06 | 12/12 |
+| Production vLLM 0.28, historical reference | 3 | 0.84.3 | 57.970 each | 18/24 each | 58.1 | 12/12 |
+
+All 24 visible outputs were byte-identical between the two candidate runs.
+The candidate was approximately 12% slower than the historical production
+reference, with a 0.178-point lower score. No fresh paired production control
+was run. Different patch sets and dependency stacks prevent attributing this
+entire difference to an upstream release regression. These are aggregate
+observations, not new CSV/database IDs or additions to the frozen ranking.
+
+### What was required
+
+- Route quantized target embeddings through the existing quantization method.
+- Use quantization-aware per-layer DFlash context-KV projection instead of
+  reading packed weights as ordinary floating-point tensors. This local
+  fallback was informed by upstream PR 51620, not a claim that the PR merged.
+- Port draft cache block promotion and sliding-window group sizing so small
+  draft layers do not force excessive padding of full-context layers.
+- Match production's text-only mode, explicit 5.2 GiB KV budget, capture-size
+  ceiling of 16, two request slots, int8 per-token-head KV and disabled async
+  scheduling. Prefix caching remained enabled.
+- Align the isolated CUDA compiler, CRT and NVVM at 13.0.88. The environment
+  used PyTorch 2.13.0 with CUDA 13.0; dependency consistency checks passed.
+
+The candidate reached **137,553 KV tokens**, matching recorded production
+capacity. Initial memory failures were confounded by omitted production
+settings and optimizations, including an accidentally enabled vision tower;
+they do not establish an inherent 0.29 memory regression. Regression tests
+failed before the targeted fixes and passed afterward. Those tests and startup
+success do not constitute a full numerical-equivalence proof.
+
+An initial quality run also omitted the explicit low reasoning effort in the
+request template and produced 13 empty answers. It is excluded from this
+comparison, not counted as a model regression. The corrected request was
+captured and checked: low reasoning, 8192 output allowance, temperature 0.60,
+top-p 0.95 and top-k 20. Both reported runs used that corrected configuration.
+
+Production was restored after bounded tests. Full-context pressure, cache-hot
+and retained-session qualification remain outstanding; keep vLLM 0.28 as the
+qualified deployment. Raw requests, outputs, host-specific launchers and local
+patch artifacts remain private.
+
+### Related upstream reports
+
+These are user reports and proposed fixes, not independently reproduced
+confirmation of our result. Status checked September 20, 2026: all listed
+issues and the proposed fix were open.
+
+- [#57680](https://github.com/vllm-project/vllm/issues/57680): reports roughly
+  3.3x slower decode on 0.29 versus 0.26 for Qwen3.6-35B-A3B-FP8 on an H100
+  in confidential-computing mode, without speculation. Different hardware,
+  model and workload; not evidence of the same cause on a 3090.
+- [#54300](https://github.com/vllm-project/vllm/issues/54300): reports failures
+  and incorrect output with GLM-5.3 decode-context parallelism across 0.28/0.29.
+  This is a separate multi-GPU configuration.
+- [#51581](https://github.com/vllm-project/vllm/issues/51581): quantized DFlash
+  fused-KV projection bypasses the quantization method. Relevant to our draft
+  load failure, but predates 0.29 rather than proving a new regression.
+  [PR #51620](https://github.com/vllm-project/vllm/pull/51620) proposes a
+  quantization-aware fallback; it remains unmerged.
+- [#56101](https://github.com/vllm-project/vllm/issues/56101): reports EOS-related
+  overcounting in speculative acceptance metrics on 0.29. Acceptance metrics
+  must not be substituted for measured visible-output throughput.
+
 ## Current production profile
 
 | Model/profile | Class | Evidence | Pi | Weighted score | Passed | Raw grader points | Effective output t/s |
