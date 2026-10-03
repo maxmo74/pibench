@@ -3,7 +3,7 @@
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
 - Suite: 24 tasks, 65 weighted points
-- Updated: 2026-09-20; historical tables retain their original snapshot
+- Updated: 2026-10-03; historical tables retain their original snapshot
 - Score protocol: pi-agent-24/65
 - Benchmark Pi pin: 0.84.3; effective system-prompt SHA-256: `6b861f18cea399f742dc1a809914f8d6bf2ff30bb9f8c320ee50afb6f3bfebfc`
 - CPU: AMD Ryzen 9 7900, 12 cores / 24 threads
@@ -15,10 +15,51 @@ These runs were made on one reference workstation. They show observed model/prof
 
 Pi 0.84.3 adds a trailing newline to the effective prompt used under Pi 0.84.1. Because tasks, prompts, graders, weights, sandbox, and clean invocation were unchanged, four complete bridge runs tested score compatibility. Both deterministic local profiles reproduced all task outcomes and private outputs byte-for-byte; both GPT-5.5 profiles stayed within ordinary cloud variation. PiBench therefore kept one `pi-agent-24/65` score protocol. Every result retains its exact Pi version and prompt hash. Runtime, parallelism, sampler, seed, output allowance, and request history remain named profile coordinates.
 
+## October 3 Gandalf runtime and draft screens
+
+A separate, pinned llama.cpp 0.5.0-dev build (`1537a0a8`) ran the existing
+GPU-5 IQ4_XS target with DFlash2 on the 3090. All complete screens used
+canonical Pi 0.84.3, 131,072 context, one slot, Q8_0 KV, low reasoning,
+8,192 output, seed 42 and temperature 0.60/top-p 0.95/top-k 20/min-p 0.
+The target and draft artifacts were hash-verified. The benchmark runner,
+tasks and graders were unchanged; the isolated model registry and runtime
+were new, and the deleted older private registry prevents byte-for-byte
+re-attestation of historical wire inputs.
+
+| Draft | k | Runs | Mean /65 | Passed | Effective visible t/s | Status |
+|---|---:|---|---:|---:|---:|---|
+| Q4_K_M | 7 | 256/257 | **63.318** | 20/24 each | 20.57 | New runtime baseline |
+| Q4_K_M | 4 | 258/259 | **63.318** | 20/24 each | 21.28 | Separate draft coordinate |
+| Q8_0 | 7 | 260 | **63.318** | 20/24 | 21.25 | One screen |
+| **Q8_0** | **4** | **261/262** | **63.318** | **20/24 each** | **21.74** | Fastest 63+ screen |
+| Q8_0 | 3 | 263 | 57.318 | 17/24 | 21.02 | Reject: lower score and speed |
+| Q8_0 | 5 | 264 | 61.318 | 19/24 | 21.56 | Reject: lower score and speed |
+
+The k4/Q8_0 score and 24 visible outputs repeated identically across two
+fresh starts. Relative to the previous b10819 Q4_K_M k7 coordinate
+(58.318/65, 22.43 effective t/s), the score gained five points but speed
+fell. The gain is confined to JSON-path mutation (+4) and retry scheduling
+(+1); it cannot yet be attributed solely to an upstream engine fix. On the
+new runtime, Q8_0 k4 improved speed about 5.6% over Q4_K_M k7, but output
+text changed on 12/24 tasks, so equal suite scores do not establish
+invariant sampling or general quality. A fresh-prompt speed screen found a
+long, empty visible answer under k4 and k5; both Pi processes exited
+successfully. No full-context, cache-hot, retained-session or 12/12
+reliability qualification has been completed for the new runtime/coordinate.
+Two-slot testing covered only short simultaneous completions. Gandalf is an
+opt-in supervised candidate, **not the production default**; Peregrine and
+Doctor Strange remain production and rollback.
+
+RESULTS.csv also adds runs 254/255: 96 task records from two invalid
+Antigravity extension attempts. All requests failed before model generation;
+they are labelled `incomplete-infrastructure` and excluded from rankings.
+The later standalone Gemini 3.7/3.8 exploration below is not a canonical
+PiBench run and has no task-level rows in this CSV.
+
 ## September 20 recovery and Astra update
 
-[LEADERBOARDS.md](LEADERBOARDS.md) now ranks 37 selected complete profiles.
-RESULTS.csv contains 480 additional task records: 96 new Astra evaluations and
+The September snapshot ranked 37 selected complete profiles.
+That update added 480 task records: 96 new Astra evaluations and
 384 backfilled candidate evaluations. All 4,641 prior rows and their IDs remain
 unchanged. Backfills retain source hashes and original timestamps privately;
 unavailable benchmark-commit provenance is left unknown, not reconstructed.
@@ -207,14 +248,14 @@ issues and the proposed fix were open.
 
 ## Gemini 3.8 Flash comparison
 
-Two complete 24-task runs each for Gemini 3.8 Flash medium and Gemini 3.7 Flash medium, Pi 0.84.3, no tools, 600-second timeout. The antigravity extension 0.7.3 registered both models; 0.7.3 removed the `[ignore]` injection wrapper used by the pinned 0.3.1 profile. 3.7 scores under 0.7.3 (59.229, 62.872) are within normal cloud variance of the prior 0.3.1 runs 194/195 (58.372, 58.443), confirming the extension version does not materially affect results.
+Two complete 24-task runs each for Gemini 3.8 Flash medium and Gemini 3.7 Flash medium, Pi 0.84.3, no tools, 600-second timeout. The antigravity extension 0.7.3 registered both models; 0.7.3 removed the `[ignore]` injection wrapper used by the pinned 0.3.1 profile. The standalone invocation did not attest the effective prompt or pass the canonical system-prompt flag. Its 3.7 scores under 0.7.3 (59.229, 62.872) differ from the prior 0.3.1 runs 194/195 (58.372, 58.443); those results cannot establish extension equivalence or enter the canonical ranking.
 
 | Model | Run 1 /65 | Run 2 /65 | Mean /65 | Effective t/s |
 |---|---:|---:|---:|---:|
 | **Gemini 3.7 Flash, medium** | 59.229 | 62.872 | **61.051** | 67.2 |
 | **Gemini 3.8 Flash, medium** | 54.435 | 58.420 | **56.428** | 25.2 |
 
-3.8 is 4.6 points lower and 2.7× slower than 3.7. 3.7 remains the stronger Flash profile. Neither displaces the current leaders.
+Within this exploratory, noncanonical pair, 3.8 scored 4.6 points lower and had about 2.7× lower effective throughput than 3.7. Neither result changes the canonical cloud ranking.
 
 ## Current production profile
 

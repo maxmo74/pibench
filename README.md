@@ -6,18 +6,26 @@ PiBench is hardware-agnostic. It can test models running on CPUs, one or more GP
 
 ## Latest qualification status
 
-The [revised leaderboard](LEADERBOARDS.md) includes 37 selected profiles and
-480 newly published sanitized task records, with a [cloud-only Top 20](LEADERBOARDS.md#top-20-cloud)
-(currently 10 selected cloud profiles) and a [local-only Top 20](LEADERBOARDS.md#top-20-local).
+The [leaderboard](LEADERBOARDS.md) includes 38 selected profiles, with a
+[cloud-only Top 20](LEADERBOARDS.md#top-20-cloud) (10 selected profiles) and a
+[local-only Top 20](LEADERBOARDS.md#top-20-local). The October Gandalf
+llama.cpp candidate scored **63.318/65** in two complete Q8-draft/k4 runs at
+**21.74 effective t/s**. It is an opt-in experiment, **not production-qualified**:
+full-context, cache-hot, retained-session and 12/12 reliability gates remain
+open; a separate fresh-prompt screen produced an empty visible answer. All
+nine new-runtime screens, including lower-scoring failures, have sanitized task
+records in [RESULTS.csv](RESULTS.csv). See the [October findings](RESULTS.md#october-3-gandalf-runtime-and-draft-screens).
+
 GPT-6 Astra completed two full runs
 per reasoning level: **56.241/65 medium**, **55.909/65 high** (means).
 Nine valid retired-runtime recovery screens did not meet 60/65 plus 18 effective
 t/s. TypeSafe is parked; no API experiment or private-data upload was performed.
 See the [September update](RESULTS.md#september-20-recovery-and-astra-update).
 
-GPU-5 DFlash2 k7 scored **58.318/65** across three runs, with **22.42–22.44**
-effective output t/s and **12/12** reliability checks. It remains a candidate,
-not Gandalf production. Peregrine remains production.
+The older GPU-5 b10819 DFlash2 k7 coordinate scored **58.318/65** across
+three runs, with **22.42–22.44** effective output t/s and **12/12** reliability
+checks. Those checks do not qualify the newer Gandalf runtime. Peregrine remains
+production; Doctor Strange remains rollback.
 
 A Pi **0.86.1 exact-prompt pilot** matched 0.84.3 on 36 no-tool spot-check
 invocations. This is limited validation, not a general Pi upgrade: the public
