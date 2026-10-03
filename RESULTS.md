@@ -44,10 +44,11 @@ new runtime, Q8_0 k4 improved speed about 5.6% over Q4_K_M k7, but output
 text changed on 12/24 tasks, so equal suite scores do not establish
 invariant sampling or general quality. A fresh-prompt speed screen found a
 long, empty visible answer under k4 and k5; both Pi processes exited
-successfully. No full-context, cache-hot, retained-session or 12/12
-reliability qualification has been completed for the new runtime/coordinate.
-Two-slot testing covered only short simultaneous completions. Gandalf is an
-opt-in supervised candidate, **not the production default**; Peregrine and
+successfully. Full-context, cache-hot and retained-session qualification
+remain incomplete; later 12/12 reliability screens and the empty-answer
+reproduction are documented below. Two-slot testing covered only short
+simultaneous completions. Gandalf is an opt-in supervised candidate,
+**not the production default**; Peregrine and
 Doctor Strange remain production and rollback.
 
 RESULTS.csv also adds runs 254/255: 96 task records from two invalid
@@ -55,6 +56,42 @@ Antigravity extension attempts. All requests failed before model generation;
 they are labelled `incomplete-infrastructure` and excluded from rankings.
 The later standalone Gemini 3.7/3.8 exploration below is not a canonical
 PiBench run and has no task-level rows in this CSV.
+
+## October 3 Gandalf follow-up: Pi 1.0.0
+
+On the same pinned llama.cpp, target and Q8_0/k4 draft, canonical Pi 0.84.3
+passed a separate **12/12 tool/termination reliability screen**. That did
+not clear the fresh-prompt failure: a Pi invocation stopped at the 8,192-token
+output limit after producing reasoning only, with no visible answer and a
+successful process exit. A direct API request answered, but a request-setting
+adjustment did not resolve Pi 0.84.3's reproduction. An exit code alone is
+not an answer-quality or termination gate.
+
+With Pi **1.0.0**, that prompt stopped normally with visible text. Two
+repetitions of each of four fresh no-tool prompts returned nonempty visible
+answers (**8/8**), including the previously empty task twice.
+A separate Pi 1.0.0 reliability screen passed **12/12**, using the same four
+scenarios and limits but a newly attested Pi 1.0.0 effective-prompt hash.
+These checks do not prove absence of empty answers on other prompts.
+
+An **exploratory** 24-task Pi 1.0.0 screen used the same tasks, weights and
+graders, but not the canonical 0.84.3 prompt attestation or a validated
+version bridge. It scored **55.247/65**, **17/24** full passes, and **20.83**
+aggregate effective visible t/s in one complete run. Compared with the
+separate 0.84.3 screen, JSON-path mutation lost four points, unified diff
+lost three, and retry scheduling lost one; smaller check changes partly
+offset these losses. These are observations across **different Pi input
+profiles**, not an equivalent-input regression claim or a new leaderboard
+entry. An initial private summary incorrectly omitted binary-scored tasks;
+55.247 is the corrected weighted total. Raw outputs and diagnostic traces
+remain private; no Pi 1.0.0 task rows were added to RESULTS.csv.
+
+**Decision:** Keep Peregrine production and Doctor Strange rollback. Pi 1.0.0
+cleared the observed empty-answer reproduction but did not establish a
+superior production candidate. Repeat and bridge the new versioned quality
+profile, then complete full-context, cache-hot and retained-session gates and
+validate deployment/rollback before promotion. No production configuration
+was changed.
 
 ## September 20 recovery and Astra update
 

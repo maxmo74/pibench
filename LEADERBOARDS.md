@@ -20,7 +20,10 @@ Pi 0.84.1 and 0.84.3 retain their qualified prompt-version boundary and exact
 version labels. Antigravity uses a separate attested injected-prompt variant;
 its rows are displayed together for navigation, not identical-input comparisons.
 The Pi 0.86.1 bridge pilot remains limited to a no-tool subset; it does not change
-the public runner pin. See [methodology](METHODOLOGY.md).
+the public runner pin. An exploratory Pi 1.0.0 Gandalf screen also lacks a
+validated prompt-version bridge and is excluded from these rankings. See
+[the follow-up](RESULTS.md#october-3-gandalf-follow-up-pi-100) and
+[methodology](METHODOLOGY.md).
 
 **Production remains Peregrine v0.28. Doctor Strange remains fallback.**
 The new GPU-5 profile is labelled **Gandalf candidate**, not promoted. Higher score alone is

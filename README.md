@@ -11,10 +11,15 @@ The [leaderboard](LEADERBOARDS.md) includes 38 selected profiles, with a
 [local-only Top 20](LEADERBOARDS.md#top-20-local). The October Gandalf
 llama.cpp candidate scored **63.318/65** in two complete Q8-draft/k4 runs at
 **21.74 effective t/s**. It is an opt-in experiment, **not production-qualified**:
-full-context, cache-hot, retained-session and 12/12 reliability gates remain
-open; a separate fresh-prompt screen produced an empty visible answer. All
-nine new-runtime screens, including lower-scoring failures, have sanitized task
-records in [RESULTS.csv](RESULTS.csv). See the [October findings](RESULTS.md#october-3-gandalf-runtime-and-draft-screens).
+a separate Pi 0.84.3 fresh-prompt screen produced a reasoning-only answer at
+the output cap. The subsequent 12/12 reliability check passed, but did not
+catch that failure. Pi 1.0.0 returned visible answers on 8/8 fresh invocations
+and passed 12/12 reliability checks; its separate exploratory 24-task screen
+scored **55.247/65** without a validated prompt-version bridge. Full-context,
+cache-hot and retained-session gates remain open. All nine canonical new-runtime
+screens, including lower-scoring draft settings, have sanitized task records
+in [RESULTS.csv](RESULTS.csv). See the [October findings](RESULTS.md#october-3-gandalf-runtime-and-draft-screens)
+and [Pi 1.0 follow-up](RESULTS.md#october-3-gandalf-follow-up-pi-100).
 
 GPT-6 Astra completed two full runs
 per reasoning level: **56.241/65 medium**, **55.909/65 high** (means).
