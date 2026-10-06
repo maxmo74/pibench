@@ -1,13 +1,19 @@
 # Local inference profiles and recommended settings
 
-Snapshot: **2026-08-29**
+Deployment update: **2026-10-06**. Historical qualification coordinates below
+remain dated separately; deployment preference is not a new certificate.
 
 This guide records the currently recommended local inference coordinates, the Pi configuration needed to select them, and the alternatives that were tested but not promoted. It is intentionally named by purpose rather than by a model codename: future leaders should be added as new versioned profile sections without renaming the document.
 
 | Role | Current profile | Runtime | Guidance |
 |---|---|---|---|
-| Supervised production daily driver | **Peregrine — Qwen3.8-27B W4A16 + DFlash2 k7** | patched vLLM 0.28.0 | Reliability-qualified; reproducible Pi 0.84.3 runs 232–234 |
-| Autonomous fallback | **Doctor Strange — Qwen3.8-27B Q4_K_M** | llama.cpp v0.2.0/b10566 | Lower throughput and score; retained as the independently qualified fallback |
+| Owner-selected persistent default | **Gandalf — GPU-5 IQ4_XS + Q8 DFlash2 k4** | llama.cpp `1537a0a` | Native Pi 1.0.4 deployment; not newly benchmark-qualified |
+| Automatic fallback | **Peregrine — Qwen3.8-27B W4A16 + DFlash2 k7** | patched vLLM 0.28.0 | Historical Pi 0.84.3 qualification; relocated setup startup-tested |
+| Emergency/manual alternatives | **Doctor Strange, Road Runner, Spiderman, Thor** | retained llama.cpp profiles | Preserve artifacts and configurations; run one GPU backend at a time |
+
+The following historical sections describe the measured coordinates, not the
+current default/fallback policy. See [reproduction recipes](#reproduction-recipes)
+for the current setup and retained named alternatives.
 
 The 2026-08-29 [public-model challenger search](MODEL_CANDIDATE_RESEARCH.md) found no replacement. The sole pre-screen winner, Opus Distill v2 Q4_K_M, completed run 235 at 52.318/65 and 32.9 effective t/s, below both challenger gates, and was not reliability-qualified at 9/12. Production and rollback coordinates therefore remain unchanged.
 
@@ -270,7 +276,8 @@ Doctor Strange is a separate GGUF/llama.cpp coordinate, not a way to run the Per
 | Context handling | Fit disabled; context shifting disabled |
 | Reference host | The same Debian/RTX 3090 system; 280 W |
 
-This profile scored **57.395833/65**, passed 8/8 reliability scenario-runs, and scored 100/100 on `pi-ops-v1`. It remains the autonomous fallback because it provides an independently qualified llama.cpp path with retained reliability evidence; Peregrine remains supervised.
+This profile scored **57.395833/65**, passed 8/8 reliability scenario-runs, and scored 100/100 on `pi-ops-v1`. It was the autonomous fallback at the time of those measurements. It is now
+retained for emergency/manual recovery; Peregrine is the selected fallback.
 
 Do not transfer vLLM settings such as int8-per-token-head KV, `GPU_UTIL`, `MAX_SEQS`, aligned hybrid prefix caching, or DFlash2 configuration to llama.cpp. Conversely, llama.cpp's GGUF cache types, sidecar drafting, fixed seed, and context-shift controls do not describe the vLLM coordinate. Compare them only as separately named end-to-end profiles.
 
@@ -287,3 +294,237 @@ Do not transfer vLLM settings such as int8-per-token-head KV, `GPU_UTIL`, `MAX_S
 9. Record arithmetic means and observed ranges; never publish only the best run.
 
 See [RESULTS.md](RESULTS.md) for the measured evidence, [METHODOLOGY.md](METHODOLOGY.md) for coordinate and repeatability rules, [LEADERBOARDS.md](LEADERBOARDS.md) for the current ranking, and the [Qwen3.8 RTX 3090 vLLM 0.28 port](https://github.com/syv-ai/qwen38-27b-rtx3090/pull/43) for its patch, optimization, long-context, quality, and gotcha documentation.
+
+## Reproduction recipes
+
+### Deployment policy and versions
+
+As of 2026-10-06, the owner-selected persistent default is **Gandalf**, automatic
+fallback is **Peregrine**, and **Doctor Strange** is emergency recovery. Road
+Runner, Spiderman and Thor remain manual alternatives. This is a deployment
+choice with known limitations, not a fresh production-qualification claim.
+
+The native deployment uses **Pi 1.0.4**. Canonical published benchmark scores
+remain tied to **Pi 0.84.3** and the attested benchmark prompt. Do not report a
+native 1.0.4 result as equivalent to the canonical coordinate. Gandalf's native
+restricted reliability has both passing and failing runs; a later pass does not
+erase earlier failures. No diagnostic legacy-prompt bridge is deployed to tool
+sessions. Full Pi 1.0.4 quality qualification remains incomplete.
+
+Install Pi into separate version directories rather than changing a benchmark
+pin when upgrading the daily agent:
+
+```bash
+WORKSPACE="$HOME/pibench-workspace"
+mkdir -p "$WORKSPACE/runtimes/pi" "$WORKSPACE/models" "$WORKSPACE/experiments"
+npm install --prefix "$WORKSPACE/runtimes/pi/1.0.4" \
+  @earendil-works/pi-coding-agent@1.0.4
+npm install --prefix "$WORKSPACE/runtimes/pi/0.84.3" \
+  @earendil-works/pi-coding-agent@0.84.3
+"$WORKSPACE/runtimes/pi/1.0.4/node_modules/.bin/pi" --version
+```
+
+All paths in these examples are local placeholders. Keep downloaded weights,
+raw results, credentials and host service configurations outside the public
+Git checkout. Use one backend at a time on a single RTX 3090.
+
+### Gandalf: build and verify weights
+
+Requirements: Linux, CUDA toolkit, CMake, C++ compiler, RTX 3090 24 GB.
+Build the pinned upstream llama.cpp revision for SM86:
+
+```bash
+git clone https://github.com/ggml-org/llama.cpp.git "$WORKSPACE/runtimes/gandalf"
+git -C "$WORKSPACE/runtimes/gandalf" checkout \
+  1537a0a8b2f8711d840878b0a0677ab2213c882c
+cmake -S "$WORKSPACE/runtimes/gandalf" \
+  -B "$WORKSPACE/runtimes/gandalf/build" \
+  -DCMAKE_BUILD_TYPE=Release -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=86
+cmake --build "$WORKSPACE/runtimes/gandalf/build" -j 8 --target llama-server
+```
+
+Download the exact target and Q8 drafter. These pinned Hub revisions contain
+files whose upstream LFS hashes match the tested artifacts:
+
+```bash
+hf download byteshape/Qwen3.8-27B-GGUF \
+  Qwen3.8-27B-IQ4_XS-3.84bpw.gguf \
+  --revision 3fdfbd9b4a618303ad36edb151e95d134ece8c18 \
+  --local-dir "$WORKSPACE/models/gandalf"
+hf download incoai/Qwen3.8-27B-DFlash2-GGUF \
+  Qwen3.8-27B-DFlash2-Q8_0.gguf \
+  --revision 51962825493a48b846b40126d35c799ac4093ad0 \
+  --local-dir "$WORKSPACE/models/gandalf"
+(
+  cd "$WORKSPACE/models/gandalf"
+  printf '%s\n' \
+    '89434f23dc89c5f990894e3fe9fdad19d88c370f0d3638a176f29933f218b78b  Qwen3.8-27B-IQ4_XS-3.84bpw.gguf' \
+    'c18e800daedc59ca68fd13b6a856d795746af6d399a9279ac6a277d1d422f87e  Qwen3.8-27B-DFlash2-Q8_0.gguf' \
+    | sha256sum -c -
+)
+```
+
+`hf` is the Hugging Face CLI; install it in a separate environment following its
+upstream instructions. File names alone do not establish artifact equivalence.
+
+### Gandalf: serve and select in Pi
+
+Stop the previous GPU backend before starting this foreground command:
+
+```bash
+"$WORKSPACE/runtimes/gandalf/build/bin/llama-server" \
+  --model "$WORKSPACE/models/gandalf/Qwen3.8-27B-IQ4_XS-3.84bpw.gguf" \
+  --spec-draft-model "$WORKSPACE/models/gandalf/Qwen3.8-27B-DFlash2-Q8_0.gguf" \
+  --alias Gandalf --host 127.0.0.1 --port 8080 \
+  --ctx-size 131072 --parallel 1 --n-gpu-layers 99 \
+  --flash-attn on --cache-type-k q8_0 --cache-type-v q8_0 \
+  --spec-type draft-dflash --spec-draft-ngl 99 --spec-draft-n-max 4 \
+  --no-context-shift --seed 42 --temp 0.6 --top-p 0.95 --top-k 20 --min-p 0 \
+  --reasoning-effort low --reasoning-budget 6144 --no-webui
+```
+
+The server reasoning budget reserves space within Pi's 8,192-token output
+allowance for visible answers. It is part of the selected coordinate; an
+uncapped server is not the same profile. Never equate a visible answer with
+executable correctness.
+
+Merge this provider into the existing Pi model registry, preserving other
+providers. Replace the API-key placeholder with your local authentication
+configuration if enabling server authentication; the command above is strictly
+loopback-bound without authentication.
+
+```json
+{
+  "providers": {
+    "local-llama-gandalf": {
+      "baseUrl": "http://127.0.0.1:8080/v1",
+      "api": "openai-completions",
+      "apiKey": "REPLACE_WITH_LOCAL_API_KEY",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "supportsUsageInStreaming": false,
+        "supportsStore": false,
+        "supportsStrictMode": false,
+        "supportsLongCacheRetention": false,
+        "maxTokensField": "max_tokens",
+        "thinkingFormat": "qwen-chat-template"
+      },
+      "models": [{
+        "id": "Gandalf",
+        "name": "Gandalf",
+        "reasoning": true,
+        "input": ["text"],
+        "contextWindow": 131072,
+        "maxTokens": 8192,
+        "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+        "thinkingLevelMap": {
+          "off": null, "minimal": null, "low": "low", "medium": null,
+          "high": null, "xhigh": null, "max": null
+        },
+        "samplingParams": {
+          "temperature": 0.6, "top_p": 0.95, "top_k": 20, "min_p": 0,
+          "presence_penalty": 0, "repeat_penalty": 1
+        },
+        "compat": {"supportsReasoningEffort": true}
+      }]
+    }
+  }
+}
+```
+
+Set these keys in Pi settings, rather than replacing the whole settings file:
+
+```json
+{
+  "defaultProvider": "local-llama-gandalf",
+  "defaultModel": "Gandalf",
+  "defaultThinkingLevel": "low"
+}
+```
+
+```bash
+"$WORKSPACE/runtimes/pi/1.0.4/node_modules/.bin/pi" \
+  --model local-llama-gandalf/Gandalf:low
+```
+
+### Peregrine fallback
+
+Use the exact W4A16 artifact, patched vLLM 0.28 port, cache-tail backport and
+launcher settings in [Current vLLM profile](#current-vllm-profile-peregrine).
+The public [port PR](https://github.com/syv-ai/qwen38-27b-rtx3090/pull/43)
+provides installation and patch-stack context; its complete launcher must be
+used, not a stock `pip install vllm` approximation. Fetch and verify the
+DFlash2 W4A16 drafter with that port's preparation/verifier scripts.
+
+Use the same localhost endpoint only after stopping Gandalf. Preserve the
+Peregrine provider in Pi settings; switch the default provider/model only after
+its endpoint passes readiness. Exact startup history and request seeds matter
+for benchmark reproduction. Current deployment-policy authorization does not
+replace or rewrite the old hash-bound benchmark qualification certificate.
+
+### Preserve the other named profiles
+
+The following retained llama.cpp profiles use build b10566 at commit
+`bb4caa7540188872173c44d161602d9271386413`. Build it independently using the
+CMake procedure above with that commit. Do not replace Gandalf's executable
+in place. Obtain the named artifact from its upstream model release and verify
+its hash against the historical profile before asserting score reproduction.
+
+| Codename | Artifact | Speculation | Sampler |
+|---|---|---|---|
+| Doctor Strange | `Qwen3.8-27B-Q4_K_M.gguf` + `mtp-Qwen3.8-27B-Q4_0.gguf` | `draft-mtp`, depth 2 | temperature 1.0, top-p .95, top-k 20, seed 42 |
+| Road Runner | `Qwen3.6-35B-A3B-MTP-UD-Q4_K_M.gguf` | embedded MTP, depth 3 | temperature .2, seed 42; inherited runtime defaults otherwise |
+| Spiderman | `tmax-27b-Q5_K_M.gguf` | embedded MTP, depth 3 | temperature .2, seed 42; inherited runtime defaults otherwise |
+| Thor | `Qwen3.6-27B-DSV4Pro-GLM52-SFT-GPT55-RL-Coding-Q4_LynnStyle.gguf` | none | temperature .2, seed 42; inherited runtime defaults otherwise |
+
+All four retain one slot, full GPU-layer offload, 131,072 context and Q4_0 K/V
+cache. Doctor Strange enables flash attention, disables fitting/context shifting
+and uses low preserved reasoning. The other three are retained convenience
+profiles, not newly tested or newly promoted settings; historical measurements
+may use a different runtime or sampler. Consult [RESULTS.md](RESULTS.md) and
+[RESULTS.csv](RESULTS.csv) before quoting a historical result.
+
+A direct Doctor Strange launch, using local artifact placeholders:
+
+```bash
+"$WORKSPACE/runtimes/doctor/build/bin/llama-server" \
+  --model "$WORKSPACE/models/doctor/Qwen3.8-27B-Q4_K_M.gguf" \
+  --spec-draft-model "$WORKSPACE/models/doctor/mtp-Qwen3.8-27B-Q4_0.gguf" \
+  --alias 'Doctor Strange' --host 127.0.0.1 --port 8080 \
+  --ctx-size 131072 --parallel 1 --n-gpu-layers all --flash-attn on \
+  --cache-type-k q4_0 --cache-type-v q4_0 --fit off --no-context-shift \
+  --spec-type draft-mtp --spec-draft-ngl all --spec-draft-n-max 2 \
+  --spec-draft-n-min 1 --spec-draft-type-k q4_0 --spec-draft-type-v q4_0 \
+  --reasoning on --reasoning-effort low --reasoning-preserve \
+  --temp 1 --top-p .95 --top-k 20 --min-p 0 --repeat-penalty 1 \
+  --presence-penalty 0 --seed 42 --batch-size 1024 --ubatch-size 512 --no-webui
+```
+
+For the other three, use their artifact and alias from the table, remove the
+external sidecar flags, select `draft-mtp` depth 3 or `none` as listed, and keep
+sampling controls explicit when comparing scores. Preserve catalog entries and
+weights even when they are not the default. They cannot all occupy the same GPU
+simultaneously.
+
+### Persistent service and recovery
+
+Use separate root-owned service templates for each backend. Run inference as
+an unprivileged account, bind only loopback, set a writable cache/state directory
+and explicit library search path if relocating a binary build. A systemd service
+should wait for readiness, restart on failure, and invoke a separate recovery
+unit on terminal failure. Periodic monitoring must use health/model endpoints,
+not hidden text-generation requests.
+
+Recovery order is **Gandalf → Peregrine → Doctor Strange**. Make a switch under a
+lock: stop monitoring, stop the old GPU process, select the service and Pi
+provider together, start and verify the new endpoint, then restart monitoring.
+Never start the two engines simultaneously. Keep fallback selection sticky until
+an operator switches back; avoid endless automatic failback loops.
+
+Persist the selected service and default provider on disk, not in a temporary
+trial marker. Bind the owner deployment decision to runtime/model/configuration
+hashes and check drift at startup. Keep that decision separate from benchmark
+qualification. Do not copy someone else's certificate or mark missing tests as
+passing. Test fallback startup and recovery on your own host before relying on
+it; a dispatch drill is not a physical reboot or proof of every failure mode.

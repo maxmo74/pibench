@@ -6,6 +6,19 @@ PiBench is hardware-agnostic. It can test models running on CPUs, one or more GP
 
 ## Latest qualification status
 
+**October 6 deployment:** Gandalf is the owner-selected persistent default,
+Peregrine is automatic fallback, and Doctor Strange plus the other named
+llama.cpp profiles remain available for emergency/manual use. Native agent
+selection uses **Pi 1.0.4**; canonical benchmarks still pin **Pi 0.84.3**.
+This deployment decision is **not a new benchmark qualification**. Gandalf's
+restricted reliability remains intermittent, and full native 1.0.4 quality
+qualification is incomplete. Startup, an actual 1.0.4 response and a manually
+invoked Peregrine fallback dispatch were checked; that does not establish every
+fault/reboot scenario. See the [reproduction recipes](INFERENCE_PROFILES.md#reproduction-recipes)
+for pinned builds, weights, Pi configuration and recovery policy.
+
+The following score reports describe their original measurement dates.
+
 The [leaderboard](LEADERBOARDS.md) includes 38 selected profiles, with a
 [cloud-only Top 20](LEADERBOARDS.md#top-20-cloud) (10 selected profiles) and a
 [local-only Top 20](LEADERBOARDS.md#top-20-local). The October Gandalf
@@ -30,7 +43,7 @@ See the [September update](RESULTS.md#september-20-recovery-and-astra-update).
 The older GPU-5 b10819 DFlash2 k7 coordinate scored **58.318/65** across
 three runs, with **22.42–22.44** effective output t/s and **12/12** reliability
 checks. Those checks do not qualify the newer Gandalf runtime. Peregrine remains
-production; Doctor Strange remains rollback.
+the historical production reference; Doctor Strange was its rollback.
 
 A Pi **0.86.1 exact-prompt pilot** matched 0.84.3 on 36 no-tool spot-check
 invocations. This is limited validation, not a general Pi upgrade: the public
@@ -42,7 +55,7 @@ now reproduces 131K capacity with Peregrine's existing artifacts after targeted
 compatibility and memory fixes. Two runs scored **57.792/65** at **51.04–51.06**
 effective output t/s; reliability passed **12/12**. This does not beat the
 historical production reference or establish an upstream release regression.
-Production remains on vLLM 0.28.
+Those experiments did not supersede the historical vLLM 0.28 reference.
 
 ## What it tests
 
@@ -57,7 +70,7 @@ The main suite contains 24 tasks with a weighted maximum of 65 points. It covers
 
 Hard deterministic tasks carry more weight than smoke tests. See [METHODOLOGY.md](METHODOLOGY.md) for the scoring and clean-run controls, [LEADERBOARDS.md](LEADERBOARDS.md) for the explicit overall and local rankings, [INFERENCE_PROFILES.md](INFERENCE_PROFILES.md) for tested local settings and portability limits, and [RESULTS.md](RESULTS.md) for qualification details.
 
-Peregrine now uses DFlash2 k7 at temperature 0.60 and top-p 0.95. Clean-start runs 232–234 were byte-identical at **57.970/65** and averaged **58.1 effective t/s**; the reliability gate passed 12/12. This improves the prior top-p-0.90 coordinate by 1.949 points and 1.0 effective t/s. Doctor Strange remains automatic rollback.
+Peregrine now uses DFlash2 k7 at temperature 0.60 and top-p 0.95. Clean-start runs 232–234 were byte-identical at **57.970/65** and averaged **58.1 effective t/s**; the reliability gate passed 12/12. This improves the prior top-p-0.90 coordinate by 1.949 points and 1.0 effective t/s. That historical coordinate used Doctor Strange as rollback.
 
 ## Run it
 
@@ -161,7 +174,7 @@ This is the sole current reliability runner. Historical harness revisions and ev
 
 It runs four read-only synthetic investigations twice in fresh isolated sessions: evidence-backed diagnosis, graceful termination when decisive evidence is absent, recovery after a large irrelevant context preamble, and resistance to a deterministic polling trap without searching outside the fixture. A model passes the screen only if every run finishes normally, answers the fixture correctly, respects scenario tool budgets and the 21-message ceiling, makes no exact duplicate tool call, stays inside the repository, and avoids repeated text blocks. This is deliberately a pass/fail screen rather than another score. It remains separate while its scenarios and thresholds are validated; passing is necessary evidence for autonomous use, not a guarantee of universal reliability. Private output records metrics, checks and hashes but not model text. Configured endpoints must remain loopback-only, while built-in cloud providers may use an existing provider-scoped `auth.json` entry. For cloud runs, only the selected credential is staged in the isolated agent directory, an attested extension blocks tool access outside the fixture, and the parent removes the staged credential after every Pi process—even on timeout.
 
-Earlier Pi 0.84.1 reliability results remain historical qualification evidence. The current vLLM 0.28 Peregrine coordinate uses the merged Pi 0.84.3 reliability gate and passed **12/12** after packaging. Passing is still necessary evidence rather than proof of universal autonomy; the Peregrine-only loop guard remains mandatory and Doctor Strange remains automatic rollback.
+Earlier Pi 0.84.1 reliability results remain historical qualification evidence. The current vLLM 0.28 Peregrine coordinate uses the merged Pi 0.84.3 reliability gate and passed **12/12** after packaging. Passing is still necessary evidence rather than proof of universal autonomy; the local-model loop guard remains required. Current deployment uses Peregrine as fallback and Doctor Strange for emergency recovery.
 
 ## Reference results
 
