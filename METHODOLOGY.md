@@ -1,6 +1,45 @@
 # Methodology
 
-PiBench is a practical coding and agent benchmark. The sole main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. New runs pin Pi 0.84.3 and attest the complete effective prompt. Pi dependency versions are execution metadata, not score-protocol versions.
+PiBench is a practical coding and agent benchmark. The sole main runner invokes Pi once per task with no shared session, tools, repository context, skills, prompt templates, themes, or extensions. Canonical /65 runs pin Pi 0.84.3 and attest the complete effective prompt. Pi dependency versions are execution metadata, not score-protocol versions.
+
+## Public CSV schema 2
+
+`RESULTS.csv` remains the sole tracked result artifact. Schema 2 appends identity,
+configuration and outcome fields; the original 5,433 rows retain every original
+cell except the schema-version increment. Unknown new fields are blank, not zero.
+The private database retains raw evidence; publication-only metadata can be
+stored separately without modifying historical runs, models or result rows.
+
+Compare only matching `protocol_id`, `evaluation_tier`, `score_policy`, Pi and
+configuration coordinates. Blank protocol IDs identify the older records, whose
+`benchmark_name`, `benchmark_version`, `suite` and totals remain authoritative.
+For `protocol-points` tasks, task weight equals `total`; sum `weighted_score`
+within `(run_id, run_model_id)` to obtain the run's /100 score. Never sum
+`run_weighted_score` across rows: it repeats the run aggregate on every task.
+Older tasks retain their original weights. Legacy generated report views exclude
+`protocol-points` experiments; use the protocol-labelled CSV and dated summaries
+for these candidates. Do not merge tiers or protocols.
+
+`model_files` and `draft_model_files` are JSON arrays of basename, exact byte
+size and SHA-256 records. Repositories/revisions identify derivatives when known;
+`model_size_bytes` excludes the separately reported draft. Missing cloud weights
+are genuinely unavailable. Model aliases alone are not artifact identities.
+
+`catalog_context_window` is the frontend's declared ceiling; legacy
+`context_size`/`context_window` may describe the larger server allocation.
+`requested_output_limit` and `max_output` describe requested limits, not proof of
+enforcement: consult `output_cap_enforcement`. `thinking_requested` is not an
+assertion of matched reasoning compute; an unverified effective level is blank.
+Filenames never contain machine paths. All new metadata passes the same privacy
+checks as historical exports, with extra artifact-identity validation.
+
+`normal_completion`, `timeout`, `final_stop_reason`, tool counts and artifact
+scores separate operational behavior from content correctness. In the corrected
+pilot, non-normal tasks receive zero primary credit; in the challenge candidate,
+passed artifact checks retain credit. `protocol_status` explicitly records the
+post-hoc pilot correction or incomplete candidate campaign. Only complete runs
+are appended here; operator-interrupted attempts stay private and unscored.
+See [the dated results](RESULTS.md#october-18-pi-130-protocols) for limitations.
 
 ## Scoring
 

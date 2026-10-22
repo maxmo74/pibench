@@ -60,7 +60,20 @@ NORMALIZED_FULL_16 = [
 
 NORMALIZED_EXPANDED_24 = NORMALIZED_FULL_16 + NORMALIZED_NONCODING_8
 
-CSV_SCHEMA_VERSION = 1
+CSV_SCHEMA_VERSION = 2
+CSV_PUBLIC_FIELDS = [
+    "protocol_id", "protocol_status", "score_policy", "evaluation_tier", "repeat_index",
+    "model_display_name", "base_model_id", "model_repository", "model_revision",
+    "model_files", "model_size_bytes", "draft_model_repository", "draft_model_revision",
+    "draft_model_files", "draft_model_size_bytes", "draft_model_format", "draft_quantization",
+    "runtime_patches", "expert_cache_slots",
+    "cpu_moe_layers", "cpu_scheduling", "load_mode", "task_timeout_s", "tool_call_limit",
+    "output_cap_enforcement", "normal_completion", "timeout", "final_stop_reason",
+    "tool_calls", "tool_errors", "artifact_score", "artifact_total", "scope_clean",
+    "native_prompt_sha256", "rubric_sha256", "generation_sha256",
+    "catalog_context_window", "driver_version", "gpu_power_limit_w",
+    "requested_output_limit", "max_output_label",
+]
 CSV_INFERENCE_FIELDS = [
     "gpu_layers",
     "parallel",
@@ -144,6 +157,7 @@ CSV_FIELDS = [
     "wall_s",
     "approx_output_tokens",
     "approx_output_tps",
+    *CSV_PUBLIC_FIELDS,
 ]
 CSV_FORBIDDEN = re.compile(
     r"(?i)(/(?:home|root|tmp)/|[A-Z]:\\Users\\|BEGIN [A-Z ]*PRIVATE KEY|"
@@ -310,8 +324,19 @@ def detected_accelerators(host: dict) -> list[str]:
     return values
 
 
+def _csv_weight(row: sqlite3.Row) -> float:
+    if row["check_kind"] == "protocol-points":
+        return float(row["total"])
+    return TASK_WEIGHTS.get(str(row["task"]), 1.0)
+
+
 def export_public_csv(conn: sqlite3.Connection, out: Path) -> int:
     """Write an allowlisted task-level export without prompts or raw model output."""
+    overrides = {}
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE name='public_run_metadata'").fetchone():
+        overrides = {int(row[0]): parse_json_dict(row[1]) for row in conn.execute(
+            "SELECT run_model_id, metadata_json FROM public_run_metadata"
+        )}
     rows = conn.execute(
         """
         SELECT res.id AS result_id, res.run_id, res.run_model_id,
@@ -333,7 +358,7 @@ def export_public_csv(conn: sqlite3.Connection, out: Path) -> int:
                rm.inference_json,
                t.name AS task, t.category AS task_category,
                t.check_kind,
-               res.ok, res.score, res.total, res.wall_s,
+               res.ok, res.score, res.total, res.wall_s, res.checks_json,
                res.approx_output_tokens, res.approx_output_tps
         FROM results res
         LEFT JOIN runs r ON r.id = res.run_id
@@ -354,7 +379,7 @@ def export_public_csv(conn: sqlite3.Connection, out: Path) -> int:
         weighted_score = 0.0
         weighted_total = 0.0
         for row in group:
-            weight = TASK_WEIGHTS.get(str(row["task"]), 1.0)
+            weight = _csv_weight(row)
             weighted_total += weight
             if row["total"] is not None and float(row["total"]) > 0:
                 weighted_score += (float(row["score"] or 0) / float(row["total"])) * weight
@@ -396,7 +421,7 @@ def export_public_csv(conn: sqlite3.Connection, out: Path) -> int:
                     memory_gib = float(host["mem_total_kb"]) / 1024 / 1024
                 except (TypeError, ValueError):
                     pass
-            weight = TASK_WEIGHTS.get(str(row["task"]), 1.0)
+            weight = _csv_weight(row)
             if row["total"] is not None and float(row["total"]) > 0:
                 credit = float(row["score"] or 0) / float(row["total"])
             else:
@@ -464,6 +489,16 @@ def export_public_csv(conn: sqlite3.Connection, out: Path) -> int:
             }
             for field in CSV_INFERENCE_FIELDS:
                 record[field] = public_text(inference.get(field))
+            metadata = parse_json_dict(json.dumps(inference.get("public_metadata", {})))
+            checks = parse_json_dict(row["checks_json"])
+            metadata.update(parse_json_dict(json.dumps(checks.get("public_metadata", {}))))
+            metadata.update(overrides.get(int(row["run_model_id"]), {}))
+            for field in CSV_PUBLIC_FIELDS:
+                record[field] = public_text(metadata.get(field))
+            if metadata.get("max_output_label") is not None:
+                record["max_output"] = public_text(metadata["max_output_label"])
+            elif metadata.get("requested_output_limit") is not None:
+                record["max_output"] = public_text(metadata["requested_output_limit"])
             writer.writerow(record)
     temporary.replace(out)
     return len(rows)
@@ -716,6 +751,7 @@ def generate(conn: sqlite3.Connection) -> str:
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
         JOIN tasks t ON t.id = res.task_id
+        WHERE COALESCE(t.check_kind, '') != 'protocol-points'
         GROUP BY m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
         ORDER BY weighted_score * 1.0 / weighted_total DESC,
                  AVG(res.wall_s) ASC
@@ -750,6 +786,7 @@ def generate(conn: sqlite3.Connection) -> str:
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
         JOIN tasks t ON t.id = res.task_id
+        WHERE COALESCE(t.check_kind, '') != 'protocol-points'
         GROUP BY r.id, m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
         ORDER BY r.id DESC, m.model_arg
         LIMIT 40
@@ -784,6 +821,7 @@ def generate(conn: sqlite3.Connection) -> str:
         JOIN tasks t ON t.id = res.task_id
         JOIN run_models rm ON rm.id = res.run_model_id
         JOIN models m ON m.id = rm.model_id
+        WHERE COALESCE(t.check_kind, '') != 'protocol-points'
         GROUP BY t.name, m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
         ORDER BY t.name, m.model_arg, COALESCE(rm.runtime_build, rm.llama_cpp_build, rm.runtime_label, 'n/a')
         """

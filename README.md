@@ -4,6 +4,24 @@ PiBench is a small, reproducible benchmark for comparing **local and cloud LLMs*
 
 PiBench is hardware-agnostic. It can test models running on CPUs, one or more GPUs in a workstation or server, another machine on the network, or a cloud provider. The results included here are simply the runs made on the reference system described below.
 
+## October 18: newer protocol results
+
+[RESULTS.csv](RESULTS.csv) now uses schema 2, retaining all historical rows and
+adding 83 task-level aggregates from 13 complete Pi 1.3.0 runs. Filter by
+`protocol_id`, `evaluation_tier`, and `score_policy` before comparing results.
+The corrected six-workflow pilot and the harder seven-workflow candidate are
+**not comparable to the historical /65 suite or each other**.
+
+The challenge campaign is paused and incomplete. Completed validation runs are
+GPT 6.1 Sol — low thinking (98.500 and 97.591/100) and Gandalf
+(97.667/100, one run). No four-model ranking is established. Interrupted work
+is retained privately and is not scored as model failure. See
+[protocol results and caveats](RESULTS.md#october-18-pi-130-protocols).
+
+Exact artifact filenames, hashes, byte sizes, derivative repositories, available
+revisions, draft models and runtime parameters are exported where recorded.
+Unknown information remains blank; cloud weights cannot be fingerprinted.
+
 ## Latest qualification status
 
 **October 6 deployment:** Gandalf is the owner-selected persistent default,

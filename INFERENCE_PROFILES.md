@@ -1,5 +1,54 @@
 # Local inference profiles and recommended settings
 
+## Pi 1.3.0 experimental coordinates
+
+These are benchmark configurations, not new production qualifications. Public
+artifact identity is in CSV schema 2: exact filenames, per-file SHA-256, bytes,
+derivative repository/revision and draft identity where recorded. Do not infer
+missing revisions from a mutable repository's current head.
+
+| Configuration | Target weights | Target bytes | Draft bytes | Runtime |
+| --- | --- | ---: | ---: | --- |
+| Gandalf | byteshape Qwen3.8-27B, GPU-5 IQ4_XS 3.84bpw | 13,083,052,416 | 2,056,414,816, Q8 DFlash2 | llama.cpp `1537a0a8b2f8711d840878b0a0677ab2213c882c` |
+| Peregrine | syvai Qwen3.8-27B fast variant, W4A16 AutoRound | 15,791,777,864 | 1,280,633,960, W4A16 DFlash2 | patched vLLM 0.28.0, `55a5a99b124e48ffd0767ece295a355a6f1d988c` |
+| Houdini | unsloth Qwen3.8-Flash-Next, UD-IQ3_XXS | 81,961,823,936 | 2,786,568,256, shared Q8 MTP | thecodacus/perf `27c54b4bbcefadedcec6397477cc2e866c1db716` |
+| GPT 6.1 Sol — low thinking | remote `openai-codex/gpt-6.1-sol:low` | unknown | not applicable | native Pi Codex adapter |
+
+Gandalf's target file is `Qwen3.8-27B-IQ4_XS-3.84bpw.gguf`; its Q8 draft is
+`Qwen3.8-27B-DFlash2-Q8_0.gguf`. Exact safetensor shard names for Peregrine and
+GGUF shard names for Houdini are listed in `model_files`, not abbreviated to a
+single ambiguous model name. Unrecorded draft repository revisions remain blank.
+
+All local candidates request temperature 0.6, top-p 0.95, top-k 20 and min-p 0.
+Gandalf uses Q8 KV, DFlash2 k4 and a 6144-token server reasoning budget.
+Peregrine uses INT8 per-token/head KV and DFlash2 k7. The backend configurations
+are not reasoning-compute matched. Both advertise a 64K catalog ceiling during
+these tests, without shrinking their larger server allocation.
+
+Houdini uses one 64K slot, Q8 K/V, flash attention, mmap, explicit fitting off,
+2048 batch/512 microbatch, six CPU threads, GPU dense/attention layers and
+CPU-resident routed experts with 96 GPU hot-expert cache slots. CPU scheduling
+is synchronous; its shared Q8 MTP head drafts one token. The routing profile was
+generated from independent code/chat inputs, not benchmark-task training.
+The earlier 48/96-slot probes matched outputs; 144 slots changed outputs and
+were not selected. This is not proof of universal cache-split equivalence.
+
+For GPT 6.1 Sol, low effort was checked at the API boundary. Cloud sampling,
+weights and server revisions cannot be assumed identical to local controls.
+Native Codex does not serialize the catalog's requested output-token ceiling.
+
+The reference hardware is an RTX 3090 24 GiB, Ryzen 9 7900 and 128 GB DDR5
+(about 124 GiB usable), driver 595.91.07, GPU power limit 280 W. Houdini fits
+through CPU offload; it does not fit wholly in VRAM. Peak-memory behavior at
+larger contexts is not qualified by these short workflows.
+
+Higher-quant IQ4_XS GGUF and a W4A16/FP8PLE patched-vLLM alternative are planned,
+not benchmarked here. Downloads and the campaign are owner-paused. The vLLM
+alternative requires its specific overlays/kernels and CPU/RAM/NVMe tiering;
+ordinary all-GPU loading cannot fit its approximately 129 GB checkpoint.
+See [dated protocol results](RESULTS.md#october-18-pi-130-protocols). Existing
+portable build/launch recipes below still use placeholders, not machine paths.
+
 Deployment update: **2026-10-06**. Historical qualification coordinates below
 remain dated separately; deployment preference is not a new certificate.
 

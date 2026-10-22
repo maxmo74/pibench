@@ -2,6 +2,89 @@
 
 These runs were made on one reference workstation. They show observed model/profile behavior, not hardware-independent rankings.
 
+## October 18: Pi 1.3.0 protocols
+
+These aggregates are separate from all /65 tables below. Model selection for
+**GPT 6.1 Sol — low thinking** is exactly `openai-codex/gpt-6.1-sol:low`.
+
+### Corrected compatibility pilot (`pilot-v4`)
+
+Six workflows, two complete runs per configuration, 100 points. Coding 50,
+sysadmin 30, documentation 10, scope 10. A non-normal completion zeroes the
+old pilot's task score; artifact-only diagnostics are exported separately.
+
+| Configuration | Mean /100 | Normal sessions | Mean session time/run |
+| --- | ---: | ---: | ---: |
+| GPT 6.1 Sol — low thinking | 100 | 12/12 | 3.91 min |
+| Gandalf | 100 | 12/12 | 11.94 min |
+| Houdini IQ3 / cache 96 | 75 | 9/12 | 29.92 min |
+| Peregrine | 69 | 9/12 | 6.55 min |
+
+Houdini's artifact-only diagnostic is 100: three task timeouts explain its
+lower composite score, not 25 points of code errors. Peregrine had three
+output-length stops. Gandalf and GPT 6.1 Sol saturate this small suite; equal
+scores do not establish equivalent general capability.
+
+This is a **post-hoc-corrected pilot**, not a pre-registered release. Equivalent
+incident patches and inherited nginx HTTP versions required grader repairs.
+All 36 local artifacts were regraded symmetrically for the final correction;
+original generations and prior revisions remain private and unchanged. The
+later cloud control used that corrected grader. This exception did not satisfy
+the original fresh-generation rule and must not be represented as doing so.
+
+### Frozen challenge candidate (`challenge-v1`)
+
+Seven workflows and 78 functional check groups: fenced SQLite leases, binary
+framing, optimal deployment scheduling, JavaScript cancellation/concurrency,
+actual nginx forwarding, safe backup/restore, and incident diagnosis. Coding
+50, sysadmin 30, executable handoff 10, scope 10. **Artifact correctness is not
+completion-gated**; completion, timeout, tool errors and latency remain separate.
+
+| Tier | Configuration | Runs /100 | Normal sessions | Session time/run |
+| --- | --- | --- | --- | --- |
+| Development | GPT 6.1 Sol — low thinking | 97.591 | 7/7 | 4.66 min |
+| Development | Gandalf | 97.391 | 7/7 | 37.46 min |
+| Validation | GPT 6.1 Sol — low thinking | 98.500, 97.591 | 14/14 | 4.84, 4.15 min |
+| Validation | Gandalf | 97.667 | 7/7 | 35.18 min |
+
+**Paused, incomplete campaign:** no completed Peregrine/Houdini challenge runs;
+Gandalf's second validation attempt was interrupted by the owner. Its partial
+artifacts are not mixed into scored complete runs. Development observations
+are not validation results. Two repeats are not statistical confidence bounds.
+Validation inputs are held out within the same families, not independently
+authored unseen projects. No trusted public leaderboard or new deployment
+qualification is claimed.
+
+Before model generation, a reference/configuration mismatch concerning nested
+`.well-known` paths failed acceptance. That preflight was invalidated with zero
+model generations, retained privately, corrected, and refrozen. The corrected
+campaign passed 20 grader tests and 8 transport/safety tests before generation.
+No grader was changed to fit these model outcomes.
+
+Both protocols use native Pi 1.3.0 prompts/tools, a 64K **catalog** context
+ceiling, and low thinking requested. Pilot limits: 8192 requested output tokens,
+600 seconds/task. Challenge limits: 16384 requested output tokens, 1200 seconds
+and 80 tool calls/task. Gandalf retains a distinct server reasoning budget of
+6144; other configurations are not reasoning-budget matched. Native Codex does
+not serialize the requested output ceiling; catalog limits are not proof of
+API-enforced parity. The compatibility control's largest observed assistant
+output usage was 1335 tokens. Cloud model weights/revisions are opaque.
+
+Timing is the sum of agent-session wall times, excluding hidden grading and
+server startup. Normal completion requires a nonempty normal final response
+without timeout or safety-budget termination. Scope checks cover project diffs
+and protected configs, not comprehensive syscall/network auditing. This is
+not certification against intentionally hostile generated code or grader attacks.
+
+Only allowlisted aggregates/identity/configuration data are public. New harness
+fixtures, raw prompts, outputs and sessions remain private under current policy;
+these candidates are **not yet a turnkey public benchmark implementation**.
+The public CSV permits comparison; exact new-suite reruns require a separately
+reviewed release of portable benchmark materials. Existing /65 harnesses remain
+available. Do not use either /100 protocol to rerank the /65 leaderboard.
+
+## Historical /65 reference snapshot
+
 - Suite: 24 tasks, 65 weighted points
 - Updated: 2026-10-03; historical tables retain their original snapshot
 - Score protocol: pi-agent-24/65

@@ -596,6 +596,12 @@ def init_db(conn: sqlite3.Connection) -> None:
             UNIQUE(run_id, model_id)
         );
 
+        CREATE TABLE IF NOT EXISTS public_run_metadata (
+            run_model_id INTEGER PRIMARY KEY REFERENCES run_models(id),
+            metadata_json TEXT NOT NULL,
+            source_label TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,

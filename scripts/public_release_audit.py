@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import re
 import sqlite3
@@ -104,6 +105,10 @@ def audit_csv(path: Path, database: Path | None) -> list[str]:
             "run_task_count", "run_passed", "run_weighted_score", "run_weighted_total",
             "logical_cpus", "memory_gib", "context_size", "task_weight", "passed",
             "score", "total", "weighted_score", "wall_s", "approx_output_tokens", "approx_output_tps",
+            "repeat_index", "model_size_bytes", "draft_model_size_bytes", "expert_cache_slots",
+            "cpu_moe_layers", "task_timeout_s", "tool_call_limit", "tool_calls", "tool_errors",
+            "artifact_score", "artifact_total", "catalog_context_window",
+            "gpu_power_limit_w", "requested_output_limit",
         }
         for line_number, row in enumerate(reader, 2):
             rows += 1
@@ -121,6 +126,26 @@ def audit_csv(path: Path, database: Path | None) -> list[str]:
                             raise ValueError
                     except ValueError:
                         errors.append(f"RESULTS.csv:{line_number}:{field}: non-finite/non-numeric value")
+            if row['csv_schema_version'] != str(pibench_report.CSV_SCHEMA_VERSION):
+                errors.append(f"RESULTS.csv:{line_number}: unsupported schema version")
+            for field in ('model_files', 'draft_model_files'):
+                if not row[field]:
+                    continue
+                try:
+                    artifacts = json.loads(row[field])
+                    if not isinstance(artifacts, list):
+                        raise ValueError
+                    for artifact in artifacts:
+                        name = artifact['filename']
+                        if not isinstance(name, str) or not name or '/' in name or '\\' in name:
+                            raise ValueError
+                        size = artifact['size_bytes']
+                        if type(size) is not int or size <= 0:
+                            raise ValueError
+                        if not re.fullmatch(r'[0-9a-f]{64}', artifact['sha256']):
+                            raise ValueError
+                except (ValueError, KeyError, TypeError):
+                    errors.append(f"RESULTS.csv:{line_number}:{field}: invalid artifact identity")
             try:
                 key = (int(row["run_id"]), int(row["run_model_id"]), int(row["result_id"]))
                 if previous is not None and key < previous:
