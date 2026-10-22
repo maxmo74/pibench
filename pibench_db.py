@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DB = ROOT / "results" / "pibench.sqlite"
@@ -222,7 +222,11 @@ def infer_effective_thinking(model_arg: str, metadata: dict[str, Any]) -> str | 
 def read_models_config(provider: str | None, model_id: str | None) -> dict[str, Any]:
     if not provider or not model_id:
         return {}
-    for path in [Path.home() / ".pi/agent/models.json"]:
+    configured_dir = os.environ.get("PI_CODING_AGENT_DIR")
+    agent_dir = Path(configured_dir) if configured_dir else Path.home() / ".pi/agent"
+    if not agent_dir.is_absolute():
+        raise RuntimeError("PI_CODING_AGENT_DIR must be an absolute path for model metadata")
+    for path in [agent_dir / "models.json"]:
         try:
             data = json.loads(path.read_text())
         except Exception:
@@ -674,6 +678,57 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def sandbox_details() -> dict[str, Any]:
+    """Which generated-code sandbox this host can provide, without raising."""
+
+    try:
+        from pibench_sandbox import backend_details
+
+        return backend_details()
+    except Exception as exc:  # SandboxUnavailable or an import/OS failure
+        return {"sandbox_backend": "unavailable", "isolation_strength": "none",
+                "error": f"{type(exc).__name__}: {exc}"}
+
+
+def run_sandbox_backend(conn: sqlite3.Connection, run_id: int) -> str | None:
+    """Recorded generated-code sandbox backend for one run, if stamped."""
+
+    row = conn.execute(
+        "SELECT environment_json FROM runs WHERE id = ?", (run_id,)
+    ).fetchone()
+    if not row or not row[0]:
+        return None
+    try:
+        return (json.loads(row[0]).get("sandbox") or {}).get("sandbox_backend")
+    except (ValueError, AttributeError):
+        return None
+
+
+def assert_comparable_sandboxes(conn: sqlite3.Connection, run_ids: Sequence[int]) -> str:
+    """Reject ranking runs scored under different isolation guarantees.
+
+    Executable scores are only comparable when the same sandbox backend enforced
+    them: bubblewrap uses kernel namespaces while macOS seatbelt is a documented
+    best-effort lane. Returns the shared backend name.
+    """
+
+    backends = {run_id: run_sandbox_backend(conn, run_id) for run_id in run_ids}
+    unknown = sorted(str(run_id) for run_id, backend in backends.items() if backend is None)
+    if unknown:
+        raise ValueError(
+            "cannot rank runs without a recorded sandbox backend: run ids "
+            + ", ".join(unknown)
+        )
+    distinct = sorted({backend for backend in backends.values()})
+    if len(distinct) > 1:
+        raise ValueError(
+            "runs mix sandbox backends "
+            + ", ".join(distinct)
+            + "; executable scores are not comparable across isolation guarantees"
+        )
+    return str(distinct[0])
+
+
 def create_run(
     conn: sqlite3.Connection,
     benchmark_name: str,
@@ -683,7 +738,10 @@ def create_run(
     metadata: dict[str, Any] | None = None,
     benchmark_version: int | None = None,
 ) -> int:
-    metadata = metadata or {}
+    metadata = dict(metadata or {})
+    # Stamp the generated-code sandbox lane on every run so scores can never be
+    # silently compared across different isolation guarantees.
+    metadata.setdefault("sandbox", sandbox_details())
     provenance = metadata.get("provenance", {}) if isinstance(metadata.get("provenance", {}), dict) else {}
     host_overrides = metadata.get("host", {}) if isinstance(metadata.get("host", {}), dict) else {}
     host = merge_dicts(collect_host_metadata(), host_overrides)

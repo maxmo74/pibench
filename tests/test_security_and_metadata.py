@@ -12,11 +12,56 @@ from unittest import mock
 import pi_agent_bench
 import pibench_db
 import pibench_report
-from pibench_sandbox import run_python_source
+from pibench_sandbox import (
+    BUBBLEWRAP,
+    SEATBELT,
+    SandboxUnavailable,
+    backend_details,
+    limit_gaps,
+    resolve_backend,
+    run_python_source,
+    seatbelt_available,
+)
 from scripts import public_release_audit
 
 
+def _sandbox_present() -> bool:
+    try:
+        resolve_backend()
+    except SandboxUnavailable:
+        return False
+    return True
+
+
+SANDBOX_PRESENT = _sandbox_present()
+BACKEND = resolve_backend() if SANDBOX_PRESENT else None
+
+
 class ModelMetadataTests(unittest.TestCase):
+    def test_model_config_follows_isolated_agent_without_home_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            default_agent = home / ".pi/agent"
+            default_agent.mkdir(parents=True)
+            isolated = Path(tmp) / "isolated"
+            isolated.mkdir()
+            config = {"providers": {"fixture": {"models": [{"id": "test-model"}]}}}
+            (default_agent / "models.json").write_text(json.dumps(config))
+            with mock.patch.object(Path, "home", return_value=home):
+                with mock.patch.dict(os.environ, {"PI_CODING_AGENT_DIR": ""}):
+                    result = pibench_db.read_models_config("fixture", "test-model")
+                    self.assertEqual(result["config_path"], str(default_agent / "models.json"))
+                with mock.patch.dict(os.environ, {"PI_CODING_AGENT_DIR": str(isolated)}):
+                    self.assertEqual(pibench_db.read_models_config("fixture", "test-model"), {})
+                    (isolated / "models.json").write_text(json.dumps(config))
+                    result = pibench_db.read_models_config("fixture", "test-model")
+                    self.assertEqual(result["config_path"], str(isolated / "models.json"))
+
+    def test_model_config_refuses_relative_agent_override(self) -> None:
+        with mock.patch.dict(os.environ, {"PI_CODING_AGENT_DIR": "relative"}):
+            with self.assertRaisesRegex(RuntimeError, "absolute path"):
+                pibench_db.read_models_config("fixture", "test-model")
+
     def test_pi_table_parser_accepts_model_ids_with_spaces(self) -> None:
         table = """provider     model        context  max-out  thinking  images
 local-llama  Road Runner  131.1K   4.1K     yes       no
@@ -44,8 +89,19 @@ local-llama  Road Runner  131.1K   4.1K     yes       no
             )
 
 
-@unittest.skipUnless(shutil.which("bwrap"), "Bubblewrap is not installed")
+@unittest.skipUnless(SANDBOX_PRESENT, "no sandbox backend (bwrap or macOS seatbelt) available")
 class GeneratedCodeSandboxTests(unittest.TestCase):
+    """Backend-agnostic containment tests.
+
+    Assertions check the security property -- the secret is not visible and the
+    file is not created -- rather than a specific exception type, because
+    bubblewrap hides paths (FileNotFoundError) while seatbelt exposes them but
+    denies access (PermissionError). Both satisfy the requirement.
+    """
+
+    def test_a_sandbox_backend_is_selected(self) -> None:
+        self.assertIn(BACKEND, (BUBBLEWRAP, SEATBELT))
+
     def test_generated_code_cannot_read_host_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             secret = Path(tmp) / "host-secret"
@@ -54,11 +110,25 @@ class GeneratedCodeSandboxTests(unittest.TestCase):
 try:
     print(Path({str(secret)!r}).read_text())
 except Exception as exc:
-    print(type(exc).__name__)
+    print("READ_DENIED", type(exc).__name__)
 """
             proc = run_python_source(source)
             self.assertNotIn("SHOULD_NOT_BE_VISIBLE", proc.stdout)
-            self.assertIn("FileNotFoundError", proc.stdout)
+            self.assertIn("READ_DENIED", proc.stdout)
+
+    def test_generated_code_cannot_read_user_home(self) -> None:
+        source = """import os
+from pathlib import Path
+home = Path.home()
+try:
+    names = [p.name for p in home.iterdir()]
+    print("HOME_VISIBLE", names[:3])
+except Exception as exc:
+    print("HOME_HIDDEN", type(exc).__name__)
+"""
+        proc = run_python_source(source)
+        self.assertNotIn("HOME_VISIBLE", proc.stdout)
+        self.assertIn("HOME_HIDDEN", proc.stdout)
 
     def test_generated_code_cannot_write_host_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -67,11 +137,20 @@ except Exception as exc:
 try:
     Path({str(target)!r}).write_text("escaped")
 except Exception as exc:
-    print(type(exc).__name__)
+    print("WRITE_DENIED", type(exc).__name__)
 """
             proc = run_python_source(source)
             self.assertFalse(target.exists())
-            self.assertIn("FileNotFoundError", proc.stdout)
+            self.assertIn("WRITE_DENIED", proc.stdout)
+
+    def test_nested_subprocess_is_also_contained(self) -> None:
+        source = """import subprocess
+proc = subprocess.run(['/bin/cat', str(__import__('pathlib').Path.home() / '.ssh' / 'config')],
+                      capture_output=True, text=True)
+print('CHILD_RC', proc.returncode)
+"""
+        proc = run_python_source(source)
+        self.assertIn("CHILD_RC 1", proc.stdout)
 
     def test_generated_code_cannot_reach_loopback_network(self) -> None:
         source = """import socket
@@ -93,6 +172,50 @@ except OSError:
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertIn('"input": "hello"', proc.stdout)
+
+
+class SandboxProvenanceTests(unittest.TestCase):
+    """The chosen backend must always be distinguishable in recorded results.
+
+    Seatbelt is a weaker lane than bubblewrap, so a seatbelt-scored result must
+    never be silently ranked against a bubblewrap-scored one.
+    """
+
+    def test_provenance_names_backend_and_isolation_strength(self) -> None:
+        if not SANDBOX_PRESENT:
+            self.skipTest("no sandbox backend available")
+        details = backend_details()
+        self.assertEqual(details["sandbox_backend"], BACKEND)
+        self.assertIn(details["isolation_strength"], ("namespaces", "best-effort", "none"))
+
+    @unittest.skipUnless(BACKEND == SEATBELT, "seatbelt backend not selected")
+    def test_seatbelt_provenance_declares_its_weaknesses(self) -> None:
+        details = backend_details()
+        self.assertEqual(details["isolation_strength"], "best-effort")
+        limitations = " ".join(details["sandbox_limitations"])
+        for gap in ("mount namespace", "pid namespace", "not a security boundary"):
+            self.assertIn(gap, limitations)
+
+    @unittest.skipUnless(BACKEND == SEATBELT, "seatbelt backend not selected")
+    def test_seatbelt_reports_unsupported_memory_limits(self) -> None:
+        # macOS refuses finite RLIMIT_AS/RLIMIT_DATA; the gap must be visible,
+        # not silently downgraded to "contained".
+        self.assertIn("RLIMIT_AS", limit_gaps())
+        self.assertIn(
+            "no per-process memory cap",
+            " ".join(backend_details()["sandbox_limitations"]),
+        )
+
+    def test_bubblewrap_is_preferred_over_seatbelt(self) -> None:
+        if not seatbelt_available():
+            self.skipTest("seatbelt not available on this host")
+        with mock.patch.dict(os.environ, {"PATH": os.environ.get("PATH", "")}):
+            with mock.patch("pibench_sandbox.shutil.which", lambda name: "/usr/bin/bwrap"):
+                self.assertEqual(resolve_backend(), BUBBLEWRAP)
+
+    def test_unsafe_fallback_reports_no_isolation(self) -> None:
+        with mock.patch.dict(os.environ, {"PIBENCH_ALLOW_UNSANDBOXED_EXEC": "1"}):
+            self.assertEqual(backend_details()["isolation_strength"], "none")
 
 
 class ExtensionAttestationTests(unittest.TestCase):

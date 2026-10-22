@@ -91,6 +91,21 @@ class ReliabilityEventAnalysisTests(unittest.TestCase):
             "bash", {"command": "cd ../private && cat secret"}
         ))
 
+    def test_read_scope_canonical_root_and_symlink_escape(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            alias = root / "alias"
+            alias.symlink_to(workspace, target_is_directory=True)
+            (workspace / "escape").symlink_to(root / "outside")
+            with mock.patch.object(reliability, "WORKSPACE", alias):
+                self.assertTrue(reliability.tool_call_is_in_scope("read", {"path": "file.txt"}))
+                self.assertTrue(reliability.tool_call_is_in_scope("read", {"path": str(workspace / "file.txt")}))
+                self.assertFalse(reliability.tool_call_is_in_scope("read", {"path": "../outside"}))
+                self.assertFalse(reliability.tool_call_is_in_scope("read", {"path": "escape"}))
+                self.assertFalse(reliability.tool_call_is_in_scope("read", {"path": str(root / "workspace-sibling" / "file")}))
+
     def test_out_of_scope_tool_introspection_fails_gate(self) -> None:
         events = [
             assistant_event("I will inspect the harness session instead of the supplied fixture.", "toolUse"),

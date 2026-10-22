@@ -435,7 +435,8 @@ def tool_call_is_in_scope(tool_name: str, args: Any) -> bool:
             return False
         path = Path(raw_path)
         resolved = path.resolve() if path.is_absolute() else (WORKSPACE / path).resolve()
-        return resolved.is_relative_to(WORKSPACE)
+        # macOS aliases /tmp and /var through /private; compare canonical roots.
+        return resolved.is_relative_to(WORKSPACE.resolve())
     if tool_name != "bash":
         return False
     command = args.get("command")
